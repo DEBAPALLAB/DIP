@@ -12,6 +12,8 @@ interface AgentDetailProps {
     edges: [number, number][];
     agentHistory: AgentHistoryEntry[];
     onSelectAgent: (id: number) => void;
+    isConfigPhase?: boolean;
+    onToggleSeed?: (id: number) => void;
 }
 
 function TraitRow({
@@ -60,6 +62,8 @@ export default function AgentDetail({
     edges,
     agentHistory,
     onSelectAgent,
+    isConfigPhase,
+    onToggleSeed,
 }: AgentDetailProps) {
     const decisionColor =
         state.decision === "support"
@@ -125,7 +129,7 @@ export default function AgentDetail({
                         >
                             {agent.name}
                         </div>
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
                             {agent.job} · {agent.age}y
                         </div>
                         <span
@@ -139,10 +143,34 @@ export default function AgentDetail({
                                 padding: "1px 5px",
                                 borderRadius: 2,
                                 border: `1px solid ${agent.color}40`,
+                                display: "inline-block",
                             }}
                         >
                             {agent.persona}
                         </span>
+                        {isConfigPhase && onToggleSeed && (
+                            <button
+                                onClick={() => onToggleSeed(agent.id)}
+                                style={{
+                                    display: "inline-block",
+                                    marginLeft: 8,
+                                    background: state.isSeeded ? "var(--support)" : "transparent",
+                                    border: `1px solid ${state.isSeeded ? "var(--support)" : "var(--muted)"}`,
+                                    color: state.isSeeded ? "#000" : "var(--muted)",
+                                    borderRadius: 3,
+                                    padding: "2px 6px",
+                                    fontSize: 9,
+                                    fontFamily: "var(--mono)",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.06em",
+                                    cursor: "pointer",
+                                    fontWeight: state.isSeeded ? 700 : 400,
+                                    transition: "all 0.15s",
+                                }}
+                            >
+                                {state.isSeeded ? "🌱 SEEDED" : "🌱 SEED"}
+                            </button>
+                        )}
                     </div>
                 </div>
 

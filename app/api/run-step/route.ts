@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getScenario } from "@/lib/scenarios";
-import { buildSystemPrompt, parseDecision } from "@/lib/prompts";
+import { buildSystemPrompt } from "@/lib/prompts";
 import type { RunStepRequest, RunStepResponse, AgentState } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -25,15 +25,15 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const systemPrompt = buildSystemPrompt(agent, scenario);
-
         // Build user prompt dynamically using neighborAgents + neighborStates
         const neighborStateMap: Record<number, AgentState> = Object.fromEntries(
-            Object.entries(neighborStates).map(([k, v]) => [
+            Object.entries(neighborStates || {}).map(([k, v]) => [
                 Number(k),
                 { decision: v.decision, reasoning: v.reasoning, step: null, pending: false },
             ])
         );
+
+        const { systemPrompt, calculatedDecision } = buildSystemPrompt(agent, scenario, neighborStateMap);
 
         const neighborLines = (neighborAgents ?? [])
             .map((nb) => {
@@ -83,11 +83,12 @@ What's your honest take on this as ${agent.name}?`;
         const data = await response.json();
         const text: string = data.choices?.[0]?.message?.content ?? "";
 
-        const { decision, reasoning } = parseDecision(text);
+        // Strip the decision line if the LLM accidentally included it anyway
+        const reasoning = text.replace(/DECISION:\s*(support|neutral|oppose)/gi, "").trim();
 
         const result: RunStepResponse = {
             agentId,
-            decision,
+            decision: calculatedDecision,
             reasoning,
         };
 

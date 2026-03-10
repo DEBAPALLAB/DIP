@@ -37,6 +37,7 @@ export interface AgentState {
   reasoning: string | null;
   step: number | null;
   pending: boolean;
+  isSeeded?: boolean;
 }
 
 export type SimulationStates = Record<number, AgentState>;

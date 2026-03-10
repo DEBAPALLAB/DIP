@@ -64,7 +64,12 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
                         </div>
                     </div>
                 </div>
-                <DecisionBadge decision={state.decision} />
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {state.isSeeded && !state.decision && (
+                        <span style={{ fontSize: 10, filter: "drop-shadow(0 0 4px var(--support))" }}>🌱</span>
+                    )}
+                    <DecisionBadge decision={state.decision} />
+                </div>
             </div>
 
             {/* Persona tag */}

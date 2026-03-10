@@ -74,6 +74,7 @@ export default function EgoNetworkGraph({
                 const d = agentStates[nb.id]?.decision;
                 const nc = decisionColor(d);
                 const isDecided = !!d;
+                const isSeeded = agentStates[nb.id]?.isSeeded && !d;
 
                 return (
                     <g
@@ -81,6 +82,11 @@ export default function EgoNetworkGraph({
                         style={{ cursor: "pointer" }}
                         onClick={() => onSelectAgent(nb.id)}
                     >
+                        {isSeeded && (
+                            <text x={nx + 6} y={ny - 6} fontSize={8} style={{ filter: "drop-shadow(0 0 2px #00d084)" }}>
+                                🌱
+                            </text>
+                        )}
                         <circle
                             cx={nx}
                             cy={ny}
@@ -107,6 +113,11 @@ export default function EgoNetworkGraph({
             })}
 
             {/* Center node (selected agent) */}
+            {agentStates[agent.id]?.isSeeded && !selfDecision && (
+                <text x={cx + 12} y={cy - 12} fontSize={12} style={{ filter: "drop-shadow(0 0 4px #00d084)" }}>
+                    🌱
+                </text>
+            )}
             <circle
                 cx={cx}
                 cy={cy}

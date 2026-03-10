@@ -19,6 +19,7 @@ import type {
 
 import TopBar from "@/components/dashboard/TopBar";
 import AgentGrid from "@/components/dashboard/AgentGrid";
+import GlobalNetworkGraph from "@/components/dashboard/GlobalNetworkGraph";
 import AgentDetail from "@/components/dashboard/AgentDetail";
 import AdoptionChart from "@/components/dashboard/AdoptionChart";
 import PersonaBreakdown from "@/components/dashboard/PersonaBreakdown";
@@ -26,6 +27,8 @@ import ScenarioPicker from "@/components/dashboard/ScenarioPicker";
 import StepLog from "@/components/dashboard/StepLog";
 import ProductBrief from "@/components/dashboard/ProductBrief";
 import ConfigScreen from "@/components/dashboard/ConfigScreen";
+import CustomScenarioForm, { loadSavedCustomScenario } from "@/components/dashboard/CustomScenarioForm";
+import type { Scenario } from "@/lib/types";
 
 // ─── Batch size scaling ────────────────────────────────────────────────────────
 
@@ -60,22 +63,30 @@ export default function SimulatePage() {
     const [agentHistories, setAgentHistories] = useState<AgentHistories>({});
 
     const [scenarioId, setScenarioId] = useState<string>(SCENARIOS[0].id);
+    const [customScenario, setCustomScenario] = useState<Scenario | null>(null);
+    const [showCustomForm, setShowCustomForm] = useState(false);
     const [history, setHistory] = useState<StepSnapshot[]>([]);
     const [log, setLog] = useState<LogEntry[]>([]);
     const [step, setStep] = useState(0);
     const [running, setRunning] = useState(false);
     const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
     const [activePanel, setActivePanel] = useState<"log" | "chart">("chart");
+    const [mainView, setMainView] = useState<"grid" | "network">("network");
+
+    // "UNCONFIGURED" -> "CONFIGURED" -> "RUNNING" -> "DONE"
     const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
     const abortRef = useRef(false);
-    const scenario = getScenario(scenarioId);
+    const scenario: Scenario = (scenarioId === "custom" && customScenario) ? customScenario : getScenario(scenarioId);
 
     // ─── localStorage persistence ──────────────────────────────────────────────
 
     // Restore on mount
     useEffect(() => {
         try {
+            const savedCustom = loadSavedCustomScenario();
+            if (savedCustom) setCustomScenario(savedCustom);
+
             const savedAgents = localStorage.getItem("sim_agents");
             if (savedAgents) {
                 const parsedAgents: Agent[] = JSON.parse(savedAgents);
@@ -213,6 +224,17 @@ export default function SimulatePage() {
         }, 100);
     }, []);
 
+    const handleToggleSeed = useCallback((id: number) => {
+        if (step !== 0) return;
+        setStates((prev) => ({
+            ...prev,
+            [id]: {
+                ...prev[id],
+                isSeeded: !prev[id].isSeeded,
+            },
+        }));
+    }, [step]);
+
     // ─── Run one simulation step ───────────────────────────────────────────────
 
     const runStep = useCallback(
@@ -240,6 +262,17 @@ export default function SimulatePage() {
 
                 const results = await Promise.allSettled(
                     batch.map(async (agent) => {
+                        // Intercept seeded agents on their first decision
+                        if (currentStep === 1 && currentStates[agent.id]?.isSeeded) {
+                            // Artificial delay so UI doesn't visually snap instantly
+                            await new Promise((res) => setTimeout(res, 400));
+                            return {
+                                agentId: agent.id,
+                                decision: "support" as DecisionType,
+                                reasoning: "I was engaged directly by the brand as an early partner. I am supporting this product.",
+                            } as RunStepResponse;
+                        }
+
                         // Build neighbor IDs from edges
                         const neighborIds = edges
                             .filter(([a, b]) => a === agent.id || b === agent.id)
@@ -392,6 +425,21 @@ export default function SimulatePage() {
 
     const isConfigured = phase !== "UNCONFIGURED";
 
+    const handleApplyCustom = useCallback((scen: Scenario) => {
+        setCustomScenario(scen);
+        setScenarioId("custom");
+
+        // Only reset simulation state, keep agents/edges
+        if (agents.length > 0) {
+            setStates(makeInitialStates(agents));
+            setAgentHistories({});
+            setHistory([]);
+            setLog([]);
+            setStep(0);
+            setPhase("CONFIGURED");
+        }
+    }, [agents]);
+
     // ─── Render ────────────────────────────────────────────────────────────────
 
     return (
@@ -445,6 +493,7 @@ export default function SimulatePage() {
                 <ScenarioPicker
                     value={scenarioId}
                     onChange={handleScenarioChange}
+                    onCustom={() => setShowCustomForm(true)}
                     disabled={running}
                 />
 
@@ -574,20 +623,62 @@ export default function SimulatePage() {
                     {isConfigured && (
                         <div
                             className="panel-header"
-                            style={{ borderTop: "none", borderLeft: "none", borderRight: "none" }}
+                            style={{
+                                borderTop: "none",
+                                borderLeft: "none",
+                                borderRight: "none",
+                                display: "flex",
+                                justifyContent: "space-between",
+                            }}
                         >
-                            <span className="label">AGENT POPULATION</span>
-                            <span>
-                                WATTS-STROGATZ k=6 p=0.15 · {agents.length} agents
-                            </span>
+                            <span className="label">AGENT POPULATION ({agents.length})</span>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <button
+                                    onClick={() => setMainView("network")}
+                                    style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        color: mainView === "network" ? "var(--orange)" : "var(--muted)",
+                                        fontFamily: "var(--mono)",
+                                        fontSize: 10,
+                                        cursor: "pointer",
+                                        textTransform: "uppercase",
+                                    }}
+                                >
+                                    🕸️ Network
+                                </button>
+                                <span style={{ color: "var(--border)" }}>|</span>
+                                <button
+                                    onClick={() => setMainView("grid")}
+                                    style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        color: mainView === "grid" ? "var(--orange)" : "var(--muted)",
+                                        fontFamily: "var(--mono)",
+                                        fontSize: 10,
+                                        cursor: "pointer",
+                                        textTransform: "uppercase",
+                                    }}
+                                >
+                                    𝌆 Grid
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {!isConfigured ? (
                         <ConfigScreen onGenerate={handleGenerate} isGenerating={isGenerating} />
-                    ) : (
+                    ) : mainView === "grid" ? (
                         <AgentGrid
                             agents={agents}
+                            states={states}
+                            selectedId={selectedAgentId}
+                            onSelect={setSelectedAgentId}
+                        />
+                    ) : (
+                        <GlobalNetworkGraph
+                            agents={agents}
+                            edges={edges}
                             states={states}
                             selectedId={selectedAgentId}
                             onSelect={setSelectedAgentId}
@@ -623,6 +714,8 @@ export default function SimulatePage() {
                                 edges={edges}
                                 agentHistory={selectedHistory}
                                 onSelectAgent={setSelectedAgentId}
+                                isConfigPhase={phase === "CONFIGURED"}
+                                onToggleSeed={handleToggleSeed}
                             />
                         ) : (
                             <div
@@ -702,6 +795,15 @@ export default function SimulatePage() {
                     </div>
                 </div>
             </div>
+
+            {/* Modal */}
+            {showCustomForm && (
+                <CustomScenarioForm
+                    existing={customScenario}
+                    onApply={handleApplyCustom}
+                    onClose={() => setShowCustomForm(false)}
+                />
+            )}
         </div>
     );
 }

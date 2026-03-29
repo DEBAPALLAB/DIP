@@ -557,7 +557,7 @@ export default function SimulatePage() {
                 const job = ag.job.toLowerCase();
                 
                 // Matches "Stubborn" -> High Risk/StatusQuo
-                if (query.includes("stubborn") && (ag.risk > 0.7 || ag.statusQuoBias > 0.7)) matchesSearch = true;
+                if (query.includes("stubborn") && (ag.risk > 0.7 || (ag.statusQuoBias || 0.5) > 0.7)) matchesSearch = true;
                 // Matches "Follower" -> High Social
                 else if (query.includes("follower") && ag.social > 0.7) matchesSearch = true;
                 // Matches "Rich" -> High Income

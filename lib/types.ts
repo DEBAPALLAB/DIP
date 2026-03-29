@@ -31,9 +31,9 @@ export interface Agent {
   job: string;
   color: string;
   // Psychological traits from simulation_v3.py
-  lossAversion: number;     // lambda [1, 7]
-  statusQuoBias: number;    // 0-1
-  priorAdoptions: number;   // 0-10
+  lossAversion?: number;     // lambda [1, 7]
+  statusQuoBias?: number;    // 0-1
+  priorAdoptions?: number;   // 0-10
 }
 
 export interface AgentState {

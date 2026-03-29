@@ -13,6 +13,7 @@ interface AgentGridProps {
 export default function AgentGrid({ agents, states, selectedId, onSelect }: AgentGridProps) {
     return (
         <div
+            className="no-scrollbar"
             style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
@@ -22,6 +23,7 @@ export default function AgentGrid({ agents, states, selectedId, onSelect }: Agen
                 flex: 1,
             }}
         >
+
             {agents.map((agent) => {
                 const state: AgentState = states[agent.id] ?? {
                     decision: null,

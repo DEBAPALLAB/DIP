@@ -33,39 +33,31 @@ export default function PersonaBreakdown({ agents, states }: PersonaBreakdownPro
     }).filter((p) => p.count > 0);
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 5, padding: 8 }}>
+        <div className="breakdown-list">
             {personaStats.map(({ persona, count, support, neutral, oppose }) => {
                 const color = PERSONA_COLORS[persona];
                 const decided = support + neutral + oppose;
                 return (
-                    <div key={persona} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div key={persona} className="breakdown-row">
                         {/* Persona chip */}
                         <div
+                            className="breakdown-chip"
                             style={{
-                                fontFamily: "var(--mono)",
-                                fontSize: 9,
                                 color,
                                 background: `${color}18`,
                                 border: `1px solid ${color}40`,
-                                padding: "2px 6px",
-                                borderRadius: 2,
-                                whiteSpace: "nowrap",
-                                width: 110,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.05em",
-                                flexShrink: 0,
                             }}
                         >
                             {persona}
                         </div>
 
                         {/* Count */}
-                        <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", width: 12, textAlign: "right", flexShrink: 0 }}>
+                        <span style={{ fontFamily: "var(--mono)", fontSize: 8, color: "var(--muted)", width: 12, textAlign: "right", flexShrink: 0 }}>
                             {count}
                         </span>
 
                         {/* Stacked bar */}
-                        <div style={{ flex: 1, height: 8, display: "flex", borderRadius: 2, overflow: "hidden", background: "var(--dim)" }}>
+                        <div style={{ flex: 1, height: 6, display: "flex", borderRadius: 1, overflow: "hidden", background: "var(--dim)" }}>
                             {support > 0 && (
                                 <div style={{ width: `${(support / count) * 100}%`, background: "var(--support)", transition: "width 0.4s" }} />
                             )}
@@ -78,11 +70,9 @@ export default function PersonaBreakdown({ agents, states }: PersonaBreakdownPro
                         </div>
 
                         {/* Decisions */}
-                        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                            {support > 0 && <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--support)" }}>+{support}</span>}
-                            {neutral > 0 && <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--neutral)" }}>~{neutral}</span>}
-                            {oppose > 0 && <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--oppose)" }}>-{oppose}</span>}
-                            {decided === 0 && <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)" }}>—</span>}
+                        <div style={{ display: "flex", gap: 3, flexShrink: 0, minWidth: 28, justifyContent: "flex-end" }}>
+                            {support > 0 && <span style={{ fontFamily: "var(--mono)", fontSize: 8, color: "var(--support)" }}>+{support}</span>}
+                            {decided === 0 && <span style={{ fontFamily: "var(--mono)", fontSize: 8, color: "var(--muted)" }}>—</span>}
                         </div>
                     </div>
                 );

@@ -1,106 +1,146 @@
-import type { Agent, Scenario, AgentState } from "./types";
+import type { Agent, Scenario, AgentState, DecisionType, ScenarioParams } from "./types";
 
 interface PromptResult {
     systemPrompt: string;
-    calculatedDecision: "support" | "neutral" | "oppose";
 }
 
 /**
- * Builds the system prompt for an agent.
- * Encodes behavioral profile from GSS 2024 empirical trait vectors.
+ * DETERMINISTIC DECISION ENGINE (Source of Truth)
+ * Decoupled from LLM to ensure simulation integrity.
  */
-export function buildSystemPrompt(agent: Agent, scenario: Scenario, neighborStates: Record<number, AgentState>): PromptResult {
-    const r = agent.risk;
-    const t = agent.trust;
-    const s = agent.social;
-    const b = agent.budget ?? 0.5; // Budget sensitivity
+export function calculateDecision(
+    agent: Agent, 
+    scenario: Scenario, 
+    neighborStates: Record<number, AgentState>, 
+    neighborAgents: Agent[],
+    previousParams?: ScenarioParams
+): { decision: DecisionType, utility: number, socialPressure: number, threshold: number, effRisk: number, effBudget: number, shockBonus: number } {
+    
+    // 1. Derive Effective Traits (simulation_v3.py logic)
+    const ageFactor = Math.max(0, (agent.age - 40) * 0.003);
+    const anxietyFactor = agent.emotional * 0.4;
+    const effRisk = Math.min(0.99, agent.risk * (1 + ageFactor + anxietyFactor));
+    const incomeFactor = (1.0 - agent.income) * 0.5;
+    const effBudget = Math.min(0.99, agent.budget * (1 + incomeFactor));
 
-    const voice: Record<string, string> = {
-        Influencer: "You form strong opinions fast and love sharing them. You're an early signal for others.",
-        "Early Adopter": "You research deeply. If it checks out technically, you jump. You love being first.",
-        "Price Hawk": "Total cost of ownership is your lens. You calculate ROI before anything else.",
-        Pragmatist: "You need proof of reliability. You want case studies and references, not promises.",
-        "Social Follower": "You look to trusted people in your network before deciding. Social proof is everything.",
-        "Herd Member": "Uncertainty makes you anxious. You wait until most people have moved before you do.",
-        Skeptic: "You find reasons why it won't work until overwhelmingly proven otherwise.",
-        Laggard: "You've seen trends come and go. You stick to what you know until you have no choice.",
-    };
+    // Decision threshold: status quo bias + prior adoption experience
+    const adoptionDiscount = 1.0 - ((agent.priorAdoptions || 0) / 20.0);
+    const effThreshold = Math.max(0.05, (agent.statusQuoBias || 0.5) * adoptionDiscount);
 
-    // Rigorous mathematical grounding:
-    // Base Utility = (Product Value * Institutional Trust) - (Product Risk * Agent Risk Aversion) - (Product Loss Trigger * Budget Sensitivity)
+    // 2. Compute Utility (Prospect Theory)
     const pValue = scenario.params.value;
     const pRisk = scenario.params.risk;
     const pLoss = scenario.params.loss;
 
-    const baseUtility = (pValue * t) - (pRisk * r) - (pLoss * b);
+    const trustAdjustedValue = pValue * (0.4 + 0.6 * agent.trust);
+    const lossTerm = (agent.lossAversion || 2.25) * pLoss * effRisk;
+    
+    // 3. Social Signal (Influence Weighted)
+    let weightedSupport = 0;
+    let weightedOppose = 0;
+    let totalInfluence = 0;
 
-    // Network Pressure (mild social nudge requested by user)
-    const neighborIds = Object.keys(neighborStates);
-    const totalNeighbors = neighborIds.length;
-    let supportCount = 0;
-    let opposeCount = 0;
-    for (const id of neighborIds) {
-        const d = neighborStates[Number(id)]?.decision;
-        if (d === "support") supportCount++;
-        if (d === "oppose") opposeCount++;
-    }
-    const netNetworkPressure = totalNeighbors > 0 ? ((supportCount - opposeCount) / totalNeighbors) : 0;
+    (neighborAgents ?? []).forEach((nb: Agent) => {
+        const state = neighborStates[nb.id];
+        const inf = (nb.influence_score || 0) + 0.2;
+        totalInfluence += inf;
 
-    // Social nudge max potential: +/- 40 points on the index. 
-    // It's enough to tip the scales for marginal decisions, but won't mathematically override someone who utterly hates/loves it based on pure traits.
-    const socialNudge = netNetworkPressure * s * 0.4;
+        if (state?.decision === "support") weightedSupport += inf;
+        if (state?.decision === "oppose") weightedOppose += inf;
+    });
+    
+    const socialSignal = totalInfluence > 0 ? ((weightedSupport - weightedOppose) / totalInfluence) : 0;
+    const socialWeight = Math.min(0.99, agent.social * (1 + agent.collectivism * 0.3));
 
-    let utilityScore = baseUtility + socialNudge;
-    if (utilityScore > 1) utilityScore = 1;
-    if (utilityScore < -1) utilityScore = -1;
-
-    // Scale to a more human-readable -100 to +100 index
-    const utilityIndex = Math.round(utilityScore * 100);
-
-    let disposition = "";
-    let calculatedDecision: "support" | "neutral" | "oppose" = "neutral";
-
-    if (utilityIndex > 30) {
-        disposition = "You are HIGHLY ENTHUSIASTIC about this product. It perfectly aligns with your needs.";
-        calculatedDecision = "support";
-    } else if (utilityIndex > 10) {
-        disposition = "You LEAN TOWARDS SUPPORTING this. It seems good, though you might have a minor reservation.";
-        calculatedDecision = "support";
-    } else if (utilityIndex > -10) {
-        disposition = "You are TRULY TORN. You could go either way. Lean heavily on what your network is doing.";
-        calculatedDecision = "neutral";
-    } else if (utilityIndex > -30) {
-        disposition = "You LEAN TOWARDS OPPOSING this. It conflicts with your budget or risk tolerance.";
-        calculatedDecision = "oppose";
-    } else {
-        disposition = "You STRONGLY OPPOSE this product. It is a terrible fit for someone like you.";
-        calculatedDecision = "oppose";
+    // 3.5 Parameter Deltas (Psychological Shock)
+    let shockBonus = 0;
+    if (previousParams) {
+        const valDelta = scenario.params.value - previousParams.value;
+        const lossDelta = scenario.params.loss - previousParams.loss;
+        
+        // Positive shock for improvements (price drop, value boost)
+        if (valDelta > 0.02) shockBonus += valDelta * 0.4;
+        if (lossDelta < -0.02) shockBonus += Math.abs(lossDelta) * 0.25;
+        
+        // Negative shock for worse params
+        if (valDelta < -0.02) shockBonus += valDelta * 0.7; // People hate when value drops
+        
+        // Scale shock by agent's risk and status quo bias (more conservative = less shock)
+        shockBonus *= (1.5 - (agent.statusQuoBias || 0.5));
     }
 
-    const systemPrompt = `You are ${agent.name}, ${agent.age}, ${agent.job}.
+    // Final Utility (Core Math)
+    const rawUtility = (effBudget * trustAdjustedValue) 
+                  - (effRisk * pRisk) 
+                  - lossTerm 
+                  + (socialWeight * socialSignal)
+                  + shockBonus;
 
-YOUR PERSONALITY PROFILE:
-- Risk tolerance: ${r < 0.3 ? "You love taking risks and trying unproven things." : r < 0.6 ? "You take measured, calculated risks." : "You are highly risk-averse and fear making a bad choice."}
-- Trust in brands: ${t < 0.35 ? "You are highly skeptical of corporate promises and expect to be let down." : t < 0.65 ? "You trust brands that provide proof." : "You generally trust new products to deliver."}
-- Social influence: ${s < 0.35 ? "You do not care what others think, you are a lone wolf." : s < 0.65 ? "You consider others' opinions but make your own calls." : "You are highly susceptible to peer pressure and FOMO."}
-- Budget flexibility: ${b < 0.35 ? "You have plenty of disposable income and rarely worry about price." : b < 0.65 ? "You look for good value for money." : "You are on a very tight budget and every dollar counts."}
-- Archetype: ${agent.persona}
+    // 4. Stochastic "Vibrancy" Jitter (simulation_v3.py concept)
+    // We add a small random offset (-0.05 to +0.05) to simulate life randomness
+    // and prevent identical agents from staying in a deterministic neutral lock.
+    const jitter = (Math.random() - 0.5) * 0.10;
+    const utility = rawUtility + jitter;
 
-DECISION VOICE:
-${voice[agent.persona] ?? "You approach decisions carefully and pragmatically."}
+    // Stance Projection (Inspired by np.tanh in simulation_v3.py)
+    // We map utility directly to -1...1 and compare vs threshold
+    const stance = Math.tanh(utility); 
+    const decisionThreshold = effThreshold * 0.40; // Slightly wider neutral zone
 
-YOUR INNER FEELING FOR THIS ROUND:
-${disposition}
+    let decision: DecisionType = "neutral";
+    if (stance > decisionThreshold) decision = "support";
+    else if (stance < -decisionThreshold) decision = "oppose";
 
-RULES FOR YOUR OUTPUT:
-1. Stay completely in character as ${agent.name}. Speak naturally in first person.
-2. Write 2-3 sentences of genuine, conversational human reasoning explaining WHY you made the decision to ${calculatedDecision.toUpperCase()}.
-3. CRITICAL: DO NOT sound like an AI. DO NOT mention "utility scores", "probabilities", "mechanics", "traits", or the "simulation". Speak purely as a real person expressing an opinion.
-4. If your inner feeling contradicts your friends/network, mention your relatable conflict (e.g., "My gut says yes, but none of my friends are onboard...").
-5. DO NOT output any keywords like 'DECISION: support'. Just write your raw, natural reasoning string.`;
-
-    return { systemPrompt, calculatedDecision };
+    return { 
+        decision, 
+        utility: Math.round(utility * 100), 
+        socialPressure: Math.round(socialSignal * 100),
+        threshold: Math.round(decisionThreshold * 100),
+        effRisk,
+        effBudget,
+        shockBonus: Math.round(shockBonus * 100)
+    };
 }
 
+/**
+ * NARRATIVE JUSTIFICATION ENGINE
+ * Explains the deterministic decision in character.
+ */
+export function buildSystemPrompt(
+    agent: Agent, 
+    scenario: Scenario, 
+    neighborStates: Record<number, AgentState>, 
+    neighborAgents: Agent[],
+    previousParams?: ScenarioParams
+): PromptResult {
+    
+    const stats = calculateDecision(agent, scenario, neighborStates, neighborAgents, previousParams);
 
+    const systemPrompt = `You are ${agent.name}, ${agent.age}, ${agent.job}.
+Archetype: ${agent.persona}
 
+YOUR PSYCHOLOGICAL PROFILE:
+- Risk-Reward Tilt: ${stats.effRisk < 0.35 ? "Adventurous" : stats.effRisk < 0.70 ? "Prudent" : "Highly Conservative"}
+- Loss Aversion: ${(agent.lossAversion || 2.25).toFixed(2)}x
+- Institutional Trust: ${agent.trust < 0.35 ? "Skeptical" : agent.trust < 0.65 ? "Practical" : "High Trust"}
+- Budget Sensitivity: ${stats.effBudget < 0.45 ? "Comfortable" : stats.effBudget < 0.75 ? "Value-conscious" : "Strained"}
+
+INTERNAL SIMULATION RESULT:
+- You have DECIDED to: ${(stats.decision || "neutral").toUpperCase()}
+- Calculated Utility: ${stats.utility} (Threshold: ${stats.threshold})
+- Social Signal: ${stats.socialPressure}
+${stats.shockBonus !== 0 ? `- Reaction to Change: ${stats.shockBonus > 0 ? "Positive" : "Negative"} Shock Detected` : ""}
+
+YOUR MISSION:
+Explain WHY you made this decision in character as ${agent.name}. 
+Focus on your specific life situation, your job, and your traits above.
+The simulation engine has already confirmed your choice is ${stats.decision || "neutral"}. 
+Your response must stay consistent with this mathematical outcome.
+
+Keep reasoning to 2-3 natural, visceral, human-like sentences.
+Do NOT mention the "simulation" or "equations". Speak as if you are actually living this choice.
+
+End with: DECISION: ${stats.decision}`;
+
+    return { systemPrompt };
+}

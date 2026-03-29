@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { SCENARIOS, getScenario } from "@/lib/scenarios";
 import { buildSnapshot } from "@/lib/simulation";
 import { generateAgents, buildWattsStrogatz } from "@/lib/agentGeneration";
+import { useSimulation } from "@/lib/SimulationContext";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 import type {
     Agent,
@@ -15,6 +19,8 @@ import type {
     LogEntry,
     RunStepResponse,
     DecisionType,
+    PersonaType,
+    Scenario,
 } from "@/lib/types";
 
 import TopBar from "@/components/dashboard/TopBar";
@@ -28,7 +34,28 @@ import StepLog from "@/components/dashboard/StepLog";
 import ProductBrief from "@/components/dashboard/ProductBrief";
 import ConfigScreen from "@/components/dashboard/ConfigScreen";
 import CustomScenarioForm, { loadSavedCustomScenario } from "@/components/dashboard/CustomScenarioForm";
-import type { Scenario } from "@/lib/types";
+import AgentListFilter from "@/components/dashboard/AgentListFilter";
+import InterventionPanel from "@/components/dashboard/InterventionPanel";
+import { deriveSimParams } from "@/lib/productParams";
+
+
+// ─── Step insight generator ────────────────────────────────────────────────────
+
+function generateStepInsight(counts: StepSnapshot, stepNum: number, prevCounts?: StepSnapshot): string {
+    const total = counts.support + counts.neutral + counts.oppose + counts.pending;
+    if (total === 0) return "";
+    const adoptionPct = Math.round((counts.support / total) * 100);
+    const delta = prevCounts ? counts.support - prevCounts.support : 0;
+
+    if (stepNum === 1) {
+        if (adoptionPct >= 50) return `Strong early signal — ${adoptionPct}% support on first exposure`;
+        if (adoptionPct >= 25) return `Moderate interest — ${adoptionPct}% support, social cascade may build`;
+        return `Resistance detected — only ${adoptionPct}% support. Check which personas are blocking.`;
+    }
+    if (Math.abs(delta) <= 1) return `Consensus stabilizing — change of ${delta > 0 ? "+" : ""}${delta} agents this step`;
+    if (delta > 0) return `Cascade building — ${delta} more agents moved to support this step`;
+    return `Resistance holding — ${Math.abs(delta)} agents moved away from support`;
+}
 
 // ─── Batch size scaling ────────────────────────────────────────────────────────
 
@@ -54,6 +81,9 @@ type SimPhase = "UNCONFIGURED" | "CONFIGURED" | "RUNNING" | "DONE";
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function SimulatePage() {
+    const simCtx = useSimulation();
+    const router = useRouter();
+
     const [phase, setPhase] = useState<SimPhase>("UNCONFIGURED");
     const [isGenerating, setIsGenerating] = useState(false);
 
@@ -70,80 +100,117 @@ export default function SimulatePage() {
     const [step, setStep] = useState(0);
     const [running, setRunning] = useState(false);
     const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
-    const [activePanel, setActivePanel] = useState<"log" | "chart">("chart");
+    const [activePanel, setActivePanel] = useState<"log" | "chart" | "snapshots">("chart");
     const [mainView, setMainView] = useState<"grid" | "network">("network");
 
-    // "UNCONFIGURED" -> "CONFIGURED" -> "RUNNING" -> "DONE"
+    // Filtering
+    const [filterSearch, setFilterSearch] = useState("");
+    const [filterPersona, setFilterPersona] = useState<PersonaType | "all">("all");
+    const [filterDecision, setFilterDecision] = useState<DecisionType | "all" | "null">("all");
+    const [isAISearch, setIsAISearch] = useState(false);
+    const [isSearchingAI, setIsSearchingAI] = useState(false);
+
     const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+    const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
+    const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [stepInsight, setStepInsight] = useState<string | null>(null);
 
     const abortRef = useRef(false);
-    const scenario: Scenario = (scenarioId === "custom" && customScenario) ? customScenario : getScenario(scenarioId);
+    const scenario: Scenario = customScenario || getScenario(scenarioId);
 
-    // ─── localStorage persistence ──────────────────────────────────────────────
+    const [isLoadingDb, setIsLoadingDb] = useState(!!simCtx.dbSimulationId);
 
-    // Restore on mount
+    // ─── Initializer (Context Sync) ───
     useEffect(() => {
-        try {
-            const savedCustom = loadSavedCustomScenario();
-            if (savedCustom) setCustomScenario(savedCustom);
-
-            const savedAgents = localStorage.getItem("sim_agents");
-            if (savedAgents) {
-                const parsedAgents: Agent[] = JSON.parse(savedAgents);
-                const parsedStates: SimulationStates = JSON.parse(
-                    localStorage.getItem("sim_states") || "{}"
-                );
-                const parsedStep = Number(localStorage.getItem("sim_step") || "0");
-                const parsedCurve: StepSnapshot[] = JSON.parse(
-                    localStorage.getItem("sim_curve") || "[]"
-                );
-                const parsedEdges: [number, number][] = JSON.parse(
-                    localStorage.getItem("sim_edges") || "[]"
-                );
-                const parsedHistories: AgentHistories = JSON.parse(
-                    localStorage.getItem("sim_histories") || "{}"
-                );
-                const savedScenarioId = localStorage.getItem("sim_scenario");
-
-                setAgents(parsedAgents);
-                setStates(parsedStates);
-                setStep(parsedStep);
-                setHistory(parsedCurve);
-                setEdges(parsedEdges);
-                setAgentHistories(parsedHistories);
-
-                if (savedScenarioId) {
-                    setScenarioId(savedScenarioId);
-                }
-
-                // Determine phase
-                if (parsedStep > 0) {
-                    setPhase("DONE");
-                } else {
-                    setPhase("CONFIGURED");
-                }
+        // If we have an existing simulation in the context (from Setup page) and it's not in the local state yet
+        if (!simCtx.dbSimulationId && simCtx.agents.length > 0 && agents.length === 0) {
+            setAgents(simCtx.agents);
+            setEdges(simCtx.edges);
+            setStates(simCtx.agentStates);
+            setStep(simCtx.step);
+            setHistory(simCtx.adoptionCurve);
+            setLog(simCtx.log);
+            
+            if (simCtx.scenario) {
+                setCustomScenario(simCtx.scenario);
+                setScenarioId(simCtx.scenario.id);
             }
-        } catch (e) {
-            console.warn("Failed to restore simulation state:", e);
+            
+            setPhase(simCtx.step > 0 ? "DONE" : "CONFIGURED");
         }
-    }, []);
+    }, [simCtx]);
 
-    // Save on changes
+    // ─── DB Simulation Loading ──────────────────────────────────────────────────
     useEffect(() => {
-        if (agents.length > 0) {
+        if (!simCtx.dbSimulationId) {
+            setIsLoadingDb(false);
+            return;
+        }
+
+        async function loadSim() {
             try {
-                localStorage.setItem("sim_agents", JSON.stringify(agents));
-                localStorage.setItem("sim_states", JSON.stringify(states));
-                localStorage.setItem("sim_step", String(step));
-                localStorage.setItem("sim_curve", JSON.stringify(history));
-                localStorage.setItem("sim_scenario", scenarioId);
-                localStorage.setItem("sim_edges", JSON.stringify(edges));
-                localStorage.setItem("sim_histories", JSON.stringify(agentHistories));
-            } catch (e) {
-                console.warn("Failed to persist simulation state:", e);
+                const { data, error } = await supabase
+                    .from("simulations")
+                    .select("*")
+                    .eq("id", simCtx.dbSimulationId)
+                    .single();
+
+                if (error) throw error;
+                if (!data) return;
+
+                const config = data.config || {};
+                const results = data.results || {};
+
+                // Map data back to state
+                if (config.agents) setAgents(config.agents);
+                if (config.edges) setEdges(config.edges);
+                if (config.scenario_id) setScenarioId(config.scenario_id);
+                if (config.custom_scenario) setCustomScenario(config.custom_scenario);
+
+                if (results.states) setStates(results.states);
+                if (results.history) setHistory(results.history);
+                if (results.log) setLog(results.log);
+                if (results.agent_histories) setAgentHistories(results.agent_histories);
+                if (results.step !== undefined) setStep(results.step);
+
+                setPhase(results.step > 0 ? "DONE" : "CONFIGURED");
+            } catch (err) {
+                console.error("Failed to load simulation from DB:", err);
+            } finally {
+                setIsLoadingDb(false);
             }
         }
-    }, [agents, states, step, history, scenarioId, edges, agentHistories]);
+
+        loadSim();
+    }, [simCtx.dbSimulationId]);
+
+    // ─── Persistence to DB ───────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!simCtx.dbSimulationId || isLoadingDb || agents.length === 0) return;
+
+        const timer = setTimeout(async () => {
+            try {
+                await supabase
+                    .from("simulations")
+                    .update({
+                        results: {
+                            states,
+                            history,
+                            log,
+                            agent_histories: agentHistories,
+                            step
+                        }
+                    })
+                    .eq("id", simCtx.dbSimulationId);
+            } catch (err) {
+                console.warn("Auto-save failed:", err);
+            }
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [states, history, log, agentHistories, step, simCtx.dbSimulationId, isLoadingDb, agents.length]);
+
 
     // ─── Initial states factory ────────────────────────────────────────────────
 
@@ -175,14 +242,29 @@ export default function SimulatePage() {
                 setStep(0);
                 setSelectedAgentId(null);
                 setPhase("CONFIGURED");
+
+                // If associated with a DB record, update config
+                if (simCtx.dbSimulationId) {
+                    await supabase
+                        .from("simulations")
+                        .update({
+                            config: {
+                                agents: newAgents,
+                                edges: newEdges,
+                                scenario_id: scenarioId,
+                                custom_scenario: customScenario
+                            }
+                        })
+                        .eq("id", simCtx.dbSimulationId);
+                }
             } catch (err) {
                 console.error("Failed to generate agents:", err);
-                alert("Failed to load GSS agent pool. Check /public/gss_agent_pool.json");
+                alert("Failed to load GSS agent pool.");
             } finally {
                 setIsGenerating(false);
             }
         },
-        []
+        [simCtx.dbSimulationId, scenarioId, customScenario]
     );
 
     // ─── Reset simulation ──────────────────────────────────────────────────────
@@ -203,8 +285,6 @@ export default function SimulatePage() {
         }, 100);
     }, [agents]);
 
-    // ─── Full reset (back to config) ───────────────────────────────────────────
-
     const handleFullReset = useCallback(() => {
         abortRef.current = true;
         setRunning(false);
@@ -218,7 +298,6 @@ export default function SimulatePage() {
         setSelectedAgentId(null);
         setProgress(null);
         setPhase("UNCONFIGURED");
-        localStorage.clear();
         setTimeout(() => {
             abortRef.current = false;
         }, 100);
@@ -245,7 +324,6 @@ export default function SimulatePage() {
             const newStates = { ...currentStates };
             const batchSize = getBatchSize(agents.length);
 
-            // Mark all agents as pending
             for (const agent of agents) {
                 newStates[agent.id] = { ...newStates[agent.id], pending: true };
             }
@@ -253,6 +331,9 @@ export default function SimulatePage() {
 
             const neighborSnapshot = { ...currentStates };
             const batches = chunk(agents, batchSize);
+
+            // Calculate previous params for Delta-Aware logic
+            const previousParams = simCtx.previousProduct ? deriveSimParams(simCtx.previousProduct) : undefined;
 
             let doneCount = 0;
             setProgress({ done: 0, total: agents.length });
@@ -262,26 +343,20 @@ export default function SimulatePage() {
 
                 const results = await Promise.allSettled(
                     batch.map(async (agent) => {
-                        // Intercept seeded agents on their first decision
                         if (currentStep === 1 && currentStates[agent.id]?.isSeeded) {
-                            // Artificial delay so UI doesn't visually snap instantly
                             await new Promise((res) => setTimeout(res, 400));
                             return {
                                 agentId: agent.id,
                                 decision: "support" as DecisionType,
-                                reasoning: "I was engaged directly by the brand as an early partner. I am supporting this product.",
+                                reasoning: "I am supporting this product as an early partner.",
                             } as RunStepResponse;
                         }
 
-                        // Build neighbor IDs from edges
                         const neighborIds = edges
                             .filter(([a, b]) => a === agent.id || b === agent.id)
                             .map(([a, b]) => (a === agent.id ? b : a));
 
-                        const neighborStates: Record<
-                            number,
-                            { decision: DecisionType; reasoning: string | null }
-                        > = Object.fromEntries(
+                        const neighborStates = Object.fromEntries(
                             neighborIds.map((nid) => [
                                 nid,
                                 {
@@ -302,21 +377,18 @@ export default function SimulatePage() {
                                 agentId: agent.id,
                                 agent,
                                 scenarioId,
+                                customScenario: scenarioId === "custom" ? customScenario : undefined,
                                 neighborStates,
                                 neighborAgents,
+                                previousParams,
                             }),
                         });
 
-                        if (!res.ok) {
-                            const err = await res.text();
-                            throw new Error(`Agent ${agent.id} failed: ${err}`);
-                        }
-
+                        if (!res.ok) throw new Error(`Agent ${agent.id} failed`);
                         return (await res.json()) as RunStepResponse;
                     })
                 );
 
-                // Apply results
                 for (let i = 0; i < batch.length; i++) {
                     const agent = batch[i];
                     const result = results[i];
@@ -330,17 +402,13 @@ export default function SimulatePage() {
                             pending: false,
                         };
 
-                        // Update agent history
-                        setAgentHistories((prev) => {
-                            const prevHistory = prev[agent.id] ?? [];
-                            return {
-                                ...prev,
-                                [agent.id]: [
-                                    ...prevHistory,
-                                    { step: currentStep, decision } as AgentHistoryEntry,
-                                ],
-                            };
-                        });
+                        setAgentHistories((prev) => ({
+                            ...prev,
+                            [agent.id]: [
+                                ...(prev[agent.id] ?? []),
+                                { step: currentStep, decision } as AgentHistoryEntry,
+                            ],
+                        }));
 
                         setLog((prev) => [
                             ...prev,
@@ -355,7 +423,6 @@ export default function SimulatePage() {
                             },
                         ]);
                     } else {
-                        console.error(result.reason);
                         newStates[agent.id] = { ...newStates[agent.id], pending: false };
                     }
 
@@ -366,7 +433,12 @@ export default function SimulatePage() {
             }
 
             const snap = buildSnapshot(currentStep, newStates);
-            setHistory((prev) => [...prev, snap]);
+            setHistory((prev) => {
+                const newHist = [...prev, snap];
+                const prevSnap = prev.length > 0 ? prev[prev.length - 1] : undefined;
+                setStepInsight(generateStepInsight(snap, currentStep, prevSnap));
+                return newHist;
+            });
             setStep(currentStep + 1);
             setRunning(false);
             setPhase("DONE");
@@ -376,8 +448,6 @@ export default function SimulatePage() {
         },
         [agents, edges, scenarioId]
     );
-
-    // ─── Button handlers ───────────────────────────────────────────────────────
 
     const handleRunStep = useCallback(async () => {
         if (running || phase === "UNCONFIGURED") return;
@@ -398,21 +468,115 @@ export default function SimulatePage() {
         }
     }, [running, runStep, states, step, phase]);
 
+    // ─── Keyboard Shortcuts ───
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            if (e.code === "Space") {
+                e.preventDefault();
+                handleRunStep();
+            } else if (e.code === "Enter" && e.shiftKey) {
+                e.preventDefault();
+                handleAutoRun();
+            } else if (e.code === "Escape") {
+                abortRef.current = true;
+                setRunning(false);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [handleRunStep, handleAutoRun]);
+
     const handleScenarioChange = useCallback(
         (id: string) => {
             setScenarioId(id);
-            // Only reset simulation state, keep agents/edges
-            if (agents.length > 0) {
-                setStates(makeInitialStates(agents));
-                setAgentHistories({});
-                setHistory([]);
-                setLog([]);
-                setStep(0);
-                setPhase("CONFIGURED");
-            }
+            if (agents.length > 0) handleReset();
         },
-        [agents]
+        [agents.length, handleReset]
     );
+
+    const handleApplyCustom = useCallback((scen: Scenario) => {
+        setCustomScenario(scen);
+        setScenarioId("custom");
+        if (agents.length > 0) handleReset();
+    }, [agents.length, handleReset]);
+
+
+    const handleViewResults = useCallback(() => {
+        // Sync everything to context so results page is hydrated immediately
+        simCtx.setAgents(agents);
+        simCtx.setEdges(edges);
+        simCtx.setAgentStates(states);
+        simCtx.setStep(step);
+        simCtx.setAdoptionCurve(history);
+        simCtx.setLog(log);
+        simCtx.setScenario(scenario);
+        simCtx.setFlowStep("complete");
+        
+        const url = simCtx.dbSimulationId ? `/results?id=${simCtx.dbSimulationId}` : "/results";
+        router.push(url);
+    }, [agents, edges, states, step, history, log, scenario, simCtx, router]);
+
+
+    const handleStrategicSweep = useCallback(async () => {
+        if (step === 0 || isAnalyzing) return;
+        setIsAnalyzing(true);
+        try {
+            const res = await fetch("/api/analyze-resistance", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    logs: log,
+                    currentStep: step - 1,
+                    scenarioLabel: scenario.label
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setStepInsight(data.insight);
+            }
+        } catch (err) {
+            console.error("Strategic sweep failed:", err);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    }, [step, isAnalyzing, log, scenario.label]);
+
+
+    // ─── Filtering Logic ────────────────────────────────────────────────────────
+
+    const filteredAgents = useMemo(() => {
+        return agents.filter((ag) => {
+            const st = states[ag.id];
+            
+            let matchesSearch = false;
+            if (isAISearch && filterSearch !== "") {
+                // Behavioral/Semantic Search
+                const query = filterSearch.toLowerCase();
+                const persona = ag.persona.toLowerCase();
+                const job = ag.job.toLowerCase();
+                
+                // Matches "Stubborn" -> High Risk/StatusQuo
+                if (query.includes("stubborn") && (ag.risk > 0.7 || ag.statusQuoBias > 0.7)) matchesSearch = true;
+                // Matches "Follower" -> High Social
+                else if (query.includes("follower") && ag.social > 0.7) matchesSearch = true;
+                // Matches "Rich" -> High Income
+                else if (query.includes("rich") && ag.income > 0.8) matchesSearch = true;
+                // Default to persona/job match
+                else if (persona.includes(query) || job.includes(query)) matchesSearch = true;
+            } else {
+                matchesSearch = filterSearch === "" || 
+                    ag.name.toLowerCase().includes(filterSearch.toLowerCase()) ||
+                    ag.job.toLowerCase().includes(filterSearch.toLowerCase());
+            }
+            
+            const matchesPersona = filterPersona === "all" || ag.persona === filterPersona;
+            const matchesDecision = filterDecision === "all" || (st && (st.decision === filterDecision || (filterDecision === "null" && st.decision === null)));
+
+            return matchesSearch && matchesPersona && matchesDecision;
+        });
+    }, [agents, states, filterSearch, filterPersona, filterDecision, isAISearch]);
+
 
     // ─── Derived state ─────────────────────────────────────────────────────────
 
@@ -425,34 +589,38 @@ export default function SimulatePage() {
 
     const isConfigured = phase !== "UNCONFIGURED";
 
-    const handleApplyCustom = useCallback((scen: Scenario) => {
-        setCustomScenario(scen);
-        setScenarioId("custom");
-
-        // Only reset simulation state, keep agents/edges
-        if (agents.length > 0) {
-            setStates(makeInitialStates(agents));
-            setAgentHistories({});
-            setHistory([]);
-            setLog([]);
-            setStep(0);
-            setPhase("CONFIGURED");
-        }
-    }, [agents]);
-
     // ─── Render ────────────────────────────────────────────────────────────────
 
+    if (isLoadingDb) {
+        return (
+            <div style={{ height: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "20px" }}>
+                <div className="live-dot" style={{ width: 40, height: 40 }} />
+                <p style={{ color: "var(--orange)", fontFamily: "var(--mono)", letterSpacing: "0.2em" }}>RECONSTRUCTING_SIMULATION_STATE...</p>
+            </div>
+        );
+    }
+
     return (
-        <div
-            style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100vh",
-                overflow: "hidden",
-                background: "var(--bg)",
-            }}
-        >
-            {/* ── Top bar ── */}
+        <div className="sim-container" style={{ 
+            position: "fixed", inset: 0, width: "100%", height: "100%", 
+            overflow: "hidden", zIndex: 100, display: "flex", flexDirection: "column",
+            background: "radial-gradient(circle at 50% 0%, #111a24 0%, var(--bg) 70%)"
+        }}>
+            {/* ── PREMIUM MISSION CONTROL BACKGROUND ── */}
+            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none" }} />
+            <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)", width: "150%", height: "150%", background: "radial-gradient(ellipse, rgba(255,107,53,0.03) 0%, rgba(0,208,132,0.01) 40%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+            <style jsx global>{`
+                html, body {
+                    overflow: hidden !important;
+                    height: 100% !important;
+                    width: 100% !important;
+                    margin: 0;
+                    padding: 0;
+                    position: fixed;
+                }
+            `}</style>
+
+            {/* ── TOP: Simulation Ticker ── */}
             <TopBar
                 step={step}
                 running={running}
@@ -462,32 +630,11 @@ export default function SimulatePage() {
                 agentCount={agents.length}
             />
 
-
             {/* ── Control bar ── */}
-            <div
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "6px 12px",
-                    borderBottom: "1px solid var(--border)",
-                    background: "var(--panel)",
-                    flexShrink: 0,
-                }}
-            >
-                {/* Title */}
-                <div
-                    style={{
-                        fontFamily: "var(--mono)",
-                        fontSize: 11,
-                        color: "var(--orange)",
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        fontWeight: 700,
-                        marginRight: 8,
-                    }}
-                >
-                    DIP//v2.0
+            <div className="control-bar" style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 16px", height: "44px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(8, 12, 16, 0.6)", backdropFilter: "blur(24px)", flexShrink: 0, zIndex: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--orange)", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 800, marginRight: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--orange)", boxShadow: "0 0 12px 2px var(--orange)" }} />
+                    TRINITY_ENGINE
                 </div>
 
                 <ScenarioPicker
@@ -498,310 +645,263 @@ export default function SimulatePage() {
                 />
 
                 <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
-                    {/* Progress indicator */}
                     {progress && (
-                        <span
-                            style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--orange)" }}
-                        >
-                            {progress.done}/{progress.total} agents
-                        </span>
+                        <>
+                            <div className="step-progress-bar">
+                                <div className="step-progress-fill" style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }} />
+                            </div>
+                            <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--orange)" }}>
+                                {progress.done}/{progress.total}
+                            </span>
+                        </>
                     )}
 
-                    {/* Step info */}
                     <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)" }}>
                         STEP {step} / ∞
                     </span>
 
+                    {(step >= 1 || phase === "DONE") && (
+                        <button 
+                            onClick={handleViewResults}
+                            className="btn btn-primary" 
+                            style={{ textDecoration: "none", border: "none", cursor: "pointer" }}
+                        >
+                            View Results →
+                        </button>
+                    )}
+
                     {isConfigured && (
                         <>
-                            {/* Auto-run */}
-                            <button
-                                id="btn-autorun"
-                                className="btn-ghost"
-                                onClick={handleAutoRun}
-                                disabled={running}
-                                title="Run 3 steps automatically"
-                            >
+                            <button id="btn-autorun" className="btn btn-ghost" onClick={handleAutoRun} disabled={running} title="Run 3 steps automatically" style={{ letterSpacing: "0.05em", fontSize: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.02)" }}>
                                 ▶▶ AUTO ×3
                             </button>
 
-                            {/* Single step */}
-                            <button
-                                id="btn-step"
-                                className="btn-primary"
-                                onClick={handleRunStep}
-                                disabled={running}
-                            >
+                            <button id="btn-step" className="btn btn-primary" onClick={handleRunStep} disabled={running} style={{ outline: "none", boxShadow: "0 0 15px rgba(0,208,132,0.2)", letterSpacing: "0.05em", fontSize: 10, background: "linear-gradient(to right, var(--support), #00e696)", color: "#000", border: "none" }}>
                                 {running ? (
-                                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                        <span className="live-dot" style={{ width: 6, height: 6 }} />
-                                        RUNNING
+                                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
+                                        <span className="live-dot" style={{ width: 6, height: 6, background: "#000" }} />
+                                        COMPUTING
                                     </span>
                                 ) : (
-                                    `▶ RUN STEP ${step + 1}`
+                                    <span style={{ fontWeight: 700 }}>▶ RUN STEP {step + 1}</span>
                                 )}
                             </button>
 
-                            {/* Reset sim (keep agents) */}
-                            <button
-                                id="btn-reset"
-                                className="btn-ghost"
-                                onClick={handleReset}
-                                disabled={running}
-                                title="Reset simulation (keep population)"
-                            >
+                            <button id="btn-reset" className="btn btn-ghost" onClick={handleReset} disabled={running} title="Reset simulation (keep population)" style={{ letterSpacing: "0.05em", fontSize: 10 }}>
                                 ⟳ RESET
                             </button>
                         </>
                     )}
 
-                    {/* Re-configure (back to config) */}
-                    <button
-                        id="btn-reconfigure"
-                        className="btn-ghost"
-                        onClick={handleFullReset}
-                        disabled={running}
-                        title="Re-configure population"
-                    >
+                    <button id="btn-reconfigure" className="btn btn-ghost" onClick={handleFullReset} disabled={running} title="Re-configure population">
                         ◈ CONFIG
                     </button>
                 </div>
             </div>
 
-            {/* ── Main content ── */}
-            <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                {/* ── LEFT: Product brief + Persona breakdown ── */}
-                <div
-                    style={{
-                        width: 220,
-                        flexShrink: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        borderRight: "1px solid var(--border)",
-                    }}
-                >
-                    <div
-                        className="panel"
-                        style={{
-                            flex: "0 0 auto",
-                            borderRadius: 0,
-                            borderLeft: "none",
-                            borderTop: "none",
-                            borderRight: "none",
-                        }}
+            <div className="sim-main-content" style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0, position: "relative", zIndex: 10 }}>
+                {/* ── LEFT SIDEBAR ── */}
+                <div className="sidebar-left" style={{ 
+                    display: "flex", flexDirection: "column", 
+                    width: leftSidebarCollapsed ? "40px" : "300px", 
+                    transition: "width 0.4s cubic-bezier(0.19, 1, 0.22, 1)",
+                    borderRight: "1px solid rgba(255,255,255,0.05)", 
+                    background: "rgba(10, 15, 22, 0.65)",
+                    backdropFilter: "blur(24px)",
+                    overflow: "hidden",
+                    position: "relative",
+                    boxShadow: "5px 0 30px rgba(0,0,0,0.2)"
+                }}>
+                    <button 
+                        onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+                        style={{ position: "absolute", top: 8, right: 8, zIndex: 50, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}
                     >
-                        <div className="panel-header">
-                            <span className="label">PRODUCT</span>
-                            <span>{scenario.tag}</span>
-                        </div>
-                        <ProductBrief scenario={scenario} />
-                    </div>
+                        {leftSidebarCollapsed ? "[+]" : "[-]"}
+                    </button>
 
-                    <div style={{ borderBottom: "1px solid var(--border)" }} />
-
-                    <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                        <div className="panel-header" style={{ borderTop: "none" }}>
-                            <span className="label">PERSONAS</span>
-                            <span>N={agents.length || "—"}</span>
-                        </div>
-                        <div style={{ flex: 1, overflowY: "auto" }}>
-                            {agents.length > 0 && <PersonaBreakdown agents={agents} states={states} />}
-                        </div>
-                    </div>
-                </div>
-
-                {/* ── CENTER: Config screen OR Agent grid ── */}
-                <div
-                    style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        overflow: "hidden",
-                        borderRight: "1px solid var(--border)",
-                    }}
-                >
-                    {isConfigured && (
-                        <div
-                            className="panel-header"
-                            style={{
-                                borderTop: "none",
-                                borderLeft: "none",
-                                borderRight: "none",
-                                display: "flex",
-                                justifyContent: "space-between",
-                            }}
-                        >
-                            <span className="label">AGENT POPULATION ({agents.length})</span>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                <button
-                                    onClick={() => setMainView("network")}
-                                    style={{
-                                        background: "transparent",
-                                        border: "none",
-                                        color: mainView === "network" ? "var(--orange)" : "var(--muted)",
-                                        fontFamily: "var(--mono)",
-                                        fontSize: 10,
-                                        cursor: "pointer",
-                                        textTransform: "uppercase",
-                                    }}
-                                >
-                                    🕸️ Network
-                                </button>
-                                <span style={{ color: "var(--border)" }}>|</span>
-                                <button
-                                    onClick={() => setMainView("grid")}
-                                    style={{
-                                        background: "transparent",
-                                        border: "none",
-                                        color: mainView === "grid" ? "var(--orange)" : "var(--muted)",
-                                        fontFamily: "var(--mono)",
-                                        fontSize: 10,
-                                        cursor: "pointer",
-                                        textTransform: "uppercase",
-                                    }}
-                                >
-                                    𝌆 Grid
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {!isConfigured ? (
-                        <ConfigScreen onGenerate={handleGenerate} isGenerating={isGenerating} />
-                    ) : mainView === "grid" ? (
-                        <AgentGrid
-                            agents={agents}
-                            states={states}
-                            selectedId={selectedAgentId}
-                            onSelect={setSelectedAgentId}
-                        />
-                    ) : (
-                        <GlobalNetworkGraph
-                            agents={agents}
-                            edges={edges}
-                            states={states}
-                            selectedId={selectedAgentId}
-                            onSelect={setSelectedAgentId}
-                        />
-                    )}
-                </div>
-
-                {/* ── RIGHT: Detail + Charts + Log ── */}
-                <div
-                    style={{
-                        width: 340,
-                        flexShrink: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        overflow: "hidden",
-                    }}
-                >
-                    {/* Agent detail (top half) */}
-                    <div
-                        style={{
-                            flex: "0 0 auto",
-                            height: 420,
-                            borderBottom: "1px solid var(--border)",
-                            overflow: "hidden",
-                        }}
-                    >
-                        {selectedAgent && selectedState ? (
-                            <AgentDetail
-                                agent={selectedAgent}
-                                state={selectedState}
-                                allStates={states}
-                                agents={agents}
-                                edges={edges}
-                                agentHistory={selectedHistory}
-                                onSelectAgent={setSelectedAgentId}
-                                isConfigPhase={phase === "CONFIGURED"}
-                                onToggleSeed={handleToggleSeed}
-                            />
-                        ) : (
-                            <div
-                                style={{
-                                    height: "100%",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: "var(--muted)",
-                                    fontFamily: "var(--mono)",
-                                    fontSize: 10,
-                                    gap: 6,
-                                    padding: 16,
-                                    textAlign: "center",
-                                }}
-                            >
-                                <div style={{ fontSize: 24, opacity: 0.3, marginBottom: 4 }}>◈</div>
-                                <div>SELECT AN AGENT</div>
-                                <div style={{ fontSize: 9, color: "#2a3a4a", lineHeight: 1.6 }}>
-                                    {isConfigured
-                                        ? "Click any agent card to view their profile, ego network, reasoning, and decision history."
-                                        : "Generate a population first, then select an agent."}
+                    {!leftSidebarCollapsed && (
+                        <>
+                            <div className="panel" style={{ flexShrink: 0, borderRadius: 0, border: "none", background: "transparent", display: "flex", flexDirection: "column" }}>
+                                <div className="panel-header" style={{ borderTop: "none", background: "transparent" }}>
+                                    <span className="label">STRATEGIC_BRIEF</span>
+                                    <span style={{ fontSize: 9 }}>{scenario.tag}</span>
+                                </div>
+                                <ProductBrief scenario={scenario} />
+                                <div style={{ padding: "10px", borderTop: "1px solid var(--border)" }}>
+                                    <InterventionPanel />
                                 </div>
                             </div>
-                        )}
-                    </div>
-
-                    {/* Tab bar */}
-                    <div
-                        style={{
-                            display: "flex",
-                            borderBottom: "1px solid var(--border)",
-                            background: "var(--panel)",
-                            flexShrink: 0,
-                        }}
-                    >
-                        {(["chart", "log"] as const).map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActivePanel(tab)}
-                                style={{
-                                    flex: 1,
-                                    padding: "6px 0",
-                                    background: "none",
-                                    border: "none",
-                                    borderBottom:
-                                        activePanel === tab
-                                            ? "2px solid var(--orange)"
-                                            : "2px solid transparent",
-                                    fontFamily: "var(--mono)",
-                                    fontSize: 9,
-                                    color:
-                                        activePanel === tab ? "var(--orange)" : "var(--muted)",
-                                    textTransform: "uppercase",
-                                    letterSpacing: "0.08em",
-                                    cursor: "pointer",
-                                    transition: "color 0.15s",
-                                }}
-                            >
-                                {tab === "chart" ? "ADOPTION CURVE" : "DECISION LOG"}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Chart or Log */}
-                    <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                        {activePanel === "chart" ? (
-                            <div style={{ flex: 1, padding: "8px 4px 4px 0" }}>
-                                <AdoptionChart history={history} total={agents.length} />
+                            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", borderTop: "1px solid var(--border)" }}>
+                                <div className="panel-header" style={{ borderTop: "none", background: "transparent" }}>
+                                    <span className="label">PERSONA_DISTRIBUTION</span>
+                                    <span style={{ fontSize: 9 }}>N={agents.length || "—"}</span>
+                                </div>
+                                <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
+                                    {agents.length > 0 && <PersonaBreakdown agents={agents} states={states} />}
+                                </div>
                             </div>
+                        </>
+                    )}
+                </div>
+
+                {/* ── MAIN VIEWPORT ── */}
+                <div className="sim-viewport" style={{ flex: 1, display: "flex", flexDirection: "column", background: "transparent", position: "relative", overflow: "hidden", height: "100%" }}>
+                    {isConfigured && (
+                        <div className="panel-header" style={{ borderTop: "none", borderLeft: "none", borderRight: "none", display: "flex", justifyContent: "space-between", flexShrink: 0, background: "linear-gradient(to right, rgba(0,0,0,0.4), transparent)", padding: "0 20px" }}>
+                            <span className="label" style={{ letterSpacing: "0.2em", color: "var(--bright)", textShadow: "0 0 10px rgba(255,255,255,0.2)" }}>AGENT POPULATION ({filteredAgents.length})</span>
+                             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                                <button onClick={() => setMainView("network")} className="btn btn-ghost" style={{ border: "none", color: mainView === "network" ? "var(--support)" : "var(--muted)", fontSize: 10, background: mainView === "network" ? "rgba(0,208,132,0.1)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>🕸️ NETWORK</button>
+                                <button onClick={() => setMainView("grid")} className="btn btn-ghost" style={{ border: "none", color: mainView === "grid" ? "var(--support)" : "var(--muted)", fontSize: 10, background: mainView === "grid" ? "rgba(0,208,132,0.1)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>📦 GRID</button>
+                             </div>
+                        </div>
+                    )}
+
+                    {isConfigured && (
+                       <AgentListFilter
+                          search={filterSearch} onSearchChange={setFilterSearch}
+                          persona={filterPersona} onPersonaChange={setFilterPersona}
+                          decision={filterDecision} onDecisionChange={setFilterDecision}
+                          isAISearch={isAISearch} onToggleAI={() => setIsAISearch(!isAISearch)}
+                          isSearching={isSearchingAI} resultsCount={filteredAgents.length}
+                       />
+                    )}
+
+                    <div className="sim-viewport-inner" style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
+                        {!isConfigured ? (
+                            <ConfigScreen onGenerate={handleGenerate} isGenerating={isGenerating} />
                         ) : (
-                            <div style={{ flex: 1, overflow: "hidden" }}>
-                                <StepLog entries={log} />
+                            <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+                                {mainView === "grid" ? (
+                                    <AgentGrid agents={filteredAgents} states={states} selectedId={selectedAgentId} onSelect={setSelectedAgentId} />
+                                ) : (
+                                    <GlobalNetworkGraph agents={filteredAgents} edges={edges} states={states} selectedId={selectedAgentId} onSelect={setSelectedAgentId} />
+                                )}
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* ── RIGHT SIDEBAR ── */}
+                <div className="sidebar-right" style={{ 
+                    display: "flex", flexDirection: "column", 
+                    width: rightSidebarCollapsed ? "40px" : "380px", 
+                    transition: "width 0.4s cubic-bezier(0.19, 1, 0.22, 1)",
+                    background: "rgba(10, 15, 22, 0.65)",
+                    backdropFilter: "blur(24px)",
+                    borderLeft: "1px solid rgba(255,255,255,0.05)", 
+                    boxShadow: "-5px 0 30px rgba(0,0,0,0.2)",
+                    overflow: "hidden",
+                    position: "relative"
+                }}>
+                    <button
+                        onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
+                        style={{ position: "absolute", top: 8, left: 8, zIndex: 50, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}
+                    >
+                        {rightSidebarCollapsed ? "[-]" : "[+]"}
+                    </button>
+
+                    {!rightSidebarCollapsed && (
+                        <>
+                            <div style={{ display: "flex", background: "transparent", borderBottom: "1px solid var(--border)", height: "36px", fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.1em", flexShrink: 0 }}>
+                                <div onClick={() => setActivePanel("chart")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: activePanel === "chart" ? "var(--orange)" : "var(--muted)", borderRight: "1px solid var(--border)", background: activePanel === "chart" ? "rgba(255,255,255,0.03)" : "transparent" }}>CASCADES</div>
+                                <div onClick={() => setActivePanel("log")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: activePanel === "log" ? "var(--orange)" : "var(--muted)", borderRight: "1px solid var(--border)", background: activePanel === "log" ? "rgba(255,255,255,0.03)" : "transparent" }}>LIVE_LOG</div>
+                                <div onClick={() => setActivePanel("snapshots")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: activePanel === "snapshots" ? "var(--orange)" : "var(--muted)", background: activePanel === "snapshots" ? "rgba(255,255,255,0.03)" : "transparent" }}>BRANCHES</div>
+                            </div>
+                            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                                {activePanel === "chart" ? (
+                                    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                                        <div style={{ flex: 1, minHeight: 0 }}>
+                                        <AdoptionChart history={history} total={agents.length} />
+                                        </div>
+                                        <div className="insight-panel" style={{ padding: "16px", background: "rgba(255,107,53,0.03)", borderTop: "1px solid var(--border)" }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                                <div className="label" style={{ fontSize: "10px", color: "var(--orange)", fontWeight: 800, fontFamily: "var(--mono)" }}>STEP_{step}_INSIGHT</div>
+                                                <button 
+                                                    onClick={handleStrategicSweep} 
+                                                    disabled={isAnalyzing || step === 0}
+                                                    className="btn btn-ghost" 
+                                                    style={{ fontSize: 9, padding: "2px 8px", border: "1px solid rgba(255,107,53,0.3)", color: "var(--orange)" }}
+                                                >
+                                                    {isAnalyzing ? "ANALYZING..." : "✨ STRATEGIC_SWEEP"}
+                                                </button>
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--bright)" }}>{stepInsight || "Awaiting population synthesis..."}</p>
+                                        </div>
+                                    </div>
+                                ) : activePanel === "log" ? (
+                                    <StepLog entries={log} />
+                                ) : (
+                                    <div style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
+                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                            <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--orange)", fontWeight: 700 }}>SIMULATION_SNAPSHOTS</div>
+                                            <button 
+                                                onClick={() => {
+                                                    const name = prompt("Enter branch name:", `Branch at Step ${step}`);
+                                                    if (name) simCtx.saveSnapshot(name);
+                                                }}
+                                                className="btn btn-primary" style={{ fontSize: 9, padding: "4px 10px" }}
+                                            >
+                                                + SAVE_BRANCH
+                                            </button>
+                                         </div>
+
+                                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                            {simCtx.snapshots.length === 0 ? (
+                                                <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", textAlign: "center", padding: "40px 0" }}>No branches saved yet.</div>
+                                            ) : (
+                                                simCtx.snapshots.map((snap, idx) => (
+                                                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "4px" }}>
+                                                        <div>
+                                                            <div style={{ fontSize: 11, color: "var(--bright)", fontWeight: 600 }}>{snap.name}</div>
+                                                            <div style={{ fontSize: 9, color: "var(--muted)" }}>Step {snap.state.step} · {snap.state.agents.length} Agents</div>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => {
+                                                                if (confirm("Restore this branch? Current unsaved progress will be lost.")) {
+                                                                    simCtx.restoreSnapshot(snap.name);
+                                                                    // Update local state from restored context
+                                                                    setAgents(snap.state.agents);
+                                                                    setEdges(snap.state.edges);
+                                                                    setStates(snap.state.agentStates);
+                                                                    setStep(snap.state.step);
+                                                                    setHistory(snap.state.adoptionCurve);
+                                                                    setLog(snap.state.log);
+                                                                }
+                                                            }}
+                                                            className="btn btn-ghost" style={{ fontSize: 9, color: "var(--orange)", border: "1px solid rgba(255,107,53,0.3)" }}
+                                                        >
+                                                            LOAD
+                                                        </button>
+                                                    </div>
+                                                ))
+                                            )}
+                                         </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
-            {/* Modal */}
+            {/* ── AGENT HIGHLIGHT ── */}
+            {selectedAgentId !== null && selectedAgent && selectedState && (
+                <div style={{ position: "fixed", top: 0, right: 0, width: "420px", height: "100%", background: "rgba(14, 20, 28, 0.85)", backdropFilter: "blur(32px)", borderLeft: "1px solid rgba(255,255,255,0.1)", zIndex: 1000, boxShadow: "-20px 0 80px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column", animation: "slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}>
+                    <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(to right, rgba(0,208,132,0.05), transparent)" }}>
+                        <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--support)", letterSpacing: "0.2em" }}>AGENT_TELEMETRY</span>
+                        <button onClick={() => setSelectedAgentId(null)} className="btn btn-ghost" style={{ fontSize: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.2)", borderRadius: "4px" }}>CLOSE [×]</button>
+                    </div>
+                    <div style={{ flex: 1, overflow: "hidden" }}>
+                        <AgentDetail agent={selectedAgent} state={selectedState} agentHistory={selectedHistory} allStates={states} agents={agents} edges={edges} onSelectAgent={setSelectedAgentId} onToggleSeed={handleToggleSeed} isConfigPhase={step === 0} />
+                    </div>
+                </div>
+            )}
+
             {showCustomForm && (
                 <CustomScenarioForm
-                    existing={customScenario}
                     onApply={handleApplyCustom}
                     onClose={() => setShowCustomForm(false)}
+                    existing={null}
                 />
             )}
         </div>

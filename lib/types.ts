@@ -30,6 +30,10 @@ export interface Agent {
   influence_score: number;
   job: string;
   color: string;
+  // Psychological traits from simulation_v3.py
+  lossAversion: number;     // lambda [1, 7]
+  statusQuoBias: number;    // 0-1
+  priorAdoptions: number;   // 0-10
 }
 
 export interface AgentState {
@@ -94,6 +98,8 @@ export interface RunStepRequest {
   agentId: number;
   agent: Agent;            // full agent object for dynamic resolution
   scenarioId: string;
+  customScenario?: Scenario; // passed when scenarioId is 'custom' or 'custom-product'
+  previousParams?: ScenarioParams; // for delta calculation
   neighborStates: Record<number, { decision: DecisionType; reasoning: string | null }>;
   neighborAgents: Agent[]; // neighbor agent objects for prompt building
 }

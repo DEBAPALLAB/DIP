@@ -1,8 +1,8 @@
 "use client";
 
 import {
-    LineChart,
-    Line,
+    AreaChart,
+    Area,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -65,56 +65,75 @@ export default function AdoptionChart({ history, total }: AdoptionChartProps) {
 
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <AreaChart
                 data={history}
                 margin={{ top: 8, right: 12, bottom: 4, left: -20 }}
             >
-                <CartesianGrid strokeDasharray="2 4" stroke="#1a2332" />
+                <defs>
+                    <linearGradient id="colorSupport" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--support)" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="var(--support)" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="colorNeutral" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--neutral)" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="var(--neutral)" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="colorOppose" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--oppose)" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="var(--oppose)" stopOpacity={0.05} />
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.5} vertical={false} />
                 <XAxis
                     dataKey="step"
-                    stroke="#2a3a4a"
-                    tick={{ fontFamily: "var(--mono)", fontSize: 9, fill: "#4a6070" }}
-                    label={{ value: "STEP", position: "insideBottom", offset: -2, style: { fontFamily: "var(--mono)", fontSize: 9, fill: "#4a6070" } }}
+                    stroke="var(--border-bright)"
+                    tick={{ fontFamily: "var(--mono)", fontSize: 9, fill: "var(--muted)" }}
+                    label={{ value: "STEP", position: "insideBottom", offset: -2, style: { fontFamily: "var(--mono)", fontSize: 9, fill: "var(--muted)" } }}
                 />
                 <YAxis
-                    stroke="#2a3a4a"
-                    tick={{ fontFamily: "var(--mono)", fontSize: 9, fill: "#4a6070" }}
+                    stroke="var(--border-bright)"
+                    tick={{ fontFamily: "var(--mono)", fontSize: 9, fill: "var(--muted)" }}
                     domain={[0, total]}
                     allowDecimals={false}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
-                    wrapperStyle={{ fontFamily: "var(--mono)", fontSize: 9, paddingTop: 4 }}
+                    verticalAlign="bottom"
+                    height={36}
+                    wrapperStyle={{ fontFamily: "var(--mono)", fontSize: 9, paddingTop: 10 }}
                     formatter={(value) => <span style={{ color: "var(--muted)", textTransform: "uppercase" }}>{value}</span>}
                 />
-                <Line
+                <Area
                     type="monotone"
                     dataKey="support"
+                    stackId="1"
                     stroke="var(--support)"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, fill: "var(--support)" }}
+                    strokeWidth={1.5}
+                    fillOpacity={1}
+                    fill="url(#colorSupport)"
                     name="support"
                 />
-                <Line
+                <Area
                     type="monotone"
                     dataKey="neutral"
+                    stackId="1"
                     stroke="var(--neutral)"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, fill: "var(--neutral)" }}
+                    strokeWidth={1.5}
+                    fillOpacity={1}
+                    fill="url(#colorNeutral)"
                     name="neutral"
                 />
-                <Line
+                <Area
                     type="monotone"
                     dataKey="oppose"
+                    stackId="1"
                     stroke="var(--oppose)"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, fill: "var(--oppose)" }}
+                    strokeWidth={1.5}
+                    fillOpacity={1}
+                    fill="url(#colorOppose)"
                     name="oppose"
                 />
-            </LineChart>
+            </AreaChart>
         </ResponsiveContainer>
     );
 }

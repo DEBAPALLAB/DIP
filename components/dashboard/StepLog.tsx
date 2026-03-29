@@ -10,9 +10,7 @@ interface StepLogProps {
 export default function StepLog({ entries }: StepLogProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [entries.length]);
+    // Auto-scroll removed as it causes layout jumps and is incorrect for reversed lists (newest at top)
 
     if (entries.length === 0) {
         return (
@@ -33,7 +31,7 @@ export default function StepLog({ entries }: StepLogProps) {
     }
 
     return (
-        <div style={{ overflowY: "auto", height: "100%" }}>
+        <div className="no-scrollbar" style={{ overflowY: "auto", height: "100%" }}>
             {[...entries].reverse().map((entry, i) => {
                 const dc =
                     entry.decision === "support" ? "var(--support)"

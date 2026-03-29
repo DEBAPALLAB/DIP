@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Scenario } from "@/lib/types";
+import { useSimulation } from "@/lib/SimulationContext";
 
 interface CustomScenarioFormProps {
     existing: Scenario | null;
@@ -67,6 +68,7 @@ function SliderRow({
 }
 
 export default function CustomScenarioForm({ existing, onApply, onClose }: CustomScenarioFormProps) {
+    const { marketFilters } = useSimulation();
     const [label, setLabel] = useState(existing?.label ?? DEFAULTS.label);
     const [tag, setTag] = useState(existing?.tag ?? DEFAULTS.tag);
     const [brief, setBrief] = useState(existing?.brief ?? DEFAULTS.brief);
@@ -74,6 +76,7 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
     const [risk, setRisk] = useState(existing?.params.risk ?? DEFAULTS.risk);
     const [loss, setLoss] = useState(existing?.params.loss ?? DEFAULTS.loss);
     const [isDetecting, setIsDetecting] = useState(false);
+    const [suggestedMarket, setSuggestedMarket] = useState<any>(null);
 
     // Persist to localStorage on any change
     useEffect(() => {
@@ -115,6 +118,7 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                 if (typeof data.value === "number") setValue(data.value);
                 if (typeof data.risk === "number") setRisk(data.risk);
                 if (typeof data.loss === "number") setLoss(data.loss);
+                if (data.market) setSuggestedMarket(data.market);
             } else {
                 alert("Failed to auto-detect parameters.");
             }
@@ -125,6 +129,12 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
             setIsDetecting(false);
         }
     }
+
+    const isMismatch = suggestedMarket && (
+        marketFilters.ageMin > suggestedMarket.ageMin + 5 ||
+        marketFilters.ageMax < suggestedMarket.ageMax - 5 ||
+        (marketFilters.education !== "any" && suggestedMarket.education === "any")
+    );
 
     return (
         // Backdrop
@@ -255,6 +265,30 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                             }}
                         />
                     </div>
+
+                    {/* Suggested Market Insight */}
+                    {suggestedMarket && (
+                        <div style={{
+                            marginBottom: 18,
+                            padding: 10,
+                            background: isMismatch ? "rgba(255, 68, 68, 0.08)" : "rgba(0, 208, 132, 0.05)",
+                            borderRadius: 4,
+                            border: `1px solid ${isMismatch ? "rgba(255, 68, 68, 0.3)" : "rgba(0, 208, 132, 0.2)"}`,
+                        }}>
+                             <div style={{ fontSize: 9, color: isMismatch ? "#ff4444" : "#00d084", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+                                {isMismatch ? "⚠️ POPULATION MISMATCH" : "✨ SUGGESTED TARGET"}
+                             </div>
+                             <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.4 }}>
+                                Recommended: Age {suggestedMarket.ageMin}-{suggestedMarket.ageMax}, 
+                                {suggestedMarket.education === "any" ? " any education" : ` ${suggestedMarket.education}+`}.
+                             </div>
+                             {isMismatch && (
+                                <div style={{ fontSize: 9, color: "#ff4444", marginTop: 4, fontStyle: "italic" }}>
+                                    Current population is too restricted. Consider re-configuring in Setup.
+                                </div>
+                             )}
+                        </div>
+                    )}
 
                     {/* Divider & Auto-Detect */}
                     <div style={{

@@ -99,17 +99,10 @@ export default function ConfigScreen({
                                     <button
                                         key={c}
                                         onClick={() => handlePresetClick(c)}
+                                        className={`btn ${active ? "btn-primary" : "btn-ghost"}`}
                                         style={{
-                                            padding: "6px 14px",
-                                            fontFamily: "'JetBrains Mono', monospace",
+                                            padding: "0 14px",
                                             fontSize: 12,
-                                            fontWeight: 700,
-                                            border: `1px solid ${active ? "#ff6b35" : "#1a2a3a"}`,
-                                            borderRadius: 3,
-                                            background: active ? "#ff6b3518" : "transparent",
-                                            color: active ? "#ff6b35" : "#4a6070",
-                                            cursor: "pointer",
-                                            transition: "all 0.12s",
                                         }}
                                     >
                                         {c}
@@ -256,38 +249,16 @@ export default function ConfigScreen({
                     <button
                         onClick={() => !isGenerating && onGenerate(effectiveCount)}
                         disabled={isGenerating || effectiveCount < 2}
+                        className="btn btn-primary"
                         style={{
                             width: "100%",
-                            padding: "10px 0",
-                            background: isGenerating ? "#1a2a3a" : "#ff6b35",
-                            border: "none",
-                            borderRadius: 3,
-                            fontFamily: "'JetBrains Mono', monospace",
+                            height: 36,
                             fontSize: 12,
-                            fontWeight: 700,
-                            color: isGenerating ? "#4a6070" : "#000",
-                            cursor: isGenerating ? "not-allowed" : "pointer",
-                            letterSpacing: "0.08em",
-                            textTransform: "uppercase",
-                            transition: "background 0.12s",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 8,
                         }}
                     >
                         {isGenerating ? (
                             <>
-                                <span
-                                    style={{
-                                        display: "inline-block",
-                                        width: 7,
-                                        height: 7,
-                                        borderRadius: "50%",
-                                        background: "#ff6b35",
-                                        animation: "pulse 1s ease-in-out infinite",
-                                    }}
-                                />
+                                <span className="live-dot" style={{ width: 8, height: 8 }} />
                                 GENERATING POPULATION…
                             </>
                         ) : (

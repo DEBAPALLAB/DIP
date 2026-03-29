@@ -23,11 +23,11 @@ interface SimLink extends d3Force.SimulationLinkDatum<SimNode> {
 }
 
 function decisionColor(state?: AgentState): string {
-    if (!state?.decision) return "#1a2332"; // default/pending
-    if (state.decision === "support") return "#00d084";
-    if (state.decision === "oppose") return "#ff4444";
-    if (state.decision === "neutral") return "#f0b429";
-    return "#1a2332";
+    if (!state?.decision) return "var(--border-bright)"; // default/pending
+    if (state.decision === "support") return "var(--support)";
+    if (state.decision === "oppose") return "var(--oppose)";
+    if (state.decision === "neutral") return "var(--neutral)";
+    return "var(--border-bright)";
 }
 
 export default function GlobalNetworkGraph({
@@ -109,7 +109,7 @@ export default function GlobalNetworkGraph({
     }
 
     return (
-        <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: "hidden", background: "radial-gradient(circle at center, #0a1118 0%, #040608 100%)" }}>
+        <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: "hidden", background: "var(--bg-darker)" }}>
             <style>
                 {`
                     @keyframes pulse-seed {
@@ -132,12 +132,13 @@ export default function GlobalNetworkGraph({
                 `}
             </style>
 
-            <svg
-                width={dimensions.width}
-                height={dimensions.height}
-                style={{ position: "absolute", top: 0, left: 0 }}
-            >
-                <g>
+            {dimensions.width > 0 && dimensions.height > 0 && (
+                <svg
+                    width={dimensions.width}
+                    height={dimensions.height}
+                    style={{ position: "absolute", top: 0, left: 0 }}
+                >
+                    <g>
                     {/* Render Curved Links */}
                     {links.map((link, i) => {
                         const source = link.source as unknown as SimNode;
@@ -158,9 +159,9 @@ export default function GlobalNetworkGraph({
                                 key={`link-${i}`}
                                 d={`M${source.x},${source.y} Q${source.x + dx / 2 + dy / 4},${source.y + dy / 2 - dx / 4} ${target.x},${target.y}`}
                                 fill="none"
-                                stroke={isActive ? "var(--support)" : "#3a4b66"}
-                                strokeWidth={isActive ? 2 : 1.5}
-                                opacity={isActive ? 0.6 : 0.45}
+                                stroke={isActive ? "var(--support)" : "var(--border)"}
+                                strokeWidth={isActive ? 1.5 : 1}
+                                opacity={isActive ? 0.6 : 0.3}
                                 style={{ transition: "stroke 0.5s, stroke-width 0.5s, opacity 0.5s" }}
                             />
                         );
@@ -174,7 +175,7 @@ export default function GlobalNetworkGraph({
                         const isSeeded = state?.isSeeded && !state.decision;
 
                         // Scale radius slightly by influence score (base 6, up to 14)
-                        const radius = 6 + (node.agent.influence_score * 8);
+                        const radius = 5 + (node.agent.influence_score * 4);
 
                         let className = "";
                         if (isSeeded) className = "node-seeded";
@@ -191,22 +192,21 @@ export default function GlobalNetworkGraph({
                                 {/* Selection Highlight Ping */}
                                 {isSelected && (
                                     <circle
-                                        r={radius + 8}
+                                        r={radius + 6}
                                         fill="none"
                                         stroke="var(--orange)"
-                                        strokeWidth={1.5}
+                                        strokeWidth={1}
                                         strokeDasharray="4 2"
-                                        style={{ filter: "drop-shadow(0 0 4px var(--orange))" }}
                                     />
                                 )}
 
                                 {/* Main Node Circle */}
                                 <circle
                                     r={radius}
-                                    fill={state?.decision ? color : node.agent.color}
-                                    fillOpacity={state?.decision ? 0.35 : 0.15}
-                                    stroke={state?.decision ? color : node.agent.color}
-                                    strokeWidth={isSelected ? 3 : 1.5}
+                                    fill={state?.decision ? color : "var(--border-bright)"}
+                                    fillOpacity={state?.decision ? 0.8 : 0.4}
+                                    stroke={state?.decision ? color : "var(--border-bright)"}
+                                    strokeWidth={isSelected ? 1.5 : 0.5}
                                 />
 
                                 {/* Seeded Indicator */}
@@ -225,32 +225,32 @@ export default function GlobalNetworkGraph({
                     })}
                 </g>
             </svg>
+            )}
 
             {/* View Legend Overlay */}
             <div style={{
                 position: "absolute",
-                bottom: 16,
-                right: 16,
-                background: "rgba(6,9,13,0.8)",
-                backdropFilter: "blur(4px)",
+                bottom: 12,
+                right: 12,
+                background: "var(--bg-darker)",
                 border: "1px solid var(--border)",
-                borderRadius: 4,
-                padding: "8px 12px",
+                borderRadius: 2,
+                padding: "6px 10px",
                 fontFamily: "var(--mono)",
-                fontSize: 10,
+                fontSize: 9,
                 color: "var(--muted)",
                 display: "flex",
                 flexDirection: "column",
-                gap: 6
+                gap: 4
             }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#00d084" }} /> Support
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--support)" }} /> SUPPORT
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f0b429" }} /> Neutral
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--neutral)" }} /> NEUTRAL
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff4444" }} /> Oppose
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--oppose)" }} /> OPPOSE
                 </div>
             </div>
         </div>

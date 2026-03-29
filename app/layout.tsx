@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ClientProviders } from "./providers";
 
 export const metadata: Metadata = {
   title: "Decision Intelligence Platform",
@@ -13,13 +14,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning style={{ height: "100%", margin: 0, padding: 0 }}>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
       </head>
-      <body style={{ background: "var(--bg)", color: "var(--text)", minHeight: "100vh" }}>
-        {children}
+      <body style={{ 
+        background: "#050507", 
+        color: "var(--text)", 
+        minHeight: "100vh", 
+        width: "100%",
+        margin: 0,
+        padding: 0
+      }}>
+        <ClientProviders>
+            {children}
+        </ClientProviders>
       </body>
     </html>
   );
 }
+

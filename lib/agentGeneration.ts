@@ -174,8 +174,13 @@ export function assignNameAndJob(
     index: number
 ): { name: string; job: string } {
     const namePool = respondent.sex === "female" ? FIRST_NAMES.female : FIRST_NAMES.male;
-    const firstName = namePool[index % namePool.length];
-    const lastName = LAST_NAMES[index % LAST_NAMES.length];
+    
+    // Hash the respondent's internal properties to get a stable but pseudo-random index
+    // so that the same person gets the same name across renders, but it looks random globally.
+    const pseudoSeed = (respondent.age * 13) + (respondent.income_percentile * 100) + index;
+    
+    const firstName = namePool[pseudoSeed % namePool.length];
+    const lastName = LAST_NAMES[(pseudoSeed * 7) % LAST_NAMES.length];
 
     let jobPool: string[];
     const stat = respondent.wrkstat;
@@ -193,8 +198,7 @@ export function assignNameAndJob(
     } else if (stat === "temp not working") {
         jobPool = JOBS["temp not working"].any;
     } else if (stat === "full-time") {
-        const tier =
-            respondent.educ >= 16 ? "high" : respondent.educ >= 13 ? "mid" : "low";
+        const tier = respondent.educ >= 16 ? "high" : respondent.educ >= 13 ? "mid" : "low";
         jobPool = JOBS["full-time"][tier];
     } else {
         jobPool = JOBS.other.any;
@@ -202,7 +206,7 @@ export function assignNameAndJob(
 
     return {
         name: `${firstName} ${lastName[0]}.`,
-        job: jobPool[index % jobPool.length],
+        job: jobPool[(pseudoSeed * 11) % jobPool.length],
     };
 }
 
@@ -275,11 +279,15 @@ export function computeInfluenceScores(
 
 // ─── Main generateAgents function ─────────────────────────────────────────────
 
-export async function generateAgents(count: number): Promise<Agent[]> {
-    // 1. Load GSS pool — fetch as text first to handle NaN values (invalid JSON)
-    const raw = await fetch("/gss_agent_pool.json").then((r) => r.text());
-    const pool: GSSRespondent[] = JSON.parse(raw.replace(/:\s*NaN/g, ": null"));
-
+export async function generateAgents(count: number, providedPool?: GSSRespondent[]): Promise<Agent[]> {
+    // 1. Load GSS pool if not provided
+    let pool: GSSRespondent[];
+    if (providedPool) {
+        pool = providedPool;
+    } else {
+        const raw = await fetch("/gss_agent_pool.json").then((r) => r.text());
+        pool = JSON.parse(raw.replace(/:\s*NaN/g, ": null"));
+    }
 
     // 2. Sample `count` respondents without replacement (shuffle + slice)
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
@@ -291,33 +299,56 @@ export async function generateAgents(count: number): Promise<Agent[]> {
     // 4. Compute influence scores from degree centrality
     const influence = computeInfluenceScores(sampled.length, edges);
 
+    // Deterministic pseudo-random generator
+    function seededRandom(seed: number) {
+        const x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
+    }
+    
+    // Bounds a value between 0.01 and 0.99 and applies ±5% organic distribution
+    function addJitter(val: number, seed: number) {
+        if (isNaN(val)) return 0.5;
+        const noise = (seededRandom(seed) - 0.5) * 0.12; // +/- 6%
+        return Math.max(0.01, Math.min(0.99, val + noise));
+    }
+
     // 5. Build agents
     return sampled.map((resp, i) => {
         const { name, job } = assignNameAndJob(resp, i);
-        const social = isNaN(resp.social_conformity) ? 0.5 : resp.social_conformity;
+        const pseudoSeed = (resp.age * 13) + (resp.income_percentile * 100) + i;
+        
+        const social = addJitter(resp.social_conformity, pseudoSeed * 1.1);
+        const risk = addJitter(resp.risk_aversion, pseudoSeed * 1.2);
+        const trust = addJitter(resp.institutional_trust, pseudoSeed * 1.3);
+        const budget = addJitter(resp.budget_sensitivity, pseudoSeed * 1.4);
+        const emotional = addJitter(resp.emotional_state, pseudoSeed * 1.5);
 
         const rawAgent: RawAgent = {
-            risk_aversion: resp.risk_aversion,
-            institutional_trust: resp.institutional_trust,
+            risk_aversion: risk,
+            institutional_trust: trust,
             social_conformity: social,
-            budget_sensitivity: resp.budget_sensitivity,
-            emotional_state: resp.emotional_state,
+            budget_sensitivity: budget,
+            emotional_state: emotional,
             influence_score: influence[i],
         };
 
         const persona = classifyPersona(rawAgent);
+
+        const lossAversion = Math.max(1, Math.min(7, 2.25 * Math.exp((seededRandom(pseudoSeed * 1.6) - 0.5) * 0.4))); 
+        const statusQuoBias = addJitter(0.6, pseudoSeed * 1.7); // GSS 2024 proxy
+        const priorAdoptions = Math.floor(seededRandom(pseudoSeed * 1.8) * 11); // 0-10
 
         return {
             id: i,
             name,
             job,
             age: Math.round(resp.age),
-            risk: resp.risk_aversion,
-            trust: resp.institutional_trust,
+            risk,
+            trust,
             social,
             collectivism: resp.collectivism,
-            budget: resp.budget_sensitivity,
-            emotional: resp.emotional_state,
+            budget,
+            emotional,
             income: resp.income_percentile,
             educ: resp.educ,
             sex: resp.sex,
@@ -325,6 +356,9 @@ export async function generateAgents(count: number): Promise<Agent[]> {
             influence_score: influence[i],
             persona,
             color: PERSONA_COLORS[persona],
+            lossAversion,
+            statusQuoBias,
+            priorAdoptions,
         } as Agent;
     });
 }

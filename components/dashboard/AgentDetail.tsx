@@ -95,7 +95,7 @@ export default function AgentDetail({
                 </span>
             </div>
 
-            <div style={{ overflowY: "auto", flex: 1, padding: "10px" }}>
+            <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, padding: "10px" }}>
                 {/* Identity */}
                 <div
                     style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}

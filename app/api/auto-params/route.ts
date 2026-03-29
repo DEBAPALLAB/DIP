@@ -19,11 +19,25 @@ export async function POST(req: NextRequest) {
 2. risk (Risk Level): How financially, practically, or socially risky does adopting this feel? (0.0 = no risk/free, 1.0 = career/life-ending risk or immense cost)
 3. loss (Loss Trigger): How much FOMO, penalty, or competitive disadvantage is there for NOT adopting? (0.0 = doesn't matter, 1.0 = massive penalty for missing out)
 
+Additionally, suggest the ideal TARGET MARKET demographics:
+- ageMin, ageMax (18-89)
+- incomeMin, incomeMax (0-100 percentile)
+- education (one of: "any", "high_school", "bachelors", "graduate")
+- wrkstat (one of: "any", "full_time", "part_time", "retired", "student")
+
 Respond ONLY with a valid JSON object in exactly this format, nothing else:
 {
   "value": 0.65,
   "risk": 0.30,
-  "loss": 0.15
+  "loss": 0.15,
+  "market": {
+    "ageMin": 18,
+    "ageMax": 55,
+    "incomeMin": 30,
+    "incomeMax": 100,
+    "education": "any",
+    "wrkstat": "any"
+  }
 }`;
 
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -63,6 +77,7 @@ Respond ONLY with a valid JSON object in exactly this format, nothing else:
             value: Number(parsed.value || 0.5),
             risk: Number(parsed.risk || 0.5),
             loss: Number(parsed.loss || 0.2),
+            market: parsed.market || null,
         });
     } catch (err) {
         console.error("auto-params error:", err);

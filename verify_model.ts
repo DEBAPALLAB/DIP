@@ -65,13 +65,13 @@ function runTest() {
     
     const resSkeptic = calculateDecision(skeptic, scenario, {}, []);
     console.log(`\nAgent: ${skeptic.name} [${skeptic.persona}]`);
-    console.log(`Decision: ${resSkeptic.decision.toUpperCase()}`);
+    console.log(`Decision: ${(resSkeptic.decision || "neutral").toUpperCase()}`);
     console.log(`Utility Score: ${resSkeptic.utility}`);
     console.log(`Expected: OPPOSE (due to low trust and high loss aversion)`);
 
     const resEnthusiast = calculateDecision(enthusiast, scenario, {}, []);
     console.log(`\nAgent: ${enthusiast.name} [${enthusiast.persona}]`);
-    console.log(`Decision: ${resEnthusiast.decision.toUpperCase()}`);
+    console.log(`Decision: ${(resEnthusiast.decision || "neutral").toUpperCase()}`);
     console.log(`Utility Score: ${resEnthusiast.utility}`);
     console.log(`Expected: SUPPORT (due to high trust and adoption experience)`);
 

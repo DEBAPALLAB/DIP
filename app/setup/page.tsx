@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useSimulation, type ProductInput, type MarketFilters } from "@/lib/SimulationContext";
 import { buildScenarioFromProduct } from "@/lib/productParams";
@@ -27,6 +28,12 @@ const DEFAULT_PRODUCT: ProductInput = {
 const EDU_MAP: Record<string, number> = {
     any: 0, "high school": 12, "some college": 14, bachelors: 16, graduate: 18,
 };
+
+function buildSimulationTitle(product: ProductInput, scenarioLabel: string) {
+    const cleanProduct = product.name?.trim() || "Untitled Simulation";
+    const cleanScenario = scenarioLabel?.trim() || "Custom Scenario";
+    return `${cleanProduct} — ${cleanScenario}`;
+}
 
 const TEMPLATES = [
     {
@@ -62,6 +69,8 @@ export default function SetupPage() {
     
     const [rawPool, setRawPool] = useState<GSSRespondent[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isLaunching, setIsLaunching] = useState(false);
+    const [launchStage, setLaunchStage] = useState(0);
 
     // Sync agent count if tier changes
     useEffect(() => {
@@ -129,16 +138,51 @@ export default function SetupPage() {
                 body: JSON.stringify({ prompt: aiPrompt })
             });
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data?.details || data?.error || "Failed to parse scenario");
+            }
             if (data.product) {
-                setProduct({ ...product, ...data.product });
-                sim.setProduct({ ...product, ...data.product });
+                const parsedProduct = { ...product, ...data.product };
+                setProduct(parsedProduct);
+                sim.setProduct(parsedProduct);
+
+                const precisionRes = await fetch("/api/auto-params", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        brief: [
+                            `Name: ${parsedProduct.name}`,
+                            `Price: ${parsedProduct.price}`,
+                            `Category: ${parsedProduct.category || "General"}`,
+                            "Benefits:",
+                            ...(parsedProduct.benefits || []).map((b: string) => `- ${b}`),
+                        ].join("\n"),
+                    }),
+                });
+
+                if (precisionRes.ok) {
+                    const precision = await precisionRes.json();
+                    const preciseProduct = {
+                        ...parsedProduct,
+                        aiParamOverrides: {
+                            value: typeof precision.value === "number" ? precision.value : undefined,
+                            risk: typeof precision.risk === "number" ? precision.risk : undefined,
+                            loss: typeof precision.loss === "number" ? precision.loss : undefined,
+                        },
+                    };
+                    setProduct(preciseProduct);
+                    sim.setProduct(preciseProduct);
+                }
             }
             if (data.marketFilters) {
                 setFilters({ ...filters, ...data.marketFilters });
                 sim.setMarketFilters({ ...filters, ...data.marketFilters });
             }
             setAiPrompt("");
-        } catch (e) { console.error("AI Parse failed", e); }
+        } catch (e) {
+            console.error("AI Parse failed", e);
+            alert(e instanceof Error ? e.message : "Failed to parse scenario");
+        }
         finally { setIsAiLoading(false); }
     };
 
@@ -169,7 +213,7 @@ export default function SetupPage() {
     };
 
     const updateProduct = (key: keyof ProductInput, val: any) => {
-        const p = { ...product, [key]: val };
+        const p = { ...product, [key]: val, aiParamOverrides: undefined };
         setProduct(p);
         sim.setProduct(p);
     };
@@ -180,35 +224,109 @@ export default function SetupPage() {
         sim.setMarketFilters(f);
     };
 
-    const handleLaunch = async () => {
-        const finalCount = Math.min(agentCount, limits.maxAgents);
-        sim.setProduct(product);
-        sim.setMarketFilters(filters);
-        sim.setAgentCount(finalCount);
-        const scenario = buildScenarioFromProduct(product);
-        sim.setScenario(scenario);
-        sim.setEdges(buildWattsStrogatz(sim.agents.length, 6, 0.15));
-        sim.setStep(0);
-        sim.setLog([]);
-        sim.setAdoptionCurve([]);
-        sim.setInsights(null);
-        sim.setDbSimulationId(null);
-        sim.setFlowStep("populated");
+    const executeLaunch = async () => {
+        try {
+            const finalCount = Math.min(agentCount, limits.maxAgents);
+            sim.setProduct(product);
+            sim.setMarketFilters(filters);
+            sim.setAgentCount(finalCount);
+            const scenario = buildScenarioFromProduct(product);
+            const title = buildSimulationTitle(product, scenario.label);
+            const agents = sim.agents;
+            const edges = buildWattsStrogatz(agents.length, 6, 0.15);
+            sim.setScenario(scenario);
+            sim.setEdges(edges);
+            sim.setStep(0);
+            sim.setLog([]);
+            sim.setAdoptionCurve([]);
+            sim.setInsights(null);
+            sim.setDbSimulationId(null);
+            sim.setFlowStep("populated");
 
-        if (user) {
-            const { data, error } = await supabase.from('simulations').insert({
-                user_id: user.id, 
-                scenario_id: scenario.id || 'custom', 
-                total_agents: sim.agents.length, 
-                status: 'Pending',
-                agents: sim.agents,
-                edges: sim.edges,
-                configuration: { product, filters, scenario }
-            }).select().single();
-            if (!error && data) sim.setDbSimulationId(data.id);
+            if (user) {
+                const { data, error } = await supabase.from('simulations').insert({
+                    user_id: user.id,
+                    scenario_id: scenario.id || 'custom',
+                    total_agents: agents.length,
+                    status: 'Pending',
+                    agents,
+                    edges,
+                    configuration: { title, product, filters, scenario, mainView: sim.mainView }
+                }).select().single();
+                if (!error && data) sim.setDbSimulationId(data.id);
+            }
+
+            setLaunchStage(2);
+            await new Promise((resolve) => setTimeout(resolve, 850));
+            setLaunchStage(3);
+            await new Promise((resolve) => setTimeout(resolve, 650));
+            router.push("/simulate");
+        } catch (err) {
+            console.error("Failed to launch simulation:", err);
+            setIsLaunching(false);
+            setLaunchStage(0);
         }
-        router.push("/simulate");
     };
+
+    const handleLaunch = () => {
+        if (isLaunching) return;
+        setIsLaunching(true);
+        setLaunchStage(1);
+        window.setTimeout(() => {
+            void executeLaunch();
+        }, 50);
+    };
+
+    const loadingOverlay =
+        (isGenerating || isLaunching) && typeof document !== "undefined"
+            ? createPortal(
+                  <div className="setup-loading-overlay" aria-live="polite" aria-busy="true">
+                      <div className="setup-loading-orbit setup-loading-orbit-a" />
+                      <div className="setup-loading-orbit setup-loading-orbit-b" />
+                      <div className="setup-loading-orbit setup-loading-orbit-c" />
+                      <div className="setup-loading-grid" />
+                      <div className="setup-loading-panel">
+                          <div className="setup-loading-kicker">
+                              {isLaunching ? "SIMULATION_BOOT_SEQUENCE" : "POPULATION_ASSEMBLY"}
+                          </div>
+                          <div className="setup-loading-title">
+                              {isLaunching ? "SPINNING UP THE RUN" : "MAPPING THE AGENT FIELD"}
+                          </div>
+                          <div className="setup-loading-subtitle">
+                              {isLaunching
+                                  ? ["LOCKING SCENARIO", "SEALING NETWORK", "ALLOCATING CONTEXT", "LAUNCHING"][launchStage - 1] || "LAUNCHING"
+                                  : "Generating the synthetic population and wiring the network..."}
+                          </div>
+                          <div className="setup-loading-progress">
+                              <span style={{ width: `${Math.min(launchStage, 4) * 25}%` }} />
+                          </div>
+                          <div className="setup-loading-stats">
+                              <div>
+                                  <span>AGENTS</span>
+                                  <strong>{sim.agents.length.toString().padStart(3, "0")}</strong>
+                              </div>
+                              <div>
+                                  <span>NETWORK</span>
+                                  <strong>{isLaunching ? "LOCKED" : "BUILDING"}</strong>
+                              </div>
+                              <div>
+                                  <span>PHASE</span>
+                                  <strong>{isLaunching ? `BOOT ${launchStage}/4` : "ASSEMBLY"}</strong>
+                              </div>
+                          </div>
+                      </div>
+                  </div>,
+                  document.body
+              )
+            : null;
+
+    useEffect(() => {
+        if (!isLaunching) return;
+        const stages = window.setInterval(() => {
+            setLaunchStage((prev) => Math.min(prev + 1, 4));
+        }, 700);
+        return () => window.clearInterval(stages);
+    }, [isLaunching]);
 
     return (
         <div style={{ 
@@ -347,7 +465,7 @@ export default function SetupPage() {
                         {TEMPLATES.map((t) => (
                             <div 
                                 key={t.label} 
-                                onClick={() => { setProduct({ ...product, ...t.product}); setFilters({ ...filters, ...t.filters }); }} 
+                                onClick={() => { setProduct({ ...product, ...t.product, aiParamOverrides: undefined }); setFilters({ ...filters, ...t.filters }); }}
                                 style={{ 
                                     padding: "6px 12px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px", fontSize: "10px", 
                                     whiteSpace: "nowrap", cursor: "pointer", background: "rgba(255,255,255,0.03)", color: "var(--muted)",
@@ -564,7 +682,7 @@ export default function SetupPage() {
             <div style={{ position: "absolute", bottom: 40, left: "50%", transform: "translateX(-50%)", zIndex: 30, display: "flex", justifyContent: "center", width: "100%", pointerEvents: "none" }}>
                 <button 
                   onClick={handleLaunch} 
-                  disabled={sim.agents.length === 0 || isGenerating} 
+                  disabled={sim.agents.length === 0 || isGenerating || isLaunching} 
                   className="btn-v2-primary"
                   style={{ 
                     height: "56px", padding: "0 64px", borderRadius: "8px", fontSize: "15px", fontWeight: 900, 
@@ -572,9 +690,11 @@ export default function SetupPage() {
                     pointerEvents: "auto"
                   }}
                 >
-                    {isGenerating ? "RECALIBRATING..." : "START_SIMULATION_SEQUENCES"}
+                    {isLaunching ? "BOOTING_SIMULATION_CORE..." : isGenerating ? "RECALIBRATING..." : "START_SIMULATION_SEQUENCES"}
                 </button>
             </div>
+
+            {loadingOverlay}
 
             <style jsx>{`
                 .no-scrollbar::-webkit-scrollbar { display: none; }

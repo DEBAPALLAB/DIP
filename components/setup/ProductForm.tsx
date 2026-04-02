@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ProductInput } from "@/lib/SimulationContext";
+import type { ScenarioParams } from "@/lib/types";
 import { SCENARIOS } from "@/lib/scenarios";
 
 interface ProductFormProps {
@@ -23,20 +24,62 @@ const CATEGORIES = [
     "Other",
 ];
 
+type PrecisionKey = keyof ScenarioParams;
+
+function normalizePrecisionOverrides(overrides?: Partial<ScenarioParams>): Partial<ScenarioParams> | undefined {
+    if (!overrides) return undefined;
+    const next: Partial<ScenarioParams> = {};
+
+    (["value", "risk", "loss"] as PrecisionKey[]).forEach((key) => {
+        const raw = overrides[key];
+        if (typeof raw === "number" && Number.isFinite(raw)) {
+            next[key] = Math.min(0.99, Math.max(0.01, raw));
+        }
+    });
+
+    return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function prunePrecisionOverrides(
+    overrides: Partial<ScenarioParams> | undefined,
+    keys: PrecisionKey[] | "all"
+): Partial<ScenarioParams> | undefined {
+    if (!overrides) return undefined;
+    if (keys === "all") return undefined;
+
+    const next = { ...overrides };
+    keys.forEach((key) => {
+        delete next[key];
+    });
+
+    return normalizePrecisionOverrides(next);
+}
+
 export default function ProductForm({ value, onChange, onNext }: ProductFormProps) {
     const [benefits, setBenefits] = useState<string[]>(
         value.benefits.length > 0 ? value.benefits : ["", "", "", "", ""]
     );
 
-    const update = (patch: Partial<ProductInput>) => {
-        onChange({ ...value, ...patch });
+    const update = (patch: Partial<ProductInput>, clearPrecision: PrecisionKey[] | "all" = "all") => {
+        const nextOverrides =
+            patch.aiParamOverrides !== undefined
+                ? patch.aiParamOverrides
+                : clearPrecision === "all"
+                    ? undefined
+                    : prunePrecisionOverrides(value.aiParamOverrides, clearPrecision);
+
+        onChange({
+            ...value,
+            ...patch,
+            aiParamOverrides: normalizePrecisionOverrides(nextOverrides),
+        });
     };
 
     const handleBenefitChange = (i: number, text: string) => {
         const next = [...benefits];
         next[i] = text;
         setBenefits(next);
-        update({ benefits: next.filter((b) => b.trim().length > 0) });
+        update({ benefits: next.filter((b) => b.trim().length > 0) }, "all");
     };
 
     const fillPreset = (scenarioId: string) => {
@@ -65,6 +108,7 @@ export default function ProductForm({ value, onChange, onNext }: ProductFormProp
             riskLevel: s.params.risk > 0.35 ? "high" : s.params.risk > 0.25 ? "medium" : "low",
             valueProp: s.params.value > 0.65 ? "strong" : s.params.value > 0.5 ? "moderate" : "weak",
             category: catMap[s.id] || "Other",
+            aiParamOverrides: undefined,
         });
     };
 
@@ -74,17 +118,33 @@ export default function ProductForm({ value, onChange, onNext }: ProductFormProp
         if (!value.name.trim()) return;
         setIsDetecting(true);
         try {
+            const brief = [
+                `Name: ${value.name}`,
+                `Price: ${value.price}`,
+                `Category: ${value.category || "General"}`,
+                "Benefits:",
+                ...benefits.filter((b) => b.trim().length > 0).map((b) => `- ${b}`),
+            ].join("\n");
+
             const res = await fetch("/api/auto-params", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ brief: `${value.name}\n${benefits.join("\n")}` }),
+                body: JSON.stringify({ brief }),
             });
             if (res.ok) {
                 const data = await res.json();
-                update({
-                    riskLevel: data.risk > 0.35 ? "high" : data.risk > 0.25 ? "medium" : "low",
-                    valueProp: data.value > 0.65 ? "strong" : data.value > 0.5 ? "moderate" : "weak",
-                });
+                update(
+                    {
+                        riskLevel: data.risk > 0.35 ? "high" : data.risk > 0.25 ? "medium" : "low",
+                        valueProp: data.value > 0.65 ? "strong" : data.value > 0.5 ? "moderate" : "weak",
+                        aiParamOverrides: {
+                            value: typeof data.value === "number" ? data.value : undefined,
+                            risk: typeof data.risk === "number" ? data.risk : undefined,
+                            loss: typeof data.loss === "number" ? data.loss : undefined,
+                        },
+                    },
+                    "all"
+                );
             }
         } catch (err) {
             console.error("Auto-detect failed:", err);
@@ -162,7 +222,7 @@ export default function ProductForm({ value, onChange, onNext }: ProductFormProp
                                 <button
                                     key={level}
                                     className={`toggle-btn ${value.riskLevel === level ? "toggle-btn-active" : ""}`}
-                                    onClick={() => update({ riskLevel: level })}
+                                    onClick={() => update({ riskLevel: level }, ["risk"])}
                                 >
                                     {level.toUpperCase()}
                                 </button>
@@ -177,7 +237,7 @@ export default function ProductForm({ value, onChange, onNext }: ProductFormProp
                                 <button
                                     key={level}
                                     className={`toggle-btn ${value.valueProp === level ? "toggle-btn-active" : ""}`}
-                                    onClick={() => update({ valueProp: level })}
+                                    onClick={() => update({ valueProp: level }, ["value"])}
                                 >
                                     {level.toUpperCase()}
                                 </button>
@@ -192,7 +252,7 @@ export default function ProductForm({ value, onChange, onNext }: ProductFormProp
                 <select
                     className="form-select"
                     value={value.category}
-                    onChange={(e) => update({ category: e.target.value })}
+                    onChange={(e) => update({ category: e.target.value }, "all")}
                 >
                     {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
@@ -224,6 +284,28 @@ export default function ProductForm({ value, onChange, onNext }: ProductFormProp
                     </button>
                 </div>
             </div>
+
+            {value.aiParamOverrides && (
+                <div
+                    style={{
+                        marginTop: 14,
+                        padding: "10px 12px",
+                        border: "1px solid rgba(255,87,34,0.25)",
+                        borderRadius: 4,
+                        background: "rgba(255,87,34,0.08)",
+                        fontFamily: "var(--mono)",
+                        fontSize: 9,
+                        letterSpacing: "0.08em",
+                        color: "var(--orange)",
+                        textTransform: "uppercase",
+                    }}
+                >
+                    Deep precision vectors active ·
+                    {` V(${(value.aiParamOverrides.value ?? 0).toFixed(3)})`}
+                    {` R(${(value.aiParamOverrides.risk ?? 0).toFixed(3)})`}
+                    {` L(${(value.aiParamOverrides.loss ?? 0).toFixed(3)})`}
+                </div>
+            )}
         </div>
     );
 }

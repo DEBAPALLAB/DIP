@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSimulation } from "@/lib/SimulationContext";
-import ResultsHeader from "@/components/results/ResultsHeader";
 import AdoptionCurveSection from "@/components/results/AdoptionCurveSection";
 import PersonaBreakdownSection from "@/components/results/PersonaBreakdownSection";
 import KeyVoices from "@/components/results/KeyVoices";
@@ -15,50 +14,57 @@ export default function ResultsPage() {
     const router = useRouter();
     const sim = useSimulation();
     const [insightsLoading, setInsightsLoading] = useState(false);
+    const [chartMode, setChartMode] = useState<"percent" | "count" | "delta">("percent");
 
-    // Route guard & DB Loader
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
-        const simId = searchParams.get('id');
+        const simId = searchParams.get("id");
 
         async function init() {
             if (simId) {
+                // If we already have this simulation loaded, don't reload
+                if (sim.dbSimulationId === simId && sim.agents.length > 0) return;
+
                 setInsightsLoading(true);
                 const success = await sim.loadSimulationFromDb(simId);
                 setInsightsLoading(false);
-                if (!success) router.push("/dashboard");
+
+                if (!success) {
+                    console.warn("Failed to load simulation, returning to dashboard.");
+                    router.push("/dashboard");
+                }
                 return;
             }
 
-            if (sim.flowStep !== "complete" && sim.agents.length === 0) {
-                router.push("/simulate");
-            }
-        }
-        init();
-    }, [sim.flowStep, sim.agents.length, router, sim]);
+            // REDIRECT PROTECTION: Only redirect if we AREN'T loading a specific ID
+            // and have no data to show.
+            const timer = setTimeout(() => {
+                if (!simId && sim.flowStep !== "complete" && sim.agents.length === 0) {
+                    router.push("/simulate");
+                }
+            }, 500); // 500ms safety buffer to allow initial context check
 
-    // Generate insights on mount if not already present
+            return () => clearTimeout(timer);
+        }
+
+        init();
+    }, [sim.agents.length, sim.dbSimulationId, sim.flowStep, sim.loadSimulationFromDb, router]);
+
     useEffect(() => {
-        if (sim.agents.length > 0 && !sim.insights && !insightsLoading) {
+        if (sim.agents.length > 0 && !sim.insights && !insightsLoading && sim.flowStep === "complete") {
             generateInsights();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sim.agents.length, sim.insights]);
+    }, [sim.agents.length, sim.insights, sim.flowStep]);
 
     const generateInsights = async () => {
         setInsightsLoading(true);
         try {
             const total = sim.agents.length;
-            const supportCount = Object.values(sim.agentStates).filter(
-                (s) => s.decision === "support"
-            ).length;
-            const opposeCount = Object.values(sim.agentStates).filter(
-                (s) => s.decision === "oppose"
-            ).length;
+            const supportCount = Object.values(sim.agentStates).filter((s) => s.decision === "support").length;
+            const opposeCount = Object.values(sim.agentStates).filter((s) => s.decision === "oppose").length;
             const adoptionPct = total > 0 ? Math.round((supportCount / total) * 100) : 0;
             const consensusScore = total > 0 ? (supportCount - opposeCount) / total : 0;
 
-            // Persona breakdown
             const personaBreakdown: Record<string, { total: number; support: number }> = {};
             for (const a of sim.agents) {
                 if (!personaBreakdown[a.persona]) personaBreakdown[a.persona] = { total: 0, support: 0 };
@@ -66,7 +72,6 @@ export default function ResultsPage() {
                 if (sim.agentStates[a.id]?.decision === "support") personaBreakdown[a.persona].support++;
             }
 
-            // Top quotes
             const supportAgents = sim.agents
                 .filter((a) => sim.agentStates[a.id]?.decision === "support" && sim.agentStates[a.id]?.reasoning)
                 .sort((a, b) => b.influence_score - a.influence_score)
@@ -110,66 +115,196 @@ export default function ResultsPage() {
         }
     };
 
-    // Compute stats
     const total = sim.agents.length;
     const supportCount = Object.values(sim.agentStates).filter((s) => s.decision === "support").length;
     const opposeCount = Object.values(sim.agentStates).filter((s) => s.decision === "oppose").length;
+    const neutralCount = Math.max(total - supportCount - opposeCount, 0);
     const adoptionPct = total > 0 ? Math.round((supportCount / total) * 100) : 0;
     const oppositionPct = total > 0 ? Math.round((opposeCount / total) * 100) : 0;
+    const undecidedPct = total > 0 ? Math.max(100 - adoptionPct - oppositionPct, 0) : 0;
     const consensusScore = total > 0 ? (supportCount - opposeCount) / total : 0;
+
+    const latestSnapshot = sim.adoptionCurve[sim.adoptionCurve.length - 1];
+    const previousSnapshot = sim.adoptionCurve[sim.adoptionCurve.length - 2];
+    const supportDelta = latestSnapshot && previousSnapshot ? latestSnapshot.support - previousSnapshot.support : 0;
+    const stepDelta = latestSnapshot && previousSnapshot
+        ? (latestSnapshot.support + latestSnapshot.oppose) - (previousSnapshot.support + previousSnapshot.oppose)
+        : 0;
+
+    const supportStreak = useMemo(() => {
+        let streak = 0;
+        for (let i = sim.adoptionCurve.length - 1; i > 0; i--) {
+            const prev = sim.adoptionCurve[i - 1];
+            const curr = sim.adoptionCurve[i];
+            if (curr.support >= prev.support) streak++;
+            else break;
+        }
+        return streak;
+    }, [sim.adoptionCurve]);
+
+    const marketSignal = useMemo(() => {
+        if (sim.insights) {
+            const firstLine = sim.insights.split("\n").map((l) => l.trim()).find(Boolean);
+            return firstLine || sim.insights;
+        }
+        if (latestSnapshot && previousSnapshot) {
+            if (Math.abs(supportDelta) <= 1) {
+                return `Adoption has stabilized at ${adoptionPct}%. The remaining ${undecidedPct}% undecided respondents are not moving yet.`;
+            }
+            if (supportDelta > 0) {
+                return `Adoption is still climbing. +${supportDelta} agents shifted to support in the latest step.`;
+            }
+            return `Support softened by ${Math.abs(supportDelta)} agents in the latest step.`;
+        }
+        return "Awaiting more steps before the market signal becomes clear.";
+    }, [adoptionPct, latestSnapshot, previousSnapshot, sim.insights, supportDelta, undecidedPct]);
 
     if (sim.agents.length === 0) {
         return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
-                <p style={{ color: "var(--muted)", fontFamily: "var(--mono)" }}>Loading...</p>
+            <div className="results-empty-state">
+                <div className="results-empty-glow" />
+                <div className="results-empty-orb">◉</div>
+                <p>{insightsLoading ? "HYDRATING_SIMULATION..." : "FETCHING_DATA..."}</p>
             </div>
         );
     }
 
     return (
         <div className="results-root">
-            {/* Nav */}
-            <nav className="results-nav no-print">
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <Link href="/" className="landing-nav-brand" style={{ textDecoration: "none" }}>
-                        <span className="landing-nav-dot">◉</span> DI//PLATFORM
+            <nav className="results-nav no-print results-nav-shell">
+                <div className="results-brand-block">
+                    <Link href="/" className="results-brand" style={{ textDecoration: "none" }}>
+                        <span className="landing-nav-dot">◉</span>
+                        <span>DI//PLATFORM</span>
                     </Link>
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--text)" }}>
-                        {sim.scenario?.label || "Result"} · {total} agents
-                    </span>
+                    <div className="results-brand-meta">
+                        {sim.scenario?.label || "Result"} · {sim.scenario?.tag || "Scenario"} · {total} respondents · GSS 2024
+                    </div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+
+                <div className="results-nav-actions">
                     <button className="btn-ghost-setup" onClick={() => window.print()}>
                         Export PDF
                     </button>
-                    <Link 
-                        href={sim.dbSimulationId ? `/simulate?id=${sim.dbSimulationId}` : "/simulate"} 
-                        className="btn-ghost-setup" style={{ textDecoration: "none" }}
+                    <Link
+                        href={sim.dbSimulationId ? `/simulate?id=${sim.dbSimulationId}` : "/simulate"}
+                        className="btn-ghost-setup"
+                        style={{ textDecoration: "none" }}
                     >
                         ← Sim
                     </Link>
                 </div>
             </nav>
 
-            {/* Content */}
-            <div className="results-content">
-                <ResultsHeader
-                    adoptionPct={adoptionPct}
-                    consensusScore={consensusScore}
-                    oppositionPct={oppositionPct}
-                    stepCount={sim.step}
-                    agentCount={total}
-                    productName={sim.scenario?.label || "Product"}
-                />
+            <div className="results-content results-content-shell">
+                <section className="results-hero-card results-card">
+                    <div className="results-hero-top">
+                        <div>
+                            <div className="results-hero-title">{sim.scenario?.label || "Product"}</div>
+                            <div className="results-hero-subtitle">{sim.scenario?.tag || "Market simulation"}</div>
+                        </div>
 
-                <div className="results-two-col">
-                    <AdoptionCurveSection history={sim.adoptionCurve} total={total} />
-                    <PersonaBreakdownSection agents={sim.agents} states={sim.agentStates} />
+                        <div className="results-pill-row">
+                            <span className="results-pill results-pill-support">{adoptionPct}% adopted</span>
+                            <span className="results-pill results-pill-neutral">{undecidedPct}% undecided</span>
+                            <span className="results-pill results-pill-oppose">{oppositionPct}% opposed</span>
+                        </div>
+                    </div>
+                </section>
+
+                <div className="results-dashboard-grid">
+                    <div className="results-dashboard-main">
+                        <AdoptionCurveSection
+                            history={sim.adoptionCurve}
+                            total={total}
+                            mode={chartMode}
+                            onModeChange={setChartMode}
+                        />
+
+                        <section className="results-signal-card results-card">
+                            <div className="results-signal-header">
+                                <div>
+                                    <h3 className="results-section-title" style={{ marginBottom: 6 }}>MARKET SIGNAL · STEP {sim.step}</h3>
+                                    <div className="results-section-subtitle">CURRENT ADOPTION DYNAMICS AND CONSTRAINTS</div>
+                                </div>
+                                <span className="results-small-chip">Plateau detected</span>
+                            </div>
+                            <p className="results-signal-text">{marketSignal}</p>
+                        </section>
+
+                        <KeyVoices agents={sim.agents} states={sim.agentStates} />
+
+                        <StrategicInsights insights={sim.insights} loading={insightsLoading} />
+                    </div>
+
+                    <aside className="results-dashboard-rail">
+                        <section className="results-side-card results-card">
+                            <div className="results-side-label">FINAL ADOPTION</div>
+                            <div className="results-side-value">{adoptionPct}%</div>
+                            <div className="results-side-sub">{supportCount} of {total} respondents</div>
+                            <div className="results-side-chip">{supportDelta >= 0 ? `+${supportDelta}` : supportDelta} this run</div>
+                        </section>
+
+                        <section className="results-side-card results-card">
+                            <div className="results-side-label">BREAKDOWN</div>
+                            <div className="results-side-bars">
+                                <div className="results-side-bar">
+                                    <span>Adopted</span>
+                                    <div className="results-side-track"><div className="results-side-fill support" style={{ width: `${adoptionPct}%` }} /></div>
+                                </div>
+                                <div className="results-side-bar">
+                                    <span>Undecided</span>
+                                    <div className="results-side-track"><div className="results-side-fill neutral" style={{ width: `${undecidedPct}%` }} /></div>
+                                </div>
+                                <div className="results-side-bar">
+                                    <span>Opposed</span>
+                                    <div className="results-side-track"><div className="results-side-fill oppose" style={{ width: `${oppositionPct}%` }} /></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="results-side-card results-card">
+                            <div className="results-side-label">MOMENTUM</div>
+                            <div className="results-side-copy">
+                                Peak gain: <span>{supportDelta > 0 ? `+${supportDelta}` : supportDelta} at step {latestSnapshot?.step ?? 0}</span>
+                            </div>
+                            <div className="results-side-copy">Stalled since: step {previousSnapshot ? previousSnapshot.step + 1 : 0}</div>
+                            <div className="results-side-copy">Conversion rate: {stepDelta >= 0 ? "+" : ""}{stepDelta}/step</div>
+                        </section>
+
+                        <section className="results-side-card results-card">
+                            <div className="results-side-label">CONSENSUS</div>
+                            <div className="results-side-copy">Score: {consensusScore.toFixed(2)}</div>
+                            <div className="results-side-copy">Neutral count: {neutralCount}</div>
+                            <div className="results-side-copy">Support streak: {supportStreak} step{supportStreak === 1 ? "" : "s"}</div>
+                        </section>
+                    </aside>
                 </div>
 
-                <KeyVoices agents={sim.agents} states={sim.agentStates} />
+                <section className="results-section results-card">
+                    <h3 className="results-section-title">KEY MOMENTS</h3>
+                    <div className="results-moment-list">
+                        {sim.adoptionCurve.slice(-4).map((snap, idx, arr) => {
+                            const prev = idx > 0 ? arr[idx - 1] : undefined;
+                            const delta = prev ? snap.support - prev.support : snap.support;
+                            const label = idx === 0 ? "Early signal" : idx === arr.length - 1 ? "Latest plateau" : "Cascade shift";
+                            return (
+                                <div className="results-moment-row" key={`${snap.step}-${idx}`}>
+                                    <div className="results-moment-step">Step {snap.step}</div>
+                                    <div className="results-moment-dot" />
+                                    <div className="results-moment-body">
+                                        <div className="results-moment-title">{label}</div>
+                                        <div className="results-moment-text">
+                                            {delta >= 0 ? `+${delta}` : delta} support shift; {snap.neutral} undecided; {snap.oppose} opposed.
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
 
-                <StrategicInsights insights={sim.insights} loading={insightsLoading} />
+                <PersonaBreakdownSection agents={sim.agents} states={sim.agentStates} />
 
                 <ExportBar
                     agents={sim.agents}

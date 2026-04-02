@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import type { Agent, AgentState, SimulationStates, StepSnapshot, LogEntry, Scenario } from "./types";
+import type { Agent, AgentState, SimulationStates, StepSnapshot, LogEntry, Scenario, ScenarioParams } from "./types";
 import { supabase } from "./supabase";
 
 // ─── Product Input ──────────────────────────────────────────────────────────────
@@ -12,6 +12,7 @@ export interface ProductInput {
     benefits: string[];
     riskLevel: "low" | "medium" | "high";
     valueProp: "weak" | "moderate" | "strong";
+    aiParamOverrides?: Partial<ScenarioParams>;
     category: string;
     competitorDensity: "low" | "medium" | "high";
     switchingCost: "low" | "medium" | "high";
@@ -63,6 +64,8 @@ export interface SimulationState {
     dbSimulationId: string | null;
     previousProduct: ProductInput | null;
     snapshots: { name: string; state: SimulationState }[];
+    mainView: "grid" | "network";
+    agentHistories: Record<number, any[]>;
 }
 
 const DEFAULT_MARKET_FILTERS: MarketFilters = {
@@ -90,6 +93,8 @@ const INITIAL_STATE: SimulationState = {
     dbSimulationId: null,
     previousProduct: null,
     snapshots: [],
+    mainView: "network",
+    agentHistories: {},
 };
 
 // ─── Context Shape ──────────────────────────────────────────────────────────────
@@ -98,6 +103,9 @@ interface SimulationContextValue extends SimulationState {
     setProduct: (p: ProductInput) => void;
     setMarketFilters: (f: MarketFilters) => void;
     setAgentCount: (n: number) => void;
+    setMainView: (v: "grid" | "network") => void;
+    setAgentHistories: (h: Record<number, any[]>) => void;
+    addAgentHistoryPoint: (agentId: number, point: any) => void;
     setAgents: (agents: Agent[]) => void;
     setEdges: (edges: [number, number][]) => void;
     setScenario: (s: Scenario) => void;
@@ -232,6 +240,24 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, previousProduct: s.product, product: p }));
     }, []);
 
+    const setMainView = useCallback((v: "grid" | "network") => {
+        setState((s) => ({ ...s, mainView: v }));
+    }, []);
+
+    const setAgentHistories = useCallback((h: Record<number, any[]>) => {
+        setState((s) => ({ ...s, agentHistories: h }));
+    }, []);
+
+    const addAgentHistoryPoint = useCallback((agentId: number, point: any) => {
+        setState((s) => ({
+            ...s,
+            agentHistories: {
+                ...(s.agentHistories || {}),
+                [agentId]: [...((s.agentHistories?.[agentId]) || []), point]
+            }
+        }));
+    }, []);
+
     const saveSnapshot = useCallback((name: string) => {
         setState((s) => ({
             ...s,
@@ -261,16 +287,76 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             const { data: snapshots } = await supabase.from('simulation_snapshots').select('*').eq('simulation_id', id).order('step', { ascending: true });
             const { data: logs } = await supabase.from('simulation_logs').select('*').eq('simulation_id', id).order('timestamp', { ascending: true });
 
+            const configuration = sim.configuration || sim.config || {};
+            const results = sim.results || {};
+            const agents = sim.agents || configuration.agents || [];
+            const agentStates: SimulationStates = {};
+            const resultStates = results.states || results.agent_states || {};
+            const resultHistory = results.history || results.adoption_curve || [];
+            const resultLog = results.log || [];
+            const storedAgentHistories = results.agent_histories || {};
+            const storedMainView = results.main_view || configuration.mainView || "network";
+
+            // Prefer the serialized runtime state first, then fall back to logs.
+            const hasResultStates = resultStates && Object.keys(resultStates).length > 0;
+            if (hasResultStates) {
+                Object.entries(resultStates).forEach(([idKey, value]: any) => {
+                    const agentId = Number(idKey);
+                    if (Number.isNaN(agentId)) return;
+                    agentStates[agentId] = {
+                        decision: value?.decision ?? null,
+                        reasoning: value?.reasoning ?? null,
+                        step: value?.step ?? null,
+                        pending: Boolean(value?.pending),
+                        isSeeded: value?.isSeeded,
+                        model: value?.model,
+                    };
+                });
+            } else {
+                // Initialize every agent with a neutral state first
+                agents.forEach((a: Agent) => {
+                    agentStates[a.id] = { decision: "neutral", reasoning: "", step: 0, pending: false };
+                });
+
+                // Layer logs on top if we have them.
+                if (logs) {
+                    logs.forEach(l => {
+                        agentStates[l.agent_id] = {
+                            decision: l.decision,
+                            reasoning: l.reasoning,
+                            step: l.step,
+                            pending: false
+                        };
+                    });
+                }
+            }
+
+            const normalizedHistory = Array.isArray(resultHistory) ? resultHistory : [];
+            const normalizedLog = Array.isArray(resultLog) ? resultLog : [];
+            const resolvedStep =
+                typeof results.step === "number"
+                    ? results.step
+                    : normalizedHistory.length > 0
+                        ? normalizedHistory[normalizedHistory.length - 1].step
+                        : (snapshots ? snapshots.length : 0);
+
             setState({
-                product: sim.configuration?.product || null,
-                marketFilters: sim.configuration?.filters || DEFAULT_MARKET_FILTERS,
-                agentCount: sim.total_agents,
-                agents: sim.agents || [],
-                edges: sim.edges || [],
-                scenario: sim.configuration?.scenario || null,
-                agentStates: logs ? Object.fromEntries(logs.map(l => [l.agent_id, { decision: l.decision, reasoning: l.reasoning, step: l.step, pending: false }])) : {},
-                step: snapshots ? snapshots.length : 0,
-                adoptionCurve: (snapshots || []).map(s => ({
+                product: configuration.product || null,
+                marketFilters: configuration.filters || DEFAULT_MARKET_FILTERS,
+                agentCount: sim.total_agents || agents.length,
+                agents,
+                edges: sim.edges || configuration.edges || [],
+                scenario: configuration.scenario || null,
+                agentStates,
+                step: resolvedStep,
+                adoptionCurve: normalizedHistory.length > 0 ? normalizedHistory.map((s: StepSnapshot) => ({
+                    step: s.step,
+                    support: s.support,
+                    neutral: s.neutral,
+                    oppose: s.oppose,
+                    pending: s.pending,
+                    timestamp: s.timestamp
+                })) : (snapshots || []).map(s => ({
                     step: s.step,
                     support: s.support,
                     neutral: s.neutral,
@@ -278,7 +364,15 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                     pending: s.pending,
                     timestamp: s.timestamp
                 })),
-                log: (logs || []).map(l => ({
+                log: normalizedLog.length > 0 ? normalizedLog.map((l: LogEntry) => ({
+                    step: l.step,
+                    agentId: l.agentId,
+                    agentName: l.agentName,
+                    persona: l.persona,
+                    decision: l.decision,
+                    reasoning: l.reasoning,
+                    timestamp: l.timestamp
+                })) : (logs || []).map(l => ({
                     step: l.step,
                     agentId: l.agent_id,
                     agentName: l.agent_name,
@@ -287,11 +381,13 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                     reasoning: l.reasoning,
                     timestamp: l.timestamp
                 })),
-                insights: sim.insights || null,
-                flowStep: sim.status === 'Completed' ? 'complete' : 'populated',
+                insights: results.insights || sim.insights || null,
+                flowStep: sim.status === 'Completed' ? 'complete' : (resolvedStep > 0 ? 'populated' : 'configured'),
                 dbSimulationId: id,
                 previousProduct: null,
-                snapshots: []
+                snapshots: [],
+                mainView: storedMainView,
+                agentHistories: storedAgentHistories
             });
             return true;
         } catch (e) {
@@ -326,6 +422,9 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         setFlowStep,
         setDbSimulationId,
         updateProduct,
+        setMainView,
+        setAgentHistories,
+        addAgentHistoryPoint,
         saveSnapshot,
         restoreSnapshot,
         loadSimulationFromDb,

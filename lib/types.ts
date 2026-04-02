@@ -42,6 +42,7 @@ export interface AgentState {
   step: number | null;
   pending: boolean;
   isSeeded?: boolean;
+  model?: string;
 }
 
 export type SimulationStates = Record<number, AgentState>;
@@ -108,6 +109,7 @@ export interface RunStepResponse {
   agentId: number;
   decision: DecisionType;
   reasoning: string;
+  model?: string;
 }
 
 export interface GenerateAgentsRequest {

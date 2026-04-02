@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
 
         const systemPrompt = `You are an expert product analyst. Evaluate the following product brief and assign three adoption parameters from 0.00 to 1.00.
 
+Preserve as much numeric precision as possible. Use high-resolution decimal values rather than rounding to coarse buckets.
+
 1. value (Perceived Value): How compelling, useful, and beneficial is this product to the average consumer? (0.0 = useless, 1.0 = life-changing necessity)
 2. risk (Risk Level): How financially, practically, or socially risky does adopting this feel? (0.0 = no risk/free, 1.0 = career/life-ending risk or immense cost)
 3. loss (Loss Trigger): How much FOMO, penalty, or competitive disadvantage is there for NOT adopting? (0.0 = doesn't matter, 1.0 = massive penalty for missing out)

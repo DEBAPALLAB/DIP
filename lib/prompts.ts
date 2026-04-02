@@ -137,10 +137,12 @@ Focus on your specific life situation, your job, and your traits above.
 The simulation engine has already confirmed your choice is ${stats.decision || "neutral"}. 
 Your response must stay consistent with this mathematical outcome.
 
-Keep reasoning to 2-3 natural, visceral, human-like sentences.
-Do NOT mention the "simulation" or "equations". Speak as if you are actually living this choice.
+Keep reasoning to 2-3 natural, visceral, human-like sentences. 
+Always complete your thoughts. Do not use wrapping quotes around your response.
+Your response must be plain text only.
 
-End with: DECISION: ${stats.decision}`;
+End with: DECISION: ${stats.decision} (exactly in this format)
+`;
 
     return { systemPrompt };
 }

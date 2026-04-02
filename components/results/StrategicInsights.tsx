@@ -8,8 +8,8 @@ interface StrategicInsightsProps {
 export default function StrategicInsights({ insights, loading }: StrategicInsightsProps) {
     if (loading) {
         return (
-            <div className="results-insights-section">
-                <h3 className="results-section-title">STRATEGIC INSIGHTS</h3>
+            <div className="results-insights-section results-card">
+                <h3 className="results-section-title">MARKET SIGNAL</h3>
                 <div className="results-insights-card">
                     <div className="generating-spinner" style={{ margin: "20px auto" }} />
                     <p
@@ -33,8 +33,8 @@ export default function StrategicInsights({ insights, loading }: StrategicInsigh
     const sections = parseInsights(insights);
 
     return (
-        <div className="results-insights-section">
-            <h3 className="results-section-title">STRATEGIC INSIGHTS (LLM-generated summary)</h3>
+        <div className="results-insights-section results-card">
+            <h3 className="results-section-title">MARKET SIGNAL</h3>
             <div className="results-insights-card">
                 {sections.map((section, i) => (
                     <div key={i} className="results-insight-block">

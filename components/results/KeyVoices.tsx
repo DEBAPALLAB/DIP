@@ -9,7 +9,6 @@ interface KeyVoicesProps {
 }
 
 export default function KeyVoices({ agents, states }: KeyVoicesProps) {
-    // Pick top 3 most influential agents with clear decisions
     const agentsWithDecisions = agents
         .filter((a) => {
             const s = states[a.id];
@@ -21,8 +20,8 @@ export default function KeyVoices({ agents, states }: KeyVoicesProps) {
     if (agentsWithDecisions.length === 0) return null;
 
     return (
-        <div className="results-voices-section">
-            <h3 className="results-section-title">KEY VOICES · Most influential agents</h3>
+        <div className="results-voices-section results-card">
+            <h3 className="results-section-title">KEY MOMENTS</h3>
             <div className="results-voices-list">
                 {agentsWithDecisions.map((a) => {
                     const s = states[a.id];
@@ -30,7 +29,7 @@ export default function KeyVoices({ agents, states }: KeyVoicesProps) {
                     return (
                         <div key={a.id} className="results-voice-card">
                             <div className="results-voice-header">
-                                <span className="results-voice-name">{a.name}</span>
+                                <span className="results-voice-step">STEP {s.step ?? "—"}</span>
                                 <span
                                     className="results-voice-persona"
                                     style={{ color: PERSONA_COLORS[a.persona] }}
@@ -44,9 +43,8 @@ export default function KeyVoices({ agents, states }: KeyVoicesProps) {
                                     {s.decision?.toUpperCase()}
                                 </span>
                             </div>
-                            <p className="results-voice-quote">
-                                &ldquo;{s.reasoning}&rdquo;
-                            </p>
+                            <div className="results-voice-name">{a.name}</div>
+                            <p className="results-voice-quote">&ldquo;{s.reasoning}&rdquo;</p>
                         </div>
                     );
                 })}

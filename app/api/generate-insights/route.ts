@@ -5,9 +5,9 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { productName, productBrief, adoptionPct, consensusScore, personaBreakdown, topSupportQuotes, topOpposeQuotes } = body;
 
-        const apiKey = process.env.OPENROUTER_API_KEY;
-        if (!apiKey) {
-            return NextResponse.json({ error: "OPENROUTER_API_KEY not set" }, { status: 500 });
+        const allKeys = (process.env.OPENROUTER_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
+        if (allKeys.length === 0) {
+            return NextResponse.json({ error: "No OPENROUTER_API_KEY set" }, { status: 500 });
         }
 
         const insightPrompt = `You are a market research analyst.
@@ -44,21 +44,24 @@ Be specific. Reference actual personas and reasoning from the data. No fluff.`;
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s for insights (longer prompt)
 
+                // Rotational Key Selection
+                const selectedKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+
                 response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
-                        Authorization: `Bearer ${apiKey}`,
+                        "Authorization": `Bearer ${selectedKey}`,
                         "Content-Type": "application/json",
-                        "HTTP-Referer": "https://decision-intelligence.app",
-                        "X-Title": "Decision Intelligence Platform",
+                        "HTTP-Referer": "https://strawberry-simulation.vercel.app",
+                        "X-Title": "Strawberry Strategic Sandbox",
                     },
                     body: JSON.stringify({
-                        model: process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free",
+                        model: "openrouter/free", // Intelligent auto-router
                         messages: [
                             { role: "system", content: "You are a senior market research analyst. Write concisely and specifically. Always use the exact format requested." },
                             { role: "user", content: insightPrompt },
                         ],
-                        max_tokens: 400,
+                        max_tokens: 600,
                         temperature: 0.5,
                     }),
                     signal: controller.signal

@@ -27,15 +27,47 @@ function TraitBar({ label, value, color }: { label: string; value: number; color
     );
 }
 
-function DecisionBadge({ decision }: { decision: DecisionType }) {
-    if (!decision) return <span className="badge badge-pending">PENDING</span>;
-    return <span className={`badge badge-${decision}`}>{decision.toUpperCase()}</span>;
+function ModelBadge({ model }: { model?: string }) {
+    if (!model) return null;
+    let label = model;
+    if (model.includes("step")) label = "StepFun";
+    else if (model.includes("glm")) label = "GLM-4";
+    else if (model.includes("liquid")) label = "Liquid";
+    
+    return (
+        <span style={{ 
+            fontSize: 7, 
+            fontFamily: "var(--mono)", 
+            color: "var(--muted)", 
+            background: "rgba(255,255,255,0.05)", 
+            padding: "1px 3px", 
+            borderRadius: 2,
+            border: "1px solid rgba(255,255,255,0.1)",
+            verticalAlign: "middle"
+        }}>
+            {label.toUpperCase()}
+        </span>
+    );
+}
+
+function DecisionBadge({ decision, model }: { decision: DecisionType, model?: string }) {
+    if (!decision) return (
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span className="badge badge-pending">PENDING</span>
+        </div>
+    );
+    return (
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <ModelBadge model={model} />
+            <span className={`badge badge-${decision}`}>{decision.toUpperCase()}</span>
+        </div>
+    );
 }
 
 export default function AgentCard({ agent, state, selected, onClick }: AgentCardProps) {
     return (
         <div
-            className={`agent-card${selected ? " selected" : ""}`}
+            className={`agent-card${selected ? " selected" : ""}${state.isSeeded ? " seeded" : ""}`}
             onClick={onClick}
             id={`agent-card-${agent.id}`}
             role="button"
@@ -53,22 +85,23 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
                             borderRadius: "50%",
                             background: agent.color,
                             flexShrink: 0,
+                            boxShadow: state.isSeeded ? `0 0 8px 1px ${agent.color}` : "none"
                         }}
                     />
                     <div>
-                        <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--bright)", fontWeight: 600 }}>
+                        <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--bright)", fontWeight: 600 }}>
                             {agent.name}
                         </div>
-                        <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>
+                        <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 1 }}>
                             {agent.job}
                         </div>
                     </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    {state.isSeeded && !state.decision && (
-                        <span style={{ fontSize: 10, filter: "drop-shadow(0 0 4px var(--support))" }}>🌱</span>
+                    {state.isSeeded && (
+                        <span style={{ fontSize: 10, filter: "drop-shadow(0 0 4px var(--support))" }} title="Manual Seed">🌱</span>
                     )}
-                    <DecisionBadge decision={state.decision} />
+                    <DecisionBadge decision={state.decision} model={state.model} />
                 </div>
             </div>
 

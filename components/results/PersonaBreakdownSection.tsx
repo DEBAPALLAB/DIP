@@ -9,6 +9,13 @@ interface PersonaBreakdownSectionProps {
 }
 
 export default function PersonaBreakdownSection({ agents, states }: PersonaBreakdownSectionProps) {
+    if (!agents || agents.length === 0 || !states) {
+        return (
+            <div className="results-section results-card results-persona-empty" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <p style={{ color: "var(--muted)", fontFamily: "var(--mono)", fontSize: 10 }}>SYNTHESIZING_PERSONAS...</p>
+            </div>
+        );
+    }
     // Group by persona
     const personaGroups: Record<string, { total: number; support: number }> = {};
 
@@ -29,7 +36,7 @@ export default function PersonaBreakdownSection({ agents, states }: PersonaBreak
     });
 
     return (
-        <div className="results-persona-section">
+        <div className="results-persona-section results-card">
             <h3 className="results-section-title">PERSONA BREAKDOWN</h3>
             <div className="results-persona-list">
                 {sorted.map(([persona, { total, support }]) => {

@@ -60,10 +60,9 @@ function generateStepInsight(counts: StepSnapshot, stepNum: number, prevCounts?:
 // ─── Batch size scaling ────────────────────────────────────────────────────────
 
 function getBatchSize(agentCount: number): number {
-    if (agentCount <= 25) return 4;
-    if (agentCount <= 50) return 6;
-    if (agentCount <= 100) return 8;
-    return 10;
+    // Gentle bump: small runs stay sequential, larger runs get a tiny parallel lift.
+    // This keeps us reasonably close to the free-tier limit while reducing wall time.
+    return agentCount >= 30 ? 2 : 1;
 }
 
 // ─── Batch helper ──────────────────────────────────────────────────────────────
@@ -72,6 +71,12 @@ function chunk<T>(arr: T[], size: number): T[][] {
     const chunks: T[][] = [];
     for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
     return chunks;
+}
+
+function buildSimulationTitle(productName: string | undefined, scenarioLabel: string | undefined) {
+    const cleanProduct = productName?.trim() || "Simulation";
+    const cleanScenario = scenarioLabel?.trim() || "Scenario";
+    return `${cleanProduct} — ${cleanScenario}`;
 }
 
 // ─── State machine ─────────────────────────────────────────────────────────────
@@ -87,21 +92,25 @@ export default function SimulatePage() {
     const [phase, setPhase] = useState<SimPhase>("UNCONFIGURED");
     const [isGenerating, setIsGenerating] = useState(false);
 
-    const [agents, setAgents] = useState<Agent[]>([]);
-    const [edges, setEdges] = useState<[number, number][]>([]);
-    const [states, setStates] = useState<SimulationStates>({});
-    const [agentHistories, setAgentHistories] = useState<AgentHistories>({});
+    // Redundant local states replaced by context:
+    const agents = simCtx.agents;
+    const edges = simCtx.edges;
+    const states = simCtx.agentStates;
+    const step = simCtx.step;
+    const history = simCtx.adoptionCurve;
+    const log = simCtx.log;
+    const mainView = simCtx.mainView;
+    const setMainView = simCtx.setMainView;
+    const agentHistories = simCtx.agentHistories;
+    const setAgentHistories = simCtx.setAgentHistories;
+
+    const [running, setRunning] = useState(false);
+    const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+    const [activePanel, setActivePanel] = useState<"log" | "chart" | "snapshots">("chart");
 
     const [scenarioId, setScenarioId] = useState<string>(SCENARIOS[0].id);
     const [customScenario, setCustomScenario] = useState<Scenario | null>(null);
     const [showCustomForm, setShowCustomForm] = useState(false);
-    const [history, setHistory] = useState<StepSnapshot[]>([]);
-    const [log, setLog] = useState<LogEntry[]>([]);
-    const [step, setStep] = useState(0);
-    const [running, setRunning] = useState(false);
-    const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
-    const [activePanel, setActivePanel] = useState<"log" | "chart" | "snapshots">("chart");
-    const [mainView, setMainView] = useState<"grid" | "network">("network");
 
     // Filtering
     const [filterSearch, setFilterSearch] = useState("");
@@ -117,73 +126,44 @@ export default function SimulatePage() {
     const [stepInsight, setStepInsight] = useState<string | null>(null);
 
     const abortRef = useRef(false);
-    const scenario: Scenario = customScenario || getScenario(scenarioId);
+    const [isLoadingDb, setIsLoadingDb] = useState(false);
 
-    const [isLoadingDb, setIsLoadingDb] = useState(!!simCtx.dbSimulationId);
+    // Derived scenario from context
+    const scenario = useMemo(
+        () => customScenario ?? simCtx.scenario ?? getScenario(scenarioId),
+        [customScenario, simCtx.scenario, scenarioId]
+    );
 
-    // ─── Initializer (Context Sync) ───
+    // Keep the local selector state aligned with the hydrated/global scenario.
     useEffect(() => {
-        // If we have an existing simulation in the context (from Setup page) and it's not in the local state yet
-        if (!simCtx.dbSimulationId && simCtx.agents.length > 0 && agents.length === 0) {
-            setAgents(simCtx.agents);
-            setEdges(simCtx.edges);
-            setStates(simCtx.agentStates);
-            setStep(simCtx.step);
-            setHistory(simCtx.adoptionCurve);
-            setLog(simCtx.log);
-            
-            if (simCtx.scenario) {
-                setCustomScenario(simCtx.scenario);
-                setScenarioId(simCtx.scenario.id);
-            }
-            
-            setPhase(simCtx.step > 0 ? "DONE" : "CONFIGURED");
-        }
-    }, [simCtx]);
+        if (!simCtx.scenario) return;
+        setScenarioId(simCtx.scenario.id);
+        setCustomScenario(simCtx.scenario.id === "custom" ? simCtx.scenario : null);
+    }, [simCtx.scenario]);
 
-    // ─── DB Simulation Loading ──────────────────────────────────────────────────
+    // ─── Initializer (URL Param & Context Sync) ───
     useEffect(() => {
-        if (!simCtx.dbSimulationId) {
-            setIsLoadingDb(false);
-            return;
-        }
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlId = searchParams.get('id');
 
-        async function loadSim() {
-            try {
-                const { data, error } = await supabase
-                    .from("simulations")
-                    .select("*")
-                    .eq("id", simCtx.dbSimulationId)
-                    .single();
-
-                if (error) throw error;
-                if (!data) return;
-
-                const config = data.config || {};
-                const results = data.results || {};
-
-                // Map data back to state
-                if (config.agents) setAgents(config.agents);
-                if (config.edges) setEdges(config.edges);
-                if (config.scenario_id) setScenarioId(config.scenario_id);
-                if (config.custom_scenario) setCustomScenario(config.custom_scenario);
-
-                if (results.states) setStates(results.states);
-                if (results.history) setHistory(results.history);
-                if (results.log) setLog(results.log);
-                if (results.agent_histories) setAgentHistories(results.agent_histories);
-                if (results.step !== undefined) setStep(results.step);
-
-                setPhase(results.step > 0 ? "DONE" : "CONFIGURED");
-            } catch (err) {
-                console.error("Failed to load simulation from DB:", err);
-            } finally {
+        async function hydrate() {
+            if (urlId && urlId !== simCtx.dbSimulationId) {
+                setIsLoadingDb(true);
+                await simCtx.loadSimulationFromDb(urlId);
                 setIsLoadingDb(false);
             }
         }
-
-        loadSim();
+        hydrate();
     }, [simCtx.dbSimulationId]);
+
+    // Update phase based on state
+    useEffect(() => {
+        if (agents.length > 0) {
+            setPhase(step > 0 ? "DONE" : "CONFIGURED");
+        } else {
+            setPhase("UNCONFIGURED");
+        }
+    }, [agents.length, step]);
 
     // ─── Persistence to DB ───────────────────────────────────────────────────────
     useEffect(() => {
@@ -194,13 +174,26 @@ export default function SimulatePage() {
                 await supabase
                     .from("simulations")
                     .update({
+                        status: step > 0 ? "Running" : "Pending",
+                        total_agents: agents.length,
+                        agents,
+                        edges,
+                        config: {
+                            title: buildSimulationTitle(simCtx.product?.name, scenario.label),
+                            product: simCtx.product,
+                            filters: simCtx.marketFilters,
+                            scenario,
+                            mainView,
+                        },
                         results: {
                             states,
                             history,
                             log,
                             agent_histories: agentHistories,
-                            step
-                        }
+                            step,
+                            main_view: mainView,
+                            insights: simCtx.insights,
+                        },
                     })
                     .eq("id", simCtx.dbSimulationId);
             } catch (err) {
@@ -209,7 +202,7 @@ export default function SimulatePage() {
         }, 2000);
 
         return () => clearTimeout(timer);
-    }, [states, history, log, agentHistories, step, simCtx.dbSimulationId, isLoadingDb, agents.length]);
+    }, [states, history, log, agentHistories, step, mainView, simCtx.dbSimulationId, isLoadingDb, agents.length, agents, edges, scenario, simCtx.product, simCtx.marketFilters, simCtx.insights]);
 
 
     // ─── Initial states factory ────────────────────────────────────────────────
@@ -233,13 +226,13 @@ export default function SimulatePage() {
                 const newEdges = buildWattsStrogatz(newAgents.length, 6, 0.15);
                 const newStates = makeInitialStates(newAgents);
 
-                setAgents(newAgents);
-                setEdges(newEdges);
-                setStates(newStates);
-                setAgentHistories({});
-                setHistory([]);
-                setLog([]);
-                setStep(0);
+                simCtx.setAgents(newAgents);
+                simCtx.setEdges(newEdges);
+                simCtx.setAgentStates(newStates);
+                simCtx.setAgentHistories({});
+                simCtx.setAdoptionCurve([]);
+                simCtx.setLog([]);
+                simCtx.setStep(0);
                 setSelectedAgentId(null);
                 setPhase("CONFIGURED");
 
@@ -247,12 +240,13 @@ export default function SimulatePage() {
                 if (simCtx.dbSimulationId) {
                     await supabase
                         .from("simulations")
-                        .update({
-                            config: {
-                                agents: newAgents,
-                                edges: newEdges,
-                                scenario_id: scenarioId,
-                                custom_scenario: customScenario
+                    .update({
+                        config: {
+                            title: buildSimulationTitle(simCtx.product?.name, scenario.label),
+                            agents: newAgents,
+                            edges: newEdges,
+                            scenario_id: scenarioId,
+                            custom_scenario: customScenario
                             }
                         })
                         .eq("id", simCtx.dbSimulationId);
@@ -264,7 +258,7 @@ export default function SimulatePage() {
                 setIsGenerating(false);
             }
         },
-        [simCtx.dbSimulationId, scenarioId, customScenario]
+        [simCtx, scenarioId, customScenario]
     );
 
     // ─── Reset simulation ──────────────────────────────────────────────────────
@@ -272,47 +266,50 @@ export default function SimulatePage() {
     const handleReset = useCallback(() => {
         abortRef.current = true;
         setRunning(false);
-        setStates(makeInitialStates(agents));
-        setAgentHistories({});
-        setHistory([]);
-        setLog([]);
-        setStep(0);
+        simCtx.setAgentStates(makeInitialStates(agents));
+        simCtx.setAgentHistories({});
+        simCtx.setAdoptionCurve([]);
+        simCtx.setLog([]);
+        simCtx.setStep(0);
         setSelectedAgentId(null);
         setProgress(null);
         setPhase("CONFIGURED");
         setTimeout(() => {
             abortRef.current = false;
         }, 100);
-    }, [agents]);
+    }, [agents, simCtx]);
 
     const handleFullReset = useCallback(() => {
         abortRef.current = true;
         setRunning(false);
-        setAgents([]);
-        setEdges([]);
-        setStates({});
-        setAgentHistories({});
-        setHistory([]);
-        setLog([]);
-        setStep(0);
+        simCtx.setAgents([]);
+        simCtx.setEdges([]);
+        simCtx.setAgentStates({});
+        simCtx.setAgentHistories({});
+        simCtx.setAdoptionCurve([]);
+        simCtx.setLog([]);
+        simCtx.setStep(0);
         setSelectedAgentId(null);
-        setProgress(null);
         setPhase("UNCONFIGURED");
+        setStepInsight(null);
+        setProgress(null);
         setTimeout(() => {
             abortRef.current = false;
         }, 100);
-    }, []);
+    }, [simCtx]);
 
     const handleToggleSeed = useCallback((id: number) => {
         if (step !== 0) return;
-        setStates((prev) => ({
-            ...prev,
+        simCtx.setAgentStates({
+            ...states,
             [id]: {
-                ...prev[id],
-                isSeeded: !prev[id].isSeeded,
+                ...states[id],
+                decision: states[id]?.decision === "support" ? "neutral" : "support",
+                reasoning: states[id]?.decision === "support" ? null : "Seed enthusiast (manual)",
+                isSeeded: states[id]?.decision === "support" ? false : true,
             },
-        }));
-    }, [step]);
+        });
+    }, [step, states, simCtx]);
 
     // ─── Run one simulation step ───────────────────────────────────────────────
 
@@ -324,10 +321,11 @@ export default function SimulatePage() {
             const newStates = { ...currentStates };
             const batchSize = getBatchSize(agents.length);
 
+            // Mark everyone as pending initially
             for (const agent of agents) {
                 newStates[agent.id] = { ...newStates[agent.id], pending: true };
             }
-            setStates({ ...newStates });
+            simCtx.setAgentStates({ ...newStates });
 
             const neighborSnapshot = { ...currentStates };
             const batches = chunk(agents, batchSize);
@@ -343,7 +341,8 @@ export default function SimulatePage() {
 
                 const results = await Promise.allSettled(
                     batch.map(async (agent) => {
-                        if (currentStep === 1 && currentStates[agent.id]?.isSeeded) {
+                        // Seed logic: handle first step partners
+                        if (currentStep === 0 && currentStates[agent.id]?.isSeeded) {
                             await new Promise((res) => setTimeout(res, 400));
                             return {
                                 agentId: agent.id,
@@ -376,15 +375,18 @@ export default function SimulatePage() {
                             body: JSON.stringify({
                                 agentId: agent.id,
                                 agent,
-                                scenarioId,
-                                customScenario: scenarioId === "custom" ? customScenario : undefined,
+                                scenarioId: scenario.id,
+                                customScenario: scenario.id === "custom" ? scenario : undefined,
                                 neighborStates,
                                 neighborAgents,
                                 previousParams,
                             }),
                         });
 
-                        if (!res.ok) throw new Error(`Agent ${agent.id} failed`);
+                        if (!res.ok) {
+                            const errData = await res.json();
+                            throw new Error(errData.error || `Agent ${agent.id} failed`);
+                        }
                         return (await res.json()) as RunStepResponse;
                     })
                 );
@@ -394,59 +396,69 @@ export default function SimulatePage() {
                     const result = results[i];
 
                     if (result.status === "fulfilled") {
-                        const { decision, reasoning } = result.value;
+                        const { decision, reasoning, model } = result.value;
                         newStates[agent.id] = {
+                            ...newStates[agent.id],
                             decision,
                             reasoning,
+                            model,
                             step: currentStep,
                             pending: false,
                         };
 
-                        setAgentHistories((prev) => ({
-                            ...prev,
-                            [agent.id]: [
-                                ...(prev[agent.id] ?? []),
-                                { step: currentStep, decision } as AgentHistoryEntry,
-                            ],
-                        }));
+                        simCtx.addAgentHistoryPoint(agent.id, {
+                            step: currentStep,
+                            decision
+                        });
 
-                        setLog((prev) => [
-                            ...prev,
-                            {
-                                step: currentStep,
-                                agentId: agent.id,
-                                agentName: agent.name,
-                                persona: agent.persona,
-                                decision,
-                                reasoning,
-                                timestamp: Date.now(),
-                            },
-                        ]);
+                        simCtx.addLogEntry({
+                            step: currentStep,
+                            agentId: agent.id,
+                            agentName: agent.name,
+                            persona: agent.persona,
+                            decision,
+                            reasoning,
+                            timestamp: Date.now(),
+                        });
                     } else {
-                        newStates[agent.id] = { ...newStates[agent.id], pending: false };
+                        // Keep current state but clear pending and show error in reasoning
+                        const errorMsg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+                        newStates[agent.id] = { 
+                            ...newStates[agent.id], 
+                            pending: false,
+                            reasoning: `[SYSTEM_ERROR]: ${errorMsg.slice(0, 100)}...`
+                        };
+                        console.error(`Simulation failed for agent ${agent.id}:`, result.reason);
                     }
 
                     doneCount++;
                     setProgress({ done: doneCount, total: agents.length });
-                    setStates({ ...newStates });
+                }
+
+                // Update local context state at end of batch for live feedback
+                simCtx.setAgentStates({ ...newStates });
+
+                // SAFE MODE DELAY: 3.5s pause ensures we process ~17 agents per minute (Under the 20 RPM limit).
+                if (batches.length > 1) {
+                    const jitter = Math.floor(Math.random() * 500);
+                    await new Promise(resolve => setTimeout(resolve, 3000 + jitter));
                 }
             }
 
+            // ─── FINALIZATION: Only finalize step AFTER all batches complete ───
             const snap = buildSnapshot(currentStep, newStates);
-            setHistory((prev) => {
-                const newHist = [...prev, snap];
-                const prevSnap = prev.length > 0 ? prev[prev.length - 1] : undefined;
-                setStepInsight(generateStepInsight(snap, currentStep, prevSnap));
-                return newHist;
-            });
-            setStep(currentStep + 1);
+            simCtx.addAdoptionPoint(snap);
+            const prevSnap = simCtx.adoptionCurve.length > 0 ? simCtx.adoptionCurve[simCtx.adoptionCurve.length - 1] : undefined;
+            setStepInsight(generateStepInsight(snap, currentStep + 1, prevSnap));
+
+            simCtx.setStep(currentStep + 1);
             setRunning(false);
             setPhase("DONE");
             setProgress(null);
 
             return newStates;
         },
-        [agents, edges, scenarioId]
+        [agents, edges, scenario, simCtx]
     );
 
     const handleRunStep = useCallback(async () => {
@@ -502,7 +514,39 @@ export default function SimulatePage() {
     }, [agents.length, handleReset]);
 
 
-    const handleViewResults = useCallback(() => {
+    const handleViewResults = useCallback(async () => {
+        if (simCtx.dbSimulationId && agents.length > 0) {
+            try {
+                await supabase
+                    .from("simulations")
+                    .update({
+                        status: "Completed",
+                        total_agents: agents.length,
+                        agents,
+                        edges,
+                        config: {
+                            title: buildSimulationTitle(simCtx.product?.name, scenario.label),
+                            product: simCtx.product,
+                            filters: simCtx.marketFilters,
+                            scenario,
+                            mainView,
+                        },
+                        results: {
+                            states,
+                            history,
+                            log,
+                            agent_histories: agentHistories,
+                            step,
+                            main_view: mainView,
+                            insights: simCtx.insights,
+                        },
+                    })
+                    .eq("id", simCtx.dbSimulationId);
+            } catch (err) {
+                console.warn("Final save before results failed:", err);
+            }
+        }
+
         // Sync everything to context so results page is hydrated immediately
         simCtx.setAgents(agents);
         simCtx.setEdges(edges);
@@ -515,7 +559,7 @@ export default function SimulatePage() {
         
         const url = simCtx.dbSimulationId ? `/results?id=${simCtx.dbSimulationId}` : "/results";
         router.push(url);
-    }, [agents, edges, states, step, history, log, scenario, simCtx, router]);
+    }, [agents, edges, states, step, history, log, scenario, mainView, agentHistories, simCtx, router]);
 
 
     const handleStrategicSweep = useCallback(async () => {
@@ -859,13 +903,6 @@ export default function SimulatePage() {
                                                             onClick={() => {
                                                                 if (confirm("Restore this branch? Current unsaved progress will be lost.")) {
                                                                     simCtx.restoreSnapshot(snap.name);
-                                                                    // Update local state from restored context
-                                                                    setAgents(snap.state.agents);
-                                                                    setEdges(snap.state.edges);
-                                                                    setStates(snap.state.agentStates);
-                                                                    setStep(snap.state.step);
-                                                                    setHistory(snap.state.adoptionCurve);
-                                                                    setLog(snap.state.log);
                                                                 }
                                                             }}
                                                             className="btn btn-ghost" style={{ fontSize: 9, color: "var(--orange)", border: "1px solid rgba(255,107,53,0.3)" }}

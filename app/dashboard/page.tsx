@@ -9,9 +9,32 @@ import Link from "next/link";
 interface SimulationRecord {
   id: string;
   scenario_id: string;
+  title?: string;
   total_agents: number;
   status: string;
   created_at: string;
+  configuration?: {
+    title?: string;
+    [key: string]: unknown;
+  } | null;
+}
+
+function getSimulationTitle(sim: SimulationRecord) {
+  return sim.title?.trim() || sim.configuration?.title?.trim() || sim.scenario_id.replace(/_/g, " ");
+}
+
+function getDisplayName(user: { email?: string; metadata?: any } | null) {
+  const raw =
+    user?.metadata?.full_name ||
+    user?.metadata?.name ||
+    user?.metadata?.display_name ||
+    user?.email?.split("@")[0] ||
+    "Scenario Builder";
+
+  return String(raw)
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export default function DashboardPage() {
@@ -21,6 +44,8 @@ export default function DashboardPage() {
   
   const [pastSimulations, setPastSimulations] = useState<SimulationRecord[]>([]);
   const [loadingSims, setLoadingSims] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const displayName = getDisplayName(user);
 
   const totalAgents = pastSimulations.reduce((acc, sim) => acc + (sim.total_agents || 0), 0);
   const totalSims = pastSimulations.length;
@@ -42,6 +67,23 @@ export default function DashboardPage() {
     loadSimulations();
   }, [user]);
 
+  const handleDeleteSimulation = async (simId: string) => {
+    const confirmed = window.confirm("Delete this simulation permanently?");
+    if (!confirmed) return;
+
+    setDeletingId(simId);
+    try {
+      const { error } = await supabase.from("simulations").delete().eq("id", simId);
+      if (error) throw error;
+      setPastSimulations((current) => current.filter((sim) => sim.id !== simId));
+    } catch (err) {
+      console.error("Failed to delete simulation:", err);
+      alert("Could not delete that simulation. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {/* Decorative Grid Lines */}
@@ -58,7 +100,7 @@ export default function DashboardPage() {
             <Link href="/" style={{ fontSize: "12px", color: "var(--muted)", textDecoration: "none", fontWeight: 600 }}>HOME</Link>
             <Link href="/pricing" style={{ fontSize: "12px", color: "var(--muted)", textDecoration: "none", fontWeight: 600 }}>BILLING</Link>
             <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "var(--dim)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 900, color: "var(--orange)" }}>
-              {user?.email?.charAt(0).toUpperCase() || "U"}
+              {(displayName.charAt(0) || user?.email?.charAt(0) || "U").toUpperCase()}
             </div>
         </div>
       </nav>
@@ -70,7 +112,9 @@ export default function DashboardPage() {
            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
               <div>
                  <span style={{ fontFamily: "var(--mono)", color: "var(--orange)", fontSize: "11px", letterSpacing: "0.4em", marginBottom: "16px", display: "block" }}>[USER_DASHBOARD_v2.0]</span>
-                 <h1 style={{ fontSize: "48px", fontWeight: 700, color: "var(--bright)", letterSpacing: "-0.04em", margin: 0 }}>HELLO, SCENARIO_BUILDER.</h1>
+                 <h1 style={{ fontSize: "48px", fontWeight: 700, color: "var(--bright)", letterSpacing: "-0.04em", margin: 0 }}>
+                  HELLO, {displayName.toUpperCase()}.
+                 </h1>
               </div>
               <button 
                 onClick={() => router.push("/setup")}
@@ -152,7 +196,7 @@ export default function DashboardPage() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
                       <div style={{ fontFamily: "var(--mono)", color: "var(--orange)", fontSize: "10px", marginBottom: "8px", letterSpacing: "0.2em" }}>ID//SIM_{sim.id.substring(0,8).toUpperCase()}</div>
-                      <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--bright)", margin: 0 }}>{sim.scenario_id.toUpperCase().replace('_', ' ')}</h3>
+                      <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--bright)", margin: 0 }}>{getSimulationTitle(sim)}</h3>
                     </div>
                     <span style={{ 
                       fontSize: "10px", fontWeight: 900, padding: "4px 8px", borderRadius: "2px", fontFamily: "var(--mono)",
@@ -175,13 +219,30 @@ export default function DashboardPage() {
                   </div>
 
                   <div style={{ marginTop: "8px" }}>
-                    <button 
-                      onClick={() => router.push(sim.status === "Completed" ? `/results?id=${sim.id}` : `/simulate?id=${sim.id}`)}
-                      className="btn-v2-ghost"
-                      style={{ width: "100%", height: "48px", fontSize: "11px", fontWeight: 800 }}
-                    >
-                      VIEW_ANALYTICS_REPORT →
-                    </button>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button 
+                        onClick={() => router.push(`/results?id=${sim.id}`)}
+                        className="btn-v2-ghost"
+                        style={{ width: "100%", height: "48px", fontSize: "11px", fontWeight: 800 }}
+                      >
+                        VIEW_ANALYTICS_REPORT →
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSimulation(sim.id)}
+                        className="btn-v2-ghost"
+                        disabled={deletingId === sim.id}
+                        style={{
+                          minWidth: "104px",
+                          height: "48px",
+                          fontSize: "11px",
+                          fontWeight: 800,
+                          borderColor: "rgba(255,68,68,0.35)",
+                          color: "var(--oppose)"
+                        }}
+                      >
+                        {deletingId === sim.id ? "DELETING..." : "DELETE"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -3,24 +3,56 @@
 import { useState } from "react";
 import { useSimulation, type ProductInput } from "@/lib/SimulationContext";
 import { buildScenarioFromProduct } from "@/lib/productParams";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function InterventionPanel() {
-    const { product, updateProduct, scenario } = useSimulation();
+    const simCtx = useSimulation();
+    const { product, updateProduct, agents, edges, dbSimulationId } = simCtx;
     const [localProduct, setLocalProduct] = useState<ProductInput | null>(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [isForking, setIsForking] = useState(false);
+    const router = useRouter();
 
     if (!product) return null;
 
-    // Initialize local state when starting edit
     const startEdit = () => {
         setLocalProduct({ ...product });
         setIsEditing(true);
     };
 
-    const handleApply = () => {
-        if (localProduct) {
-            updateProduct(localProduct);
-            setIsEditing(false);
+    const handleFork = async () => {
+        if (!localProduct || !simCtx.user) return;
+        setIsForking(true);
+        
+        try {
+            // Create a new simulation record as a branch
+            const { data, error } = await supabase
+                .from("simulations")
+                .insert({
+                    user_id: simCtx.user.id,
+                    scenario_id: "custom",
+                    total_agents: agents.length,
+                    agents,
+                    edges,
+                    status: "Running",
+                    configuration: {
+                        product: localProduct,
+                        parent_id: dbSimulationId,
+                        is_branch: true,
+                    }
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            
+            // Redirect to the new branch
+            router.push(`/simulate?id=${data.id}`);
+            window.location.reload(); // Force context refresh for the new ID
+        } catch (err) {
+            console.error("Failed to fork simulation:", err);
+            setIsForking(false);
         }
     };
 
@@ -28,73 +60,112 @@ export default function InterventionPanel() {
 
     if (!isEditing) {
         return (
-            <div style={{ padding: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "8px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                    <div style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--orange)", fontWeight: 700, letterSpacing: "0.1em" }}>STRATEGIC_INTERVENTION</div>
-                    <button onClick={startEdit} className="btn btn-ghost" style={{ fontSize: "9px", padding: "4px 8px" }}>TWEAK_PARAMS</button>
+            <div className="intervention-root">
+                <div className="intervention-header">
+                    <div className="intervention-label">STRATEGIC_INTERVENTION</div>
+                    <button onClick={startEdit} className="btn-tweak">ADJUST_PARAMS</button>
                 </div>
                 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                    <div style={{ padding: "8px", background: "rgba(0,0,0,0.2)", borderRadius: "4px" }}>
-                        <div style={{ fontSize: "8px", color: "var(--muted)", textTransform: "uppercase", marginBottom: "4px" }}>Price</div>
-                        <div style={{ fontSize: "12px", color: "var(--bright)", fontWeight: 700 }}>{product.price}</div>
+                <div className="intervention-grid">
+                    <div className="intervention-stat">
+                        <div className="stat-label">UNIT_PRICE</div>
+                        <div className="stat-value">{product.price}</div>
                     </div>
-                    <div style={{ padding: "8px", background: "rgba(0,0,0,0.2)", borderRadius: "4px" }}>
-                        <div style={{ fontSize: "8px", color: "var(--muted)", textTransform: "uppercase", marginBottom: "4px" }}>Value Prop</div>
-                        <div style={{ fontSize: "12px", color: "var(--bright)", fontWeight: 700, textTransform: "capitalize" }}>{product.valueProp}</div>
+                    <div className="intervention-stat">
+                        <div className="stat-label">VALUE_PROP</div>
+                        <div className="stat-value">{product.valueProp}</div>
                     </div>
                 </div>
 
-                <div style={{ marginTop: "12px", fontSize: "10px", color: "var(--muted)", fontStyle: "italic" }}>
-                    "Modify parameters to observe localized delta effects in the next step."
-                </div>
+                <style jsx>{`
+                    .intervention-root {
+                        padding: 16px;
+                        background: rgba(255, 255, 255, 0.02);
+                        border: 1px solid rgba(255, 255, 255, 0.05);
+                        border-radius: 12px;
+                    }
+                    .intervention-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 16px;
+                    }
+                    .intervention-label {
+                        font-family: var(--mono);
+                        font-size: 10px;
+                        color: var(--orange);
+                        font-weight: 700;
+                        letter-spacing: 0.12em;
+                    }
+                    .btn-tweak {
+                        background: rgba(255, 107, 53, 0.1);
+                        border: 1px solid rgba(255, 107, 53, 0.2);
+                        color: var(--orange);
+                        font-size: 9px;
+                        padding: 4px 10px;
+                        border-radius: 4px;
+                        font-family: var(--mono);
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    }
+                    .btn-tweak:hover {
+                        background: var(--orange);
+                        color: #000;
+                    }
+                    .intervention-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 12px;
+                    }
+                    .intervention-stat {
+                        padding: 10px;
+                        background: rgba(0,0,0,0.3);
+                        border: 1px solid rgba(255,255,255,0.03);
+                        border-radius: 6px;
+                    }
+                    .stat-label {
+                        font-size: 8px;
+                        color: var(--muted);
+                        text-transform: uppercase;
+                        margin-bottom: 4px;
+                        letter-spacing: 0.05em;
+                    }
+                    .stat-value {
+                        font-size: 13px;
+                        color: var(--bright);
+                        font-weight: 700;
+                        font-family: var(--mono);
+                    }
+                `}</style>
             </div>
         );
     }
 
     return (
-        <div style={{ padding: "16px", background: "rgba(255,107,53,0.05)", border: "1px solid var(--orange)", borderRadius: "8px", animation: "glowPulse 2s infinite" }}>
-             <style jsx>{`
-                @keyframes glowPulse {
-                    0% { box-shadow: 0 0 5px rgba(255,107,53,0.1); }
-                    50% { box-shadow: 0 0 15px rgba(255,107,53,0.2); }
-                    100% { box-shadow: 0 0 5px rgba(255,107,53,0.1); }
-                }
-            `}</style>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--orange)", fontWeight: 900 }}>LIVE_OVERRIDE_ACTIVE</div>
-                <button onClick={() => setIsEditing(false)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "12px" }}>✕</button>
+        <div className="intervention-edit-root">
+            <div className="intervention-header">
+                <div className="active-label">LIVE_OVERRIDE_ACTIVE</div>
+                <button onClick={() => setIsEditing(false)} className="btn-close">✕</button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div>
-                    <label style={{ display: "block", fontSize: "9px", color: "var(--muted)", marginBottom: "4px" }}>UNIT_PRICE</label>
+            <div className="edit-body">
+                <div className="input-group">
+                    <label>UNIT_PRICE</label>
                     <input 
                         type="text" 
                         value={currentDisplay.price} 
                         onChange={e => setLocalProduct(p => p ? ({ ...p, price: e.target.value }) : null)}
-                        style={{ width: "100%", background: "#000", border: "1px solid rgba(255,255,255,0.1)", padding: "6px 10px", color: "var(--bright)", fontSize: "12px", outline: "none" }}
                     />
                 </div>
 
-                <div>
-                    <label style={{ display: "block", fontSize: "9px", color: "var(--muted)", marginBottom: "4px" }}>VALUE_PROPOSITION</label>
-                    <div style={{ display: "flex", gap: "4px" }}>
+                <div className="input-group">
+                    <label>VALUE_PROPOSITION</label>
+                    <div className="toggle-row">
                         {["weak", "moderate", "strong"].map(v => (
                             <button 
                                 key={v}
                                 onClick={() => setLocalProduct(p => p ? ({ ...p, valueProp: v as any }) : null)}
-                                style={{ 
-                                    flex: 1, 
-                                    padding: "4px 0", 
-                                    fontSize: "9px", 
-                                    background: currentDisplay.valueProp === v ? "var(--orange)" : "rgba(255,255,255,0.05)",
-                                    color: currentDisplay.valueProp === v ? "#000" : "var(--muted)",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    fontWeight: 700
-                                }}
+                                className={currentDisplay.valueProp === v ? "active" : ""}
                             >
                                 {v.toUpperCase()}
                             </button>
@@ -102,25 +173,110 @@ export default function InterventionPanel() {
                     </div>
                 </div>
 
-                <div style={{ marginTop: "4px" }}>
-                    <button 
-                        onClick={handleApply}
-                        style={{ 
-                            width: "100%", 
-                            padding: "8px", 
-                            background: "var(--orange)", 
-                            color: "#000", 
-                            border: "none", 
-                            fontWeight: 800, 
-                            fontSize: "10px", 
-                            letterSpacing: "0.1em",
-                            cursor: "pointer"
-                        }}
-                    >
-                        APPLY_STRATEGIC_DELTA
-                    </button>
-                </div>
+                <button 
+                    onClick={handleFork}
+                    disabled={isForking}
+                    className="btn-fork"
+                >
+                    {isForking ? "INITIATING_FORK..." : "FORK_AND_TEST_DELTA"}
+                </button>
             </div>
+
+            <style jsx>{`
+                .intervention-edit-root {
+                    padding: 16px;
+                    background: rgba(255, 107, 53, 0.05);
+                    border: 1px solid var(--orange);
+                    border-radius: 12px;
+                    box-shadow: 0 0 20px rgba(255, 107, 53, 0.1);
+                }
+                .intervention-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                }
+                .active-label {
+                    font-family: var(--mono);
+                    font-size: 10px;
+                    color: var(--orange);
+                    font-weight: 900;
+                    letter-spacing: 0.1em;
+                }
+                .btn-close {
+                    background: none;
+                    border: none;
+                    color: var(--muted);
+                    cursor: pointer;
+                    font-size: 14px;
+                }
+                .edit-body {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                .input-group label {
+                    display: block;
+                    font-size: 9px;
+                    color: var(--muted);
+                    margin-bottom: 6px;
+                    font-family: var(--mono);
+                }
+                .input-group input {
+                    width: 100%;
+                    background: #000;
+                    border: 1px solid rgba(255,255,255,0.1);
+                    padding: 8px 12px;
+                    color: var(--bright);
+                    font-family: var(--mono);
+                    font-size: 12px;
+                    outline: none;
+                    border-radius: 4px;
+                }
+                .toggle-row {
+                    display: flex;
+                    gap: 4px;
+                }
+                .toggle-row button {
+                    flex: 1;
+                    padding: 6px 0;
+                    font-size: 9px;
+                    font-weight: 800;
+                    background: rgba(255,255,255,0.05);
+                    color: var(--muted);
+                    border: none;
+                    cursor: pointer;
+                    font-family: var(--mono);
+                    border-radius: 2px;
+                }
+                .toggle-row button.active {
+                    background: var(--orange);
+                    color: #000;
+                }
+                .btn-fork {
+                    width: 100%;
+                    padding: 12px;
+                    background: var(--orange);
+                    color: #000;
+                    border: none;
+                    font-weight: 900;
+                    font-size: 11px;
+                    letter-spacing: 0.12em;
+                    cursor: pointer;
+                    margin-top: 8px;
+                    border-radius: 4px;
+                    transition: transform 0.2s;
+                    font-family: var(--mono);
+                }
+                .btn-fork:hover:not(:disabled) {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+                }
+                .btn-fork:disabled {
+                    opacity: 0.5;
+                    cursor: wait;
+                }
+            `}</style>
         </div>
     );
 }

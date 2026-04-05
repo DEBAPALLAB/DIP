@@ -51,14 +51,33 @@ export default function StrategicInsights({ insights, loading }: StrategicInsigh
 }
 
 function parseInsights(text: string): { label: string; text: string }[] {
+    if (!text) return [];
+    
     const sections: { label: string; text: string }[] = [];
     const labels = ["PRIMARY BARRIER", "PRIMARY DRIVER", "RECOMMENDATION"];
 
-    for (const label of labels) {
-        const regex = new RegExp(`${label}[:\\s]*(.+?)(?=(?:PRIMARY BARRIER|PRIMARY DRIVER|RECOMMENDATION|$))`, "si");
-        const match = text.match(regex);
-        if (match) {
-            sections.push({ label, text: match[1].trim() });
+    // Find indices of all defined labels to split cleanly
+    const positions = labels
+        .map(label => ({ label, index: text.indexOf(label) }))
+        .filter(p => p.index !== -1)
+        .sort((a, b) => a.index - b.index);
+
+    if (positions.length === 0) return [];
+
+    for (let i = 0; i < positions.length; i++) {
+        const current = positions[i];
+        const next = positions[i + 1];
+        
+        let sectionText = text.substring(
+            current.index + current.label.length, 
+            next ? next.index : text.length
+        ).trim();
+
+        // Clean up common AI prefixes (colons, asterisks, dashes, spaces)
+        sectionText = sectionText.replace(/^[:\s\*-]+/, "").trim();
+        
+        if (sectionText) {
+            sections.push({ label: current.label, text: sectionText });
         }
     }
 

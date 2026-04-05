@@ -62,6 +62,7 @@ export interface ScenarioParams {
   value: number;   // perceived product value
   risk: number;    // product risk level
   loss: number;    // loss aversion trigger
+  justification?: string; // AI-driven strategic reasoning
 }
 
 export interface Scenario {
@@ -110,6 +111,24 @@ export interface RunStepResponse {
   decision: DecisionType;
   reasoning: string;
   model?: string;
+}
+
+export interface RunBatchItem {
+  agentId: number;
+  agent: Agent;
+  neighborStates: Record<number, { decision: DecisionType; reasoning: string | null }>;
+  neighborAgents: Agent[];
+}
+
+export interface RunStepBatchRequest {
+  batch: RunBatchItem[];
+  scenarioId: string;
+  customScenario?: Scenario;
+  previousParams?: ScenarioParams;
+}
+
+export interface RunStepBatchResponse {
+  results: RunStepResponse[];
 }
 
 export interface GenerateAgentsRequest {

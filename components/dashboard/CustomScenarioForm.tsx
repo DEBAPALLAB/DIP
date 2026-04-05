@@ -19,6 +19,7 @@ const DEFAULTS = {
     value: 0.60,
     risk: 0.30,
     loss: 0.20,
+    justification: ""
 };
 
 function SliderRow({
@@ -75,15 +76,16 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
     const [value, setValue] = useState(existing?.params.value ?? DEFAULTS.value);
     const [risk, setRisk] = useState(existing?.params.risk ?? DEFAULTS.risk);
     const [loss, setLoss] = useState(existing?.params.loss ?? DEFAULTS.loss);
+    const [justification, setJustification] = useState(existing?.params.justification ?? DEFAULTS.justification);
     const [isDetecting, setIsDetecting] = useState(false);
     const [suggestedMarket, setSuggestedMarket] = useState<any>(null);
 
     // Persist to localStorage on any change
     useEffect(() => {
         try {
-            localStorage.setItem(LS_KEY, JSON.stringify({ label, tag, brief, value, risk, loss }));
+            localStorage.setItem(LS_KEY, JSON.stringify({ label, tag, brief, value, risk, loss, justification }));
         } catch (_) { }
-    }, [label, tag, brief, value, risk, loss]);
+    }, [label, tag, brief, value, risk, loss, justification]);
 
     const isValid = label.trim().length > 0 && brief.trim().length > 0;
 
@@ -94,7 +96,7 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
             label: label.trim(),
             tag: tag.trim() || "Custom Scenario",
             brief: brief.trim(),
-            params: { value, risk, loss },
+            params: { value, risk, loss, justification },
         };
         onApply(scenario);
         onClose();
@@ -118,6 +120,7 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                 if (typeof data.value === "number") setValue(data.value);
                 if (typeof data.risk === "number") setRisk(data.risk);
                 if (typeof data.loss === "number") setLoss(data.loss);
+                if (data.justification) setJustification(data.justification);
                 if (data.market) setSuggestedMarket(data.market);
             } else {
                 alert("Failed to auto-detect parameters.");
@@ -171,8 +174,8 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                     padding: "10px 16px",
                     borderBottom: "1px solid #1e2e40",
                 }}>
-                    <span style={{ fontSize: 9, color: "var(--orange)", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>
-                        CUSTOM SCENARIO
+                    <span style={{ fontSize: 9, color: "var(--orange)", textAnchor: "start", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>
+                        STRATEGIC SCENARIO EDITOR
                     </span>
                     <button
                         onClick={onClose}
@@ -210,38 +213,12 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                         />
                     </div>
 
-                    {/* Category / tag */}
-                    <div style={{ marginBottom: 14 }}>
-                        <label style={{ display: "block", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
-                            Category Tag
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="e.g. Clean Energy · Subscription"
-                            value={tag}
-                            onChange={(e) => setTag(e.target.value)}
-                            maxLength={60}
-                            style={{
-                                width: "100%",
-                                background: "#080c10",
-                                border: "1px solid #1e2e40",
-                                borderRadius: 3,
-                                padding: "7px 10px",
-                                fontFamily: "var(--mono)",
-                                fontSize: 12,
-                                color: "var(--bright)",
-                                outline: "none",
-                                boxSizing: "border-box",
-                            }}
-                        />
-                    </div>
-
                     {/* Brief */}
                     <div style={{ marginBottom: 18 }}>
                         <label style={{ display: "block", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
                             Product Brief <span style={{ color: "var(--orange)" }}>*</span>
                             <span style={{ color: "#2a3a4a", marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>
-                                — shown to agents in the LLM prompt
+                                — sensed by LLM in real-time
                             </span>
                         </label>
                         <textarea
@@ -266,27 +243,21 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                         />
                     </div>
 
-                    {/* Suggested Market Insight */}
-                    {suggestedMarket && (
-                        <div style={{
+                    {/* AI Audited Insight */}
+                    {justification && (
+                         <div style={{
                             marginBottom: 18,
-                            padding: 10,
-                            background: isMismatch ? "rgba(255, 68, 68, 0.08)" : "rgba(0, 208, 132, 0.05)",
+                            padding: 12,
+                            background: "rgba(255, 107, 53, 0.04)",
                             borderRadius: 4,
-                            border: `1px solid ${isMismatch ? "rgba(255, 68, 68, 0.3)" : "rgba(0, 208, 132, 0.2)"}`,
+                            border: "1px solid rgba(255, 107, 53, 0.15)",
                         }}>
-                             <div style={{ fontSize: 9, color: isMismatch ? "#ff4444" : "#00d084", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
-                                {isMismatch ? "⚠️ POPULATION MISMATCH" : "✨ SUGGESTED TARGET"}
+                             <div style={{ fontSize: 9, color: "var(--orange)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6, fontWeight: 800 }}>
+                                ✨ Strategic Resonance Analysis
                              </div>
-                             <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.4 }}>
-                                Recommended: Age {suggestedMarket.ageMin}-{suggestedMarket.ageMax}, 
-                                {suggestedMarket.education === "any" ? " any education" : ` ${suggestedMarket.education}+`}.
+                             <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5, fontStyle: "italic" }}>
+                                "{justification}"
                              </div>
-                             {isMismatch && (
-                                <div style={{ fontSize: 9, color: "#ff4444", marginTop: 4, fontStyle: "italic" }}>
-                                    Current population is too restricted. Consider re-configuring in Setup.
-                                </div>
-                             )}
                         </div>
                     )}
 
@@ -305,7 +276,7 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                             textTransform: "uppercase",
                             letterSpacing: "0.1em",
                         }}>
-                            Model Parameters
+                            Adoption Coefficients
                         </div>
                         <button
                             onClick={handleAutoDetect}
@@ -325,28 +296,28 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                                 transition: "all 0.15s",
                             }}
                         >
-                            {isDetecting ? "DETECTING..." : "✨ AUTO-DETECT"}
+                            {isDetecting ? "AUDITING..." : "✨ DEEP AUDIT"}
                         </button>
                     </div>
 
                     {/* Sliders */}
                     <SliderRow
                         label="Perceived Value"
-                        hint="how compelling is this product"
+                        hint="real-time market efficiency"
                         value={value}
                         onChange={setValue}
                         color="#00d084"
                     />
                     <SliderRow
                         label="Risk Level"
-                        hint="how risky does adoption feel"
+                        hint="financial/emotional stakes"
                         value={risk}
                         onChange={setRisk}
                         color="#ff4444"
                     />
                     <SliderRow
                         label="Loss Trigger"
-                        hint="how much does opting-out hurt"
+                        hint="FOMO / status quo penalty"
                         value={loss}
                         onChange={setLoss}
                         color="#f0b429"
@@ -390,7 +361,7 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                                 transition: "background 0.12s",
                             }}
                         >
-                            {isValid ? "▶ LOAD SCENARIO" : "ENTER NAME + BRIEF"}
+                            {isValid ? "▶ DEPLOY SCENARIO" : "NEED PRODUCT BRIEF"}
                         </button>
                     </div>
                 </div>
@@ -415,6 +386,7 @@ export function loadSavedCustomScenario(): Scenario | null {
                 value: d.value ?? 0.6,
                 risk: d.risk ?? 0.3,
                 loss: d.loss ?? 0.2,
+                justification: d.justification || ""
             },
         };
     } catch (_) {

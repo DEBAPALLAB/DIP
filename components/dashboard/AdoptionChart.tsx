@@ -26,18 +26,27 @@ function CustomTooltip({ active, payload, label }: {
     return (
         <div
             style={{
-                background: "var(--panel)",
-                border: "1px solid var(--border)",
-                borderRadius: 3,
-                padding: "8px 12px",
+                background: "rgba(12, 12, 12, 0.95)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: 12,
+                padding: "10px 14px",
                 fontFamily: "var(--mono)",
                 fontSize: 11,
+                boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
             }}
         >
-            <div style={{ color: "var(--muted)", marginBottom: 4, fontSize: 9 }}>STEP {label}</div>
+            <div style={{ color: "var(--muted)", marginBottom: 6, fontSize: 9, letterSpacing: "0.1em" }}>EPOCH_{label}</div>
             {payload.map((p) => (
-                <div key={p.name} style={{ color: p.color, lineHeight: 1.8 }}>
-                    {p.name.toUpperCase()}: {p.value}
+                <div key={p.name} style={{ 
+                    color: p.color, 
+                    lineHeight: 1.8, 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    gap: 20 
+                }}>
+                    <span>{p.name.toUpperCase()}</span>
+                    <span style={{ fontWeight: 700 }}>{p.value}</span>
                 </div>
             ))}
         </div>

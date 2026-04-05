@@ -36,25 +36,31 @@ export default function AgentListFilter({
         <div 
             style={{ 
                 display: "flex", 
-                gap: 8, 
-                padding: "8px 12px", 
-                background: "var(--bg-darker)", 
-                borderBottom: "1px solid var(--border)",
+                gap: 10, 
+                padding: "12px 16px", 
+                background: "rgba(255,255,255,0.02)", 
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
                 alignItems: "center",
-                flexShrink: 0
+                flexShrink: 0,
+                backdropFilter: "blur(8px)"
             }}
         >
             <div style={{ position: "relative", flex: 1, display: "flex", gap: 4 }}>
                 <div style={{ position: "relative", flex: 1 }}>
                     <input 
                         type="text" 
-                        placeholder={isAISearch ? "AI_FILTER_SEARCH (e.g. 'healthcare professionals')..." : "SEARCH_NAME_OR_JOB..."}
+                        placeholder={isAISearch ? "AI_FILTER_SEARCH (e.g. 'healthcare professionals')..." : "FILTER_POPULATION..."}
                         className="terminal-select"
                         style={{ 
                             width: "100%", 
-                            paddingRight: 32,
-                            borderColor: isAISearch ? "var(--orange)" : "var(--border)",
-                            boxShadow: isAISearch ? "0 0 10px rgba(255, 107, 53, 0.1)" : "none"
+                            paddingRight: 40,
+                            borderRadius: "100px",
+                            height: "32px",
+                            background: "rgba(0,0,0,0.3)",
+                            borderColor: isAISearch ? "var(--orange)" : "rgba(255,255,255,0.1)",
+                            boxShadow: isAISearch ? "0 0 15px rgba(255, 107, 53, 0.15)" : "none",
+                            fontSize: "10px",
+                            letterSpacing: "0.02em"
                         }}
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
@@ -122,7 +128,7 @@ export default function AgentListFilter({
                 className="terminal-select" 
                 value={persona} 
                 onChange={(e) => onPersonaChange(e.target.value as any)}
-                style={{ width: 120 }}
+                style={{ width: 130, borderRadius: "100px", height: "32px", background: "rgba(0,0,0,0.3)", borderColor: "rgba(255,255,255,0.1)", fontSize: "9px" }}
             >
                 <option value="all">ALL_PERSONAS</option>
                 {PERSONAS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
@@ -135,7 +141,7 @@ export default function AgentListFilter({
                     const val = e.target.value;
                     onDecisionChange(val === "all" ? "all" : val === "null" ? null : val as any);
                 }}
-                style={{ width: 120 }}
+                style={{ width: 130, borderRadius: "100px", height: "32px", background: "rgba(0,0,0,0.3)", borderColor: "rgba(255,255,255,0.1)", fontSize: "9px" }}
             >
                 <option value="all">ALL_DECISIONS</option>
                 <option value="support">SUPPORT</option>

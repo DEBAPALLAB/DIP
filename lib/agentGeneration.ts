@@ -98,6 +98,101 @@ export const PERSONA_COLORS: Record<PersonaType, string> = {
     Laggard: "#607D8B",
 };
 
+function clamp01(value: number) {
+    return Math.max(0.01, Math.min(0.99, value));
+}
+
+function clampInt(value: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function sampleFromPool<T>(pool: T[], seed: number): T {
+    if (pool.length === 0) {
+        throw new Error("Cannot sample from an empty pool");
+    }
+    return pool[Math.abs(Math.floor(seed)) % pool.length];
+}
+
+function synthesizeRespondent(pool: GSSRespondent[], seed: number): GSSRespondent {
+    const fallback: GSSRespondent = {
+        risk_aversion: 0.5,
+        institutional_trust: 0.5,
+        social_conformity: 0.5,
+        collectivism: 0.5,
+        budget_sensitivity: 0.5,
+        emotional_state: 0.5,
+        age: 42,
+        educ: 14,
+        income_percentile: 0.5,
+        sex: seed % 2 === 0 ? "female" : "male",
+        race: "other",
+        wrkstat: "full-time",
+    };
+
+    if (pool.length === 0) return fallback;
+
+    const base = sampleFromPool(pool, seed * 997);
+    const jitter = (val: number, spread = 0.12) => {
+        const noise = ((Math.sin(seed * 1000 + val * 100) + 1) / 2 - 0.5) * spread;
+        return clamp01(val + noise);
+    };
+
+    const sexBias = pool.reduce(
+        (acc, r) => {
+            acc[r.sex] += 1;
+            return acc;
+        },
+        { male: 0, female: 0 }
+    );
+    const wrkstatCounts = pool.reduce<Record<GSSRespondent["wrkstat"], number>>((acc, r) => {
+        acc[r.wrkstat] = (acc[r.wrkstat] || 0) + 1;
+        return acc;
+    }, {
+        "full-time": 0,
+        "part-time": 0,
+        "retired": 0,
+        "unemployed": 0,
+        "in school": 0,
+        "keeping house": 0,
+        "temp not working": 0,
+        "other": 0,
+    });
+    const raceCounts = pool.reduce<Record<GSSRespondent["race"], number>>((acc, r) => {
+        acc[r.race] = (acc[r.race] || 0) + 1;
+        return acc;
+    }, { white: 0, black: 0, other: 0 });
+
+    const total = pool.length || 1;
+    const pickByWeight = <T extends string>(counts: Record<T, number>, fallbackValue: T): T => {
+        const roll = (Math.sin(seed * 13.37) + 1) / 2;
+        let cursor = 0;
+        for (const key of Object.keys(counts) as T[]) {
+            cursor += counts[key] / total;
+            if (roll <= cursor) return key;
+        }
+        return fallbackValue;
+    };
+
+    const ageJitter = Math.round((Math.sin(seed * 3.1) + Math.cos(seed * 1.7)) * 4);
+    const eduJitter = Math.round(Math.sin(seed * 4.3) * 1.5);
+    const incomeJitter = (Math.sin(seed * 5.9) + Math.cos(seed * 2.4)) * 0.05;
+
+    return {
+        risk_aversion: jitter(base.risk_aversion, 0.16),
+        institutional_trust: jitter(base.institutional_trust, 0.18),
+        social_conformity: jitter(base.social_conformity, 0.18),
+        collectivism: jitter(base.collectivism, 0.12),
+        budget_sensitivity: jitter(base.budget_sensitivity, 0.16),
+        emotional_state: jitter(base.emotional_state, 0.12),
+        age: clampInt((base.age || fallback.age) + ageJitter, 18, 89),
+        educ: clampInt((base.educ || fallback.educ) + eduJitter, 10, 20),
+        income_percentile: clamp01((base.income_percentile || fallback.income_percentile) + incomeJitter),
+        sex: pickByWeight(sexBias, fallback.sex),
+        race: pickByWeight(raceCounts, fallback.race),
+        wrkstat: pickByWeight(wrkstatCounts, fallback.wrkstat),
+    };
+}
+
 // ─── Name + Job pools ─────────────────────────────────────────────────────────
 
 const FIRST_NAMES = {
@@ -289,15 +384,18 @@ export async function generateAgents(count: number, providedPool?: GSSRespondent
         pool = JSON.parse(raw.replace(/:\s*NaN/g, ": null"));
     }
 
-    // 2. Sample `count` respondents without replacement (shuffle + slice)
+    // 2. Sample real respondents first, then synthesize the remainder.
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     const sampled = shuffled.slice(0, Math.min(count, pool.length));
+    while (sampled.length < count) {
+        sampled.push(synthesizeRespondent(pool, sampled.length + 1));
+    }
 
-    // 3. Build Watts-Strogatz network for this count
-    const edges = buildWattsStrogatz(sampled.length, 6, 0.15);
+    // 3. Build Watts-Strogatz network for this full count
+    const edges = buildWattsStrogatz(count, 6, 0.15);
 
     // 4. Compute influence scores from degree centrality
-    const influence = computeInfluenceScores(sampled.length, edges);
+    const influence = computeInfluenceScores(count, edges);
 
     // Deterministic pseudo-random generator
     function seededRandom(seed: number) {
@@ -329,7 +427,7 @@ export async function generateAgents(count: number, providedPool?: GSSRespondent
             social_conformity: social,
             budget_sensitivity: budget,
             emotional_state: emotional,
-            influence_score: influence[i],
+            influence_score: influence[i] ?? 0,
         };
 
         const persona = classifyPersona(rawAgent);

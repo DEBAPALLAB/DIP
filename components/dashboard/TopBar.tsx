@@ -28,71 +28,92 @@ export default function TopBar({ step, running, states, history, scenarioLabel, 
         : 0;
 
     return (
-        <div className="ticker-bar" style={{ height: 40 }}>
+        <div className="ticker-bar" style={{ 
+            height: 44, 
+            background: "rgba(4, 6, 8, 0.9)", 
+            backdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            padding: "0 12px"
+        }}>
             {/* Live indicator */}
-            <div className="ticker-item" style={{ padding: "0 12px", gap: 6 }}>
-                {running && <span className="live-dot" />}
-                <span className="ticker-label" style={{ color: running ? "var(--orange)" : "var(--muted)" }}>
-                    {running ? "LIVE" : step === 0 ? "READY" : "PAUSED"}
+            <div className="ticker-item" style={{ padding: "0 16px", gap: 8, borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                {running && <div className="landing-nav-dot" style={{ width: 8, height: 8, background: "var(--orange)", boxShadow: "0 0 10px var(--orange)" }} />}
+                {!running && <div style={{ width: 6, height: 6, borderRadius: "50%", background: step === 0 ? "var(--support)" : "var(--muted)", opacity: 0.6 }} />}
+                <span className="ticker-label" style={{ 
+                    color: running ? "var(--orange)" : "var(--muted)",
+                    fontSize: "9px",
+                    letterSpacing: "0.15em"
+                }}>
+                    {running ? "COMPUTING_SIGNAL" : step === 0 ? "SYSTEM_READY" : "EXECUTION_PAUSED"}
                 </span>
             </div>
 
             {/* Scenario */}
-            <div className="ticker-item">
-                <span className="ticker-label">SIM</span>
-                <span className="ticker-val" style={{ color: "var(--text)", fontWeight: 400 }}>
+            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="ticker-label">SCENARIO</span>
+                <span className="ticker-val" style={{ color: "var(--bright)", fontWeight: 500, fontSize: "11px" }}>
                     {scenarioLabel}
                 </span>
             </div>
 
             {/* Step */}
-            <div className="ticker-item">
-                <span className="ticker-label">STEP</span>
-                <span className="ticker-val">{step}</span>
+            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="ticker-label">EPOCH</span>
+                <span className="ticker-val" style={{ color: "var(--orange)" }}>{step}</span>
             </div>
 
             {/* Support */}
-            <div className="ticker-item">
-                <span className="ticker-label">SUPPORT</span>
-                <span className="ticker-val" style={{ color: "var(--support)" }}>
+            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="ticker-label">ADOPTION</span>
+                <span className="ticker-val" style={{ color: "var(--support)", fontSize: "12px" }}>
                     {pct(support, total)}
                 </span>
                 {delta !== 0 && (
-                    <span style={{ fontSize: 9, color: delta > 0 ? "var(--support)" : "var(--oppose)", fontFamily: "var(--mono)" }}>
-                        {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}
+                    <span className="results-side-chip" style={{ 
+                        marginTop: 0, padding: "2px 6px", 
+                        background: delta > 0 ? "rgba(0, 208, 132, 0.15)" : "rgba(255, 68, 68, 0.15)",
+                        color: delta > 0 ? "var(--support)" : "var(--oppose)",
+                        border: "none",
+                        fontSize: "9px"
+                    }}>
+                        {delta > 0 ? "+" : ""}{delta}
                     </span>
                 )}
             </div>
 
             {/* Neutral */}
-            <div className="ticker-item">
-                <span className="ticker-label">NEUTRAL</span>
+            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="ticker-label">FRICTION</span>
                 <span className="ticker-val" style={{ color: "var(--neutral)" }}>
                     {pct(neutral, total)}
                 </span>
             </div>
 
             {/* Oppose */}
-            <div className="ticker-item">
-                <span className="ticker-label">OPPOSE</span>
+            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="ticker-label">RESISTANCE</span>
                 <span className="ticker-val" style={{ color: "var(--oppose)" }}>
                     {pct(oppose, total)}
                 </span>
             </div>
 
             {/* Pending */}
-            <div className="ticker-item">
-                <span className="ticker-label">PENDING</span>
+            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="ticker-label">UNEXPOSED</span>
                 <span className="ticker-val" style={{ color: "var(--pending)" }}>
                     {pending}
                 </span>
             </div>
 
             {/* Consensus */}
-            <div className="ticker-item" style={{ marginLeft: "auto", borderRight: "none", borderLeft: "1px solid var(--border)" }}>
-                <span className="ticker-label">CONSENSUS</span>
-                <span className="ticker-val" style={{ color: "var(--orange)" }}>
-                    {consensusLabel(states)}
+            <div className="ticker-item" style={{ marginLeft: "auto", borderRight: "none", borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: "24px" }}>
+                <span className="ticker-label">STABILITY</span>
+                <span className="ticker-val" style={{ 
+                    color: "var(--orange)", 
+                    textShadow: "0 0 15px rgba(255, 107, 53, 0.3)",
+                    letterSpacing: "0.05em"
+                }}>
+                    {consensusLabel(states).toUpperCase()}
                 </span>
             </div>
         </div>

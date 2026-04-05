@@ -433,3 +433,254 @@ This file tracks API failures and model fallback events to identify performance 
 | 2026-04-02T15:22:47.779Z | 2 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
 | 2026-04-02T15:23:52.463Z | 5 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
 | 2026-04-02T15:23:57.880Z | 5 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T15:25:04.190Z | 1 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T15:25:04.982Z | 1 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T15:25:39.916Z | 2 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-02T15:25:40.260Z | 2 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T15:25:45.693Z | 2 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T15:26:54.192Z | 5 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-02T15:26:59.777Z | 5 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T15:27:00.058Z | 5 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T15:27:06.973Z | 5 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-02T15:27:18.498Z | 0 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-02T15:27:19.187Z | 0 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T15:27:24.880Z | 0 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:10:04.382Z | 1 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:10:04.743Z | 1 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:10:04.894Z | 0 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:10:05.156Z | 0 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:10:11.202Z | 1 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-02T18:10:39.765Z | 2 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:10:40.731Z | 3 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:10:45.219Z | 2 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:11:19.783Z | 5 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:11:19.789Z | 4 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:11:29.579Z | 5 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-02T18:11:29.883Z | 5 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:13:19.855Z | 15 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:13:25.273Z | 14 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:13:25.527Z | 14 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:13:34.476Z | 1 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:13:34.949Z | 1 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:13:41.264Z | 1 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-02T18:13:49.775Z | 1 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-02T18:13:54.983Z | 16 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:14:00.559Z | 16 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:14:19.998Z | 19 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:14:25.364Z | 19 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:14:25.411Z | 18 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:14:43.973Z | 21 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:14:49.334Z | 21 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:15:10.409Z | 22 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:15:25.399Z | 4 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:15:47.944Z | 25 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-02T18:16:07.195Z | 26 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:16:07.726Z | 26 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:16:34.118Z | 29 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:17:18.385Z | 33 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-02T18:17:24.463Z | 33 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-02T18:17:30.279Z | 33 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:17:30.502Z | 33 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:17:41.454Z | 35 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-02T18:17:46.871Z | 35 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:18:02.467Z | 36 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-02T18:18:07.224Z | 37 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-02T18:18:07.795Z | 36 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-04T19:42:42.700Z | 3 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-04T19:48:29.677Z | 2 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:27:44.808Z | 6 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:27:56.549Z | 9 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:27:56.661Z | 8 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:28:08.851Z | 11 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:28:49.429Z | 19 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:29:12.627Z | 22 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:29:14.279Z | 23 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:29:30.312Z | 24 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:29:40.252Z | 26 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:29:51.900Z | 29 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:29:52.143Z | 28 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:31:53.414Z | 41 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:32:59.756Z | 49 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:33:38.997Z | 3 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:33:47.452Z | 4 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:34:13.111Z | 9 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T04:34:38.975Z | 11 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:34:49.737Z | 12 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:35:06.764Z | 15 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:35:26.114Z | 17 | google/gemini-flash-1.5 | 404 | Model google/gemini-flash-1.5 failed (HTTP 404): {"error":{"message":"No endpoints found for google/ |
+| 2026-04-05T04:37:50.680Z | 28 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T04:38:33.684Z | 31 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T04:40:08.596Z | 35 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T04:41:07.624Z | 36 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T04:42:16.027Z | 44 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T10:25:15.875Z | 9 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T10:43:00.368Z | 0 | openrouter/free | 400 | Model openrouter/free failed (HTTP 400): {"error":{"message":"Provider returned error","code":400,"m |
+| 2026-04-05T10:43:25.846Z | 1 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T10:44:28.677Z | 4 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T10:44:29.183Z | 4 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T10:45:30.980Z | 7 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T10:45:40.091Z | 7 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-05T10:45:45.812Z | 7 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T10:46:04.292Z | 8 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T10:46:22.098Z | 9 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T10:59:42.848Z | 0 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T10:59:48.578Z | 0 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:00:02.265Z | 1 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:00:13.407Z | 2 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:00:19.723Z | 2 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T11:00:38.197Z | 2 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:00:43.920Z | 2 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:00:47.512Z | 3 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:00:55.954Z | 3 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:01:01.708Z | 3 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:01:07.924Z | 3 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T11:01:21.190Z | 4 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:01:42.516Z | 5 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:01:50.260Z | 5 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:01:50.802Z | 5 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:02:31.977Z | 8 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:02:41.182Z | 8 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-05T11:03:00.065Z | 9 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:03:06.600Z | 9 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T11:03:16.674Z | 9 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:03:17.146Z | 9 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:03:59.467Z | 0 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:03:59.966Z | 0 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:04:23.522Z | 1 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-05T11:04:24.028Z | 1 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:04:44.444Z | 2 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:04:53.192Z | 3 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:04:58.959Z | 3 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:15:18.021Z | 0 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:15:52.012Z | 2 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:15:58.029Z | 2 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:15:58.243Z | 2 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:16:47.087Z | 5 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-05T11:17:33.686Z | 7 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:17:33.870Z | 7 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:17:49.606Z | 8 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:17:59.156Z | 8 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:17:59.319Z | 8 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:25:51.283Z | 1 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:26:04.929Z | 2 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:26:51.687Z | 3 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:27:38.674Z | 4 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:28:20.560Z | 0 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:28:23.779Z | 1 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-05T11:28:50.171Z | 2 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:29:02.612Z | 8 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:29:03.110Z | 8 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:29:12.004Z | 5 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:29:15.959Z | 9 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:29:21.722Z | 9 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:30:08.526Z | 8 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T11:30:11.204Z | 9 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:30:14.654Z | 8 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:30:14.783Z | 8 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:30:16.871Z | 9 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:30:17.053Z | 9 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:48:01.611Z | 0 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:48:01.625Z | 2 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:48:06.849Z | 5 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:48:07.019Z | 0 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:48:07.236Z | 2 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:48:09.907Z | 1 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:48:10.308Z | 3 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:48:15.200Z | 1 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:48:23.376Z | 7 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:48:32.245Z | 12 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:48:36.936Z | 11 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:48:37.107Z | 14 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:48:37.925Z | 16 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:48:38.397Z | 10 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:48:41.013Z | 12 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:48:44.992Z | 14 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-m |
+| 2026-04-05T11:48:45.196Z | 14 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:48:49.297Z | 19 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:48:50.442Z | 17 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:48:58.000Z | 19 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-m |
+| 2026-04-05T11:49:03.071Z | 19 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:49:41.723Z | 23 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:49:42.049Z | 21 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:49:51.100Z | 23 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:49:52.079Z | 27 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:49:56.402Z | 23 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:49:57.737Z | 27 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:49:59.579Z | 29 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:49:59.644Z | 29 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:50:40.252Z | 30 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:50:40.282Z | 31 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:50:45.846Z | 34 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:50:48.690Z | 35 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:50:48.995Z | 35 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:50:49.143Z | 32 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-05T11:50:51.375Z | 37 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:50:54.606Z | 38 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:50:54.610Z | 34 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-05T11:50:54.842Z | 35 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:50:56.156Z | 36 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:50:56.218Z | 36 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:50:59.767Z | 37 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:50:59.876Z | 38 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:51:14.111Z | 41 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:51:15.709Z | 42 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:51:19.428Z | 44 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:51:19.485Z | 44 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:51:19.830Z | 41 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:51:23.589Z | 48 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:51:28.478Z | 44 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:51:29.767Z | 49 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:51:31.790Z | 47 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:51:31.849Z | 47 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:51:37.144Z | 47 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:56:52.336Z | 4 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:56:52.350Z | 0 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:56:52.368Z | 1 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:57:01.834Z | 7 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:57:10.458Z | 7 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:57:10.753Z | 8 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:57:11.142Z | 9 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:57:11.201Z | 9 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:57:15.962Z | 7 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:57:16.072Z | 8 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:57:16.238Z | 8 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:57:16.493Z | 9 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:57:32.040Z | 14 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:57:32.374Z | 15 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:57:40.068Z | 11 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:57:40.082Z | 15 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:57:40.547Z | 12 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Provider returned error","code":429,"m |
+| 2026-04-05T11:57:40.703Z | 17 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:57:45.716Z | 15 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:58:39.346Z | 22 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:58:39.364Z | 24 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:58:39.369Z | 25 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:58:47.632Z | 23 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:58:47.802Z | 20 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:58:48.365Z | 24 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T11:58:52.549Z | 28 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:58:53.032Z | 23 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:58:53.085Z | 23 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:58:53.185Z | 20 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:58:53.243Z | 20 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:58:53.573Z | 26 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:58:53.836Z | 24 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:58:57.937Z | 28 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:59:41.815Z | 30 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:59:47.138Z | 31 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:59:47.418Z | 35 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:59:47.496Z | 33 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T11:59:47.655Z | 31 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:59:51.521Z | 36 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:59:51.741Z | 37 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T11:59:56.911Z | 36 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T12:00:07.308Z | 39 | openrouter/free | 429 | Model openrouter/free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: free-models-per-d |
+| 2026-04-05T12:00:07.475Z | 39 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T12:00:13.508Z | 39 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T12:00:18.836Z | 39 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T12:00:20.582Z | 45 | sourceful/riverflow-v2-fast-preview | 402 | Model sourceful/riverflow-v2-fast-preview failed (HTTP 402): {"error":{"message":"Insufficient credi |
+| 2026-04-05T12:00:26.107Z | 40 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T12:00:26.558Z | 44 | stepfun/step-3.5-flash:free | 429 | Model stepfun/step-3.5-flash:free failed (HTTP 429): {"error":{"message":"Provider returned error"," |
+| 2026-04-05T12:00:32.310Z | 44 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |
+| 2026-04-05T12:00:37.995Z | 48 | openrouter/free | 402 | Model openrouter/free failed (HTTP 402): {"error":{"message":"Provider returned error","code":402,"m |
+| 2026-04-05T12:00:39.176Z | 49 | liquid/lfm-2.5-1.2b-thinking:free | 429 | Model liquid/lfm-2.5-1.2b-thinking:free failed (HTTP 429): {"error":{"message":"Rate limit exceeded: |

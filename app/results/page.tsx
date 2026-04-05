@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSimulation } from "@/lib/SimulationContext";
+import { supabase } from "@/lib/supabase";
 import AdoptionCurveSection from "@/components/results/AdoptionCurveSection";
 import PersonaBreakdownSection from "@/components/results/PersonaBreakdownSection";
 import KeyVoices from "@/components/results/KeyVoices";
@@ -15,6 +16,7 @@ export default function ResultsPage() {
     const sim = useSimulation();
     const [insightsLoading, setInsightsLoading] = useState(false);
     const [chartMode, setChartMode] = useState<"percent" | "count" | "delta">("percent");
+    const [parentAdoption, setParentAdoption] = useState<number | null>(null);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
@@ -35,20 +37,31 @@ export default function ResultsPage() {
                 }
                 return;
             }
-
-            // REDIRECT PROTECTION: Only redirect if we AREN'T loading a specific ID
-            // and have no data to show.
-            const timer = setTimeout(() => {
-                if (!simId && sim.flowStep !== "complete" && sim.agents.length === 0) {
-                    router.push("/simulate");
-                }
-            }, 500); // 500ms safety buffer to allow initial context check
-
-            return () => clearTimeout(timer);
         }
-
         init();
-    }, [sim.agents.length, sim.dbSimulationId, sim.flowStep, sim.loadSimulationFromDb, router]);
+    }, [sim.agents.length, sim.dbSimulationId, sim.loadSimulationFromDb, router]);
+
+    // Fetch parent data for comparison
+    useEffect(() => {
+        const fetchParent = async () => {
+             const parentId = (sim.scenario as any)?.parent_id || (sim.scenario as any)?.configuration?.parent_id;
+             if (!parentId) return;
+
+             const { data, error } = await supabase
+                .from("simulations")
+                .select("results")
+                .eq("id", parentId)
+                .single();
+
+             if (data?.results?.states) {
+                const states = data.results.states;
+                const total = Object.keys(states).length;
+                const support = Object.values(states).filter((s: any) => s.decision === 'support').length;
+                if (total > 0) setParentAdoption(Math.round((support / total) * 100));
+             }
+        };
+        if (sim.dbSimulationId) fetchParent();
+    }, [sim.dbSimulationId, sim.scenario]);
 
     useEffect(() => {
         if (sim.agents.length > 0 && !sim.insights && !insightsLoading && sim.flowStep === "complete") {
@@ -115,6 +128,36 @@ export default function ResultsPage() {
         }
     };
 
+    const handleExportCSV = () => {
+        if (sim.agents.length === 0) return;
+        const rows = sim.agents.map((a) => {
+            const s = sim.agentStates[a.id];
+            return {
+                id: a.id,
+                name: a.name,
+                persona: a.persona,
+                age: a.age,
+                job: a.job,
+                decision: s?.decision ?? "none",
+                reasoning: `"${(s?.reasoning ?? "").replace(/"/g, "'")}"`,
+                risk: a.risk,
+                trust: a.trust,
+                social: a.social,
+                income: a.income,
+                influence: a.influence_score,
+            };
+        });
+        const header = Object.keys(rows[0]).join(",");
+        const csv = [header, ...rows.map((r) => Object.values(r).join(","))].join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${(sim.scenario?.label || "product").replace(/\s+/g, "-").toLowerCase()}-results-${Date.now()}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
     const total = sim.agents.length;
     const supportCount = Object.values(sim.agentStates).filter((s) => s.decision === "support").length;
     const opposeCount = Object.values(sim.agentStates).filter((s) => s.decision === "oppose").length;
@@ -173,7 +216,7 @@ export default function ResultsPage() {
         <div className="results-root">
             <nav className="results-nav no-print results-nav-shell">
                 <div className="results-brand-block">
-                    <Link href="/" className="results-brand" style={{ textDecoration: "none" }}>
+                    <Link href="/dashboard" className="results-brand" style={{ textDecoration: "none" }}>
                         <span className="landing-nav-dot">◉</span>
                         <span>DI//PLATFORM</span>
                     </Link>
@@ -182,16 +225,27 @@ export default function ResultsPage() {
                     </div>
                 </div>
 
-                <div className="results-nav-actions">
+                <div className="results-nav-actions" style={{ gap: 8 }}>
+                    <button 
+                        className="btn-cta" 
+                        onClick={handleExportCSV}
+                        style={{ background: "linear-gradient(180deg, var(--support), #13b19a)", boxShadow: "0 0 15px rgba(0,208,132,0.25)", color: "white", padding: "0 18px", height: "36px", border: "none", borderRadius: "100px", fontWeight: 700, display: "flex", alignItems: "center", gap: 8, transform: "scale(1.05)", transition: "all 0.2s" }}
+                    >
+                       <span style={{ fontSize: 16 }}>💾</span> EXPORT CSV
+                    </button>
+
+                    <Link href="/dashboard" className="btn-ghost-setup" style={{ textDecoration: "none" }}>
+                        DASHBOARD
+                    </Link>
                     <button className="btn-ghost-setup" onClick={() => window.print()}>
-                        Export PDF
+                        PDF
                     </button>
                     <Link
                         href={sim.dbSimulationId ? `/simulate?id=${sim.dbSimulationId}` : "/simulate"}
                         className="btn-ghost-setup"
                         style={{ textDecoration: "none" }}
                     >
-                        ← Sim
+                        ← RETRY
                     </Link>
                 </div>
             </nav>
@@ -206,10 +260,28 @@ export default function ResultsPage() {
 
                         <div className="results-pill-row">
                             <span className="results-pill results-pill-support">{adoptionPct}% adopted</span>
-                            <span className="results-pill results-pill-neutral">{undecidedPct}% undecided</span>
-                            <span className="results-pill results-pill-oppose">{oppositionPct}% opposed</span>
+                            {parentAdoption !== null && (
+                                <span className={`results-pill results-delta ${adoptionPct >= parentAdoption ? 'pos' : 'neg'}`}>
+                                    {adoptionPct >= parentAdoption ? '↑' : '↓'} {Math.abs(adoptionPct - parentAdoption)}% VS BASELINE
+                                </span>
+                            )}
+                            <span className="results-pill results-pill-neutral military-hide">{undecidedPct}% undecided</span>
+                            <span className="results-pill results-pill-oppose military-hide">{oppositionPct}% opposed</span>
                         </div>
                     </div>
+
+                    <style jsx>{`
+                        .results-delta {
+                            background: rgba(255,255,255,0.05);
+                            border: 1px solid rgba(255,255,255,0.1);
+                            font-weight: 800 !important;
+                        }
+                        .results-delta.pos { color: var(--support); border-color: rgba(0, 208, 132, 0.3); }
+                        .results-delta.neg { color: var(--oppose); border-color: rgba(255, 59, 59, 0.3); }
+                        @media (max-width: 1000px) {
+                            .military-hide { display: none; }
+                        }
+                    `}</style>
                 </section>
 
                 <div className="results-dashboard-grid">

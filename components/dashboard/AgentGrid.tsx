@@ -16,9 +16,10 @@ export default function AgentGrid({ agents, states, selectedId, onSelect }: Agen
             className="no-scrollbar"
             style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-                gap: 6,
-                padding: 8,
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: 16,
+                padding: 16,
+                paddingBottom: 40,
                 overflowY: "auto",
                 flex: 1,
             }}

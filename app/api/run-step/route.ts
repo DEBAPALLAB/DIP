@@ -1,202 +1,162 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { getScenario } from "@/lib/scenarios";
-import { buildSystemPrompt, calculateDecision } from "@/lib/prompts";
-import type { RunStepRequest, RunStepResponse, AgentState, ScenarioParams } from "@/lib/types";
-
+import { calculateDecision } from "@/lib/prompts";
+import type { RunStepBatchRequest, RunStepBatchResponse, RunStepResponse, AgentState } from "@/lib/types";
 
 let keyRotationIndex = 0;
 
 export async function POST(req: NextRequest) {
     try {
-        const body: RunStepRequest = await req.json();
-        const { agentId, agent, scenarioId, customScenario: bodyCustomScenario, previousParams, neighborStates, neighborAgents } = body;
+        const body: RunStepBatchRequest = await req.json();
+        const { batch, scenarioId, customScenario: bodyCustomScenario, previousParams } = body;
 
-        if (!agent) {
-            return NextResponse.json(
-                { error: `Agent ${agentId} not found in request` },
-                { status: 400 }
-            );
+        if (!batch || !Array.isArray(batch) || batch.length === 0) {
+            return NextResponse.json({ error: "Empty or invalid batch" }, { status: 400 });
         }
 
         const scenario = bodyCustomScenario ?? getScenario(scenarioId);
-        const apiKey = process.env.OPENROUTER_API_KEY;
+        
+        // ─── Phase 1: Deterministic Decisions ───
+        const cohortData = batch.map(item => {
+            const neighborStateMap: Record<number, AgentState> = Object.fromEntries(
+                Object.entries(item.neighborStates || {}).map(([k, v]) => [
+                    Number(k),
+                    { decision: v.decision, reasoning: v.reasoning, step: null, pending: false },
+                ])
+            );
 
-        if (!apiKey) {
-            return NextResponse.json({ error: "OPENROUTER_API_KEY not set" }, { status: 500 });
-        }
-
-        // ─── Phase 1: Deterministic Decision (Source of Truth) ───
-        const neighborStateMap: Record<number, AgentState> = Object.fromEntries(
-            Object.entries(neighborStates || {}).map(([k, v]) => [
-                Number(k),
-                { decision: v.decision, reasoning: v.reasoning, step: null, pending: false },
-            ])
-        );
-
-        const { decision: trueDecision } = calculateDecision(agent, scenario, neighborStateMap, neighborAgents || [], previousParams);
+            const { decision } = calculateDecision(item.agent, scenario, neighborStateMap, item.neighborAgents || [], previousParams);
+            
+            return {
+                agentId: item.agentId,
+                agent: item.agent,
+                decision,
+                neighborAgents: item.neighborAgents,
+                neighborStateMap
+            };
+        });
 
         // ─── Phase 2: Narrative Generation ───
-        const { systemPrompt } = buildSystemPrompt(agent, scenario, neighborStateMap, neighborAgents || [], previousParams);
+        const cohortListString = cohortData.map(d => {
+            const neighborLines = (d.neighborAgents ?? [])
+                .map(nb => `${nb.name} (${nb.persona}): ${d.neighborStateMap[nb.id]?.decision?.toUpperCase() || "NEUTRAL"}`)
+                .join(", ");
 
-        const neighborLines = (neighborAgents ?? [])
-            .map((nb) => {
-                const st = neighborStateMap[nb.id];
-                if (!st?.decision) return `${nb.name} (${nb.persona}): no opinion yet`;
-                return `${nb.name} (${nb.persona}): ${st.decision.toUpperCase().slice(0, 10)} — "${(st.reasoning ?? "").slice(0, 200)}..."`;
-            })
-            .join("\n");
+            return `ID: ${d.agentId} | NAME: ${d.agent.name} | ARCHETYPE: ${d.agent.persona} | DECISION: ${(d.decision || "neutral").toUpperCase()} | NETWORK: [${neighborLines}]`;
+        }).join("\n");
 
-        const userPrompt = `PRODUCT: ${scenario.label} — ${scenario.tag}
-${scenario.brief}
+        // ULTRA-BRIEF PROMPT (Prevents token-wasting preamble/reflection)
+        const systemPrompt = `ACT AS A DATA GENERATOR.
+JSON ARRAY ONLY. NO PREAMBLE. NO THINKING ALOUD.
+For each ID, provide ONE concise character-driven sentence explaining their decision.
+FORMAT: [{"id": 0, "reasoning": "..."}]`;
 
-YOUR NETWORK:
-${neighborLines || "No connections yet."}
+        const userPrompt = `SCENARIO: ${scenario.brief}\nCOHORT:\n${cohortListString}\n\nOUTPUT JSON NOW.`;
 
-You have decided to ${trueDecision?.toUpperCase() || "STAY NEUTRAL"}. 
-Explain your reasoning in 2-3 sentences as ${agent.name}.`;
-
-        // Support for multiple API keys (comma-separated in .env)
-        const allKeys = (process.env.OPENROUTER_API_KEY || "")
-            .split(",")
-            .map(k => k.trim().replace(/^["']|["']$/g, ""))
-            .filter(Boolean);
-        
-        console.log(`[API_INIT] Found ${allKeys.length} OpenRouter keys in pool.`);
-        if (allKeys.length === 0) throw new Error("No OPENROUTER_API_KEY found");
-
-        const MODELS = [
-            "openrouter/free", // The intelligent auto-router
+        // AUTHORIZED FREE MODELS
+        const FREE_MODELS = [
+            "nvidia/nemotron-3-super-120b-a12b:free",
             "stepfun/step-3.5-flash:free",
             "liquid/lfm-2.5-1.2b-thinking:free",
-            "google/gemini-flash-1.5", // Removed exp and suffix as it 404ed
+            "z-ai/glm-4.5-air:free",
+            "arcee-ai/trinity-large-preview:free"
         ];
 
-        // Fisher-Yates shuffle to distribute load across providers
-        const shuffledModels = [...MODELS];
-        for (let i = shuffledModels.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledModels[i], shuffledModels[j]] = [shuffledModels[j], shuffledModels[i]];
-        }
+        const allKeys = (process.env.OPENROUTER_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
+        if (allKeys.length === 0) throw new Error("No API keys found");
 
         let response: Response | null = null;
         let lastError: any = null;
-        let usedModel = "";
+        let finalModel = "";
 
-        // Triple-layer fallback loop (now shuffled)
-        for (const model of shuffledModels) {
-            usedModel = model;
-            const maxRetries = 1; // 1 retry per model before fallback
+        // Fallback Loop
+        for (const model of FREE_MODELS) {
+            finalModel = model;
+            const key = allKeys[keyRotationIndex % allKeys.length];
+            keyRotationIndex++;
 
-            for (let attempt = 0; attempt <= maxRetries; attempt++) {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout per attempt
+            try {
+                response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${key}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+                        temperature: 0.3, // Lower temp = more predictable JSON
+                        max_tokens: 4000  // Massive buffer for 10 agents
+                    }),
+                    signal: AbortSignal.timeout(60000) // 1 minute timeout per model
+                });
 
-                    // STRICT ROUND-ROBIN: Rotate keys sequentially for every single request/retry
-                    const selectedKey = allKeys[keyRotationIndex % allKeys.length];
-                    keyRotationIndex++;
-                    
-                    // MASKED LOG: Explicitly see which account is being used
-                    console.log(`[AUTH] Using Key ${keyRotationIndex % allKeys.length + 1}/${allKeys.length}: ${selectedKey.slice(0, 10)}...`);
-
-                    response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${selectedKey}`,
-                            "HTTP-Referer": "https://strawberry-simulation.vercel.app",
-                            "X-Title": "Strawberry Strategic Sandbox",
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            model: model,
-                            messages: [
-                                { role: "system", content: systemPrompt },
-                                { role: "user", content: userPrompt },
-                            ],
-                            max_tokens: 1000,
-                            temperature: 0.7,
-                        }),
-                        signal: controller.signal
-                    });
-
-                    clearTimeout(timeoutId);
-                    if (response.ok) break;
-
-                    const errText = await response.text();
-                    lastError = new Error(`Model ${model} failed (HTTP ${response.status}): ${errText}`);
-                    
-                    // Instant skip for 404 (ID deprecated or not available)
-                    if (response.status === 404) {
-                        console.warn(`404: Model ${model} unavailable. Skipping instantly.`);
-                        break;
-                    }
-
-                    // Special 429 Handling: Wait 5 seconds to reset window, then try next model
-                    if (response.status === 429) {
-                        console.warn(`429: Rate limited on model ${model}. Pausing 5s for stability.`);
-                        await new Promise(resolve => setTimeout(resolve, 5000));
-                        break; 
-                    }
-
-                    // If it's a 4xx error other than 429, don't bother retrying this model, move to next
-                    if (response.status >= 400 && response.status < 500) break;
-
-                } catch (err: any) {
-                    lastError = err;
-                }
-
-                if (attempt < maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+                if (response.ok) break;
+                lastError = await response.text();
+            } catch (e) {
+                lastError = e;
             }
-
-            if (response && response.ok) break;
-            
-            // LOG FAILURE TO DIAGNOSTICS
-            const logPath = path.join(process.cwd(), "DIAGNOSTICS.md");
-            const entry = `| ${new Date().toISOString()} | ${agentId} | ${model} | ${response?.status || 'FAIL'} | ${lastError?.message.slice(0, 100) || 'Unknown'} |\n`;
-            try { fs.appendFileSync(logPath, entry); } catch (e) { console.error("Logging failed", e); }
-
-            console.warn(`Fallback: Model ${model} failed, trying next...`);
         }
 
-        if (!response || !response.ok) {
-            return NextResponse.json({ 
-                error: lastError?.message || "All models failed",
-                details: `Fallback logic exhausted (Tried: ${MODELS.join(", ")})`
-            }, { status: 502 });
-        }
+        if (!response || !response.ok) throw new Error(`Model error: ${lastError}`);
 
         const data = await response.json();
-        let text: string = data.choices?.[0]?.message?.content ?? "";
-
-        // 1. Strip common "thought" blocks from thinking models
-        text = text.replace(/<(thought|thinking|reasoning)>[\s\S]*?<\/\1>/gi, "");
-        text = text.replace(/\[(thought|thinking|reasoning)\][\s\S]*?\[\/\1\]/gi, "");
+        const text = data.choices?.[0]?.message?.content ?? "";
         
-        // 2. Strip any "DECISION: ..." meta-tags (case-insensitive)
-        let reasoning = text.replace(/DECISION:\s*(support|neutral|oppose)/gi, "").trim();
-
-        // 3. Robust quote stripping
-        reasoning = reasoning.replace(/^["']|["']$/g, "").trim();
+        // ─── Phase 3: Rescue Parser (Hyper-Resiliency) ───
+        let reasonings: { id: number, reasoning: string }[] = [];
         
-        // 4. Capitalization fix
-        if (reasoning.length > 0) {
-            reasoning = reasoning.charAt(0).toUpperCase() + reasoning.slice(1);
-        }
-
-        const result: RunStepResponse = {
-            agentId,
-            decision: trueDecision, 
-            reasoning,
-            model: usedModel
+        const tryParse = (raw: string) => {
+            try {
+                // 1. Clean markdown headers
+                let clean = raw.replace(/```json|```/g, "").trim();
+                
+                // 2. Extract valid array boundaries
+                const start = clean.indexOf('[');
+                const end = clean.lastIndexOf(']');
+                
+                if (start !== -1) {
+                    let fragment = clean.substring(start);
+                    if (end !== -1 && end > start) {
+                        fragment = clean.substring(start, end + 1);
+                    } else {
+                        // 3. TRUNCATION REPAIR: If it ends abruptly, try to close it
+                        // Find the last complete object "}"
+                        const lastBrace = fragment.lastIndexOf('}');
+                        if (lastBrace !== -1) {
+                            fragment = fragment.substring(0, lastBrace + 1) + ']';
+                        }
+                    }
+                    return JSON.parse(fragment);
+                }
+                return null;
+            } catch (e) {
+                return null;
+            }
         };
 
-        return NextResponse.json(result);
-    } catch (err) {
-        console.error("run-step error:", err);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        const parsed = tryParse(text);
+        if (Array.isArray(parsed)) {
+            reasonings = parsed;
+        } else if (parsed && (parsed as any).results) {
+            reasonings = (parsed as any).results;
+        }
+
+        // ─── Phase 4: Final Mapping ───
+        const results: RunStepResponse[] = cohortData.map(d => {
+            const aiEntry = reasonings.find(r => r.id === d.agentId);
+            return {
+                agentId: d.agentId,
+                decision: d.decision,
+                reasoning: aiEntry?.reasoning || "Logic stabilizing in character background...",
+                model: finalModel
+            };
+        });
+
+        return NextResponse.json({ results });
+
+    } catch (err: any) {
+        console.error("Batch crash salvaged:", err);
+        return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

@@ -8,6 +8,8 @@ import { generateAgents, buildWattsStrogatz } from "@/lib/agentGeneration";
 import { useSimulation } from "@/lib/SimulationContext";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import InterventionPanel from "@/components/dashboard/InterventionPanel";
+import LiveSignalTicker from "@/components/dashboard/LiveSignalTicker";
 
 import type {
     Agent,
@@ -18,6 +20,8 @@ import type {
     StepSnapshot,
     LogEntry,
     RunStepResponse,
+    RunStepBatchRequest,
+    RunStepBatchResponse,
     DecisionType,
     PersonaType,
     Scenario,
@@ -35,7 +39,6 @@ import ProductBrief from "@/components/dashboard/ProductBrief";
 import ConfigScreen from "@/components/dashboard/ConfigScreen";
 import CustomScenarioForm, { loadSavedCustomScenario } from "@/components/dashboard/CustomScenarioForm";
 import AgentListFilter from "@/components/dashboard/AgentListFilter";
-import InterventionPanel from "@/components/dashboard/InterventionPanel";
 import { deriveSimParams } from "@/lib/productParams";
 
 
@@ -56,13 +59,9 @@ function generateStepInsight(counts: StepSnapshot, stepNum: number, prevCounts?:
     if (delta > 0) return `Cascade building — ${delta} more agents moved to support this step`;
     return `Resistance holding — ${Math.abs(delta)} agents moved away from support`;
 }
-
 // ─── Batch size scaling ────────────────────────────────────────────────────────
-
 function getBatchSize(agentCount: number): number {
-    // Gentle bump: small runs stay sequential, larger runs get a tiny parallel lift.
-    // This keeps us reasonably close to the free-tier limit while reducing wall time.
-    return agentCount >= 30 ? 2 : 1;
+    return agentCount >= 30 ? 10 : 5;
 }
 
 // ─── Batch helper ──────────────────────────────────────────────────────────────
@@ -126,7 +125,18 @@ export default function SimulatePage() {
     const [stepInsight, setStepInsight] = useState<string | null>(null);
 
     const abortRef = useRef(false);
+    const controllerRef = useRef<AbortController | null>(null);
     const [isLoadingDb, setIsLoadingDb] = useState(false);
+
+    // ─── Lifecycle: Cleanup on unmount ───
+    useEffect(() => {
+        return () => {
+            abortRef.current = true;
+            if (controllerRef.current) {
+                controllerRef.current.abort();
+            }
+        };
+    }, []);
 
     // Derived scenario from context
     const scenario = useMemo(
@@ -330,122 +340,136 @@ export default function SimulatePage() {
             const neighborSnapshot = { ...currentStates };
             const batches = chunk(agents, batchSize);
 
+            // Create a fresh AbortController for this step
+            if (controllerRef.current) controllerRef.current.abort();
+            const controller = new AbortController();
+            controllerRef.current = controller;
+
             // Calculate previous params for Delta-Aware logic
             const previousParams = simCtx.previousProduct ? deriveSimParams(simCtx.previousProduct) : undefined;
 
             let doneCount = 0;
             setProgress({ done: 0, total: agents.length });
+            abortRef.current = false; // Reset on start
+            
+            simCtx.clearTicker();
+            simCtx.addTickerMsg(`INITIATING_STEP_${currentStep + 1}_PROCEDURES`, "info");
 
             for (const batch of batches) {
-                if (abortRef.current) break;
+                if (abortRef.current || controller.signal.aborted) break;
+                
+                const batchIndex = batches.indexOf(batch) + 1;
+                simCtx.addTickerMsg(`PROCESSING_BATCH_${batchIndex}/${batches.length}...`, "info");
 
-                const results = await Promise.allSettled(
-                    batch.map(async (agent) => {
-                        // Seed logic: handle first step partners
-                        if (currentStep === 0 && currentStates[agent.id]?.isSeeded) {
-                            await new Promise((res) => setTimeout(res, 400));
-                            return {
-                                agentId: agent.id,
-                                decision: "support" as DecisionType,
-                                reasoning: "I am supporting this product as an early partner.",
-                            } as RunStepResponse;
-                        }
-
+                // ─── Phase 2: Batch API Execution ──────────────────────────────────────
+                const payload: RunStepBatchRequest = {
+                    batch: batch.map(agent => {
+                        // Seed logic: handle first step partners (Simulated inside the batch for legacy support)
+                        const isSeeded = currentStep === 0 && currentStates[agent.id]?.isSeeded;
+                        
                         const neighborIds = edges
                             .filter(([a, b]) => a === agent.id || b === agent.id)
                             .map(([a, b]) => (a === agent.id ? b : a));
-
-                        const neighborStates = Object.fromEntries(
-                            neighborIds.map((nid) => [
-                                nid,
-                                {
-                                    decision: neighborSnapshot[nid]?.decision ?? null,
-                                    reasoning: neighborSnapshot[nid]?.reasoning ?? null,
-                                },
-                            ])
-                        );
-
-                        const neighborAgents = neighborIds
-                            .map((id) => agents.find((a) => a.id === id))
-                            .filter(Boolean) as Agent[];
-
-                        const res = await fetch("/api/run-step", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                agentId: agent.id,
-                                agent,
-                                scenarioId: scenario.id,
-                                customScenario: scenario.id === "custom" ? scenario : undefined,
-                                neighborStates,
-                                neighborAgents,
-                                previousParams,
-                            }),
-                        });
-
-                        if (!res.ok) {
-                            const errData = await res.json();
-                            throw new Error(errData.error || `Agent ${agent.id} failed`);
-                        }
-                        return (await res.json()) as RunStepResponse;
-                    })
-                );
-
-                for (let i = 0; i < batch.length; i++) {
-                    const agent = batch[i];
-                    const result = results[i];
-
-                    if (result.status === "fulfilled") {
-                        const { decision, reasoning, model } = result.value;
-                        newStates[agent.id] = {
-                            ...newStates[agent.id],
-                            decision,
-                            reasoning,
-                            model,
-                            step: currentStep,
-                            pending: false,
-                        };
-
-                        simCtx.addAgentHistoryPoint(agent.id, {
-                            step: currentStep,
-                            decision
-                        });
-
-                        simCtx.addLogEntry({
-                            step: currentStep,
+                        
+                        return {
                             agentId: agent.id,
-                            agentName: agent.name,
-                            persona: agent.persona,
-                            decision,
-                            reasoning,
-                            timestamp: Date.now(),
-                        });
-                    } else {
-                        // Keep current state but clear pending and show error in reasoning
-                        const errorMsg = result.reason instanceof Error ? result.reason.message : String(result.reason);
-                        newStates[agent.id] = { 
-                            ...newStates[agent.id], 
-                            pending: false,
-                            reasoning: `[SYSTEM_ERROR]: ${errorMsg.slice(0, 100)}...`
+                            agent: agent,
+                            neighborStates: Object.fromEntries(
+                                neighborIds.map(nid => [
+                                    nid,
+                                    { 
+                                        decision: neighborSnapshot[nid]?.decision ?? "neutral", 
+                                        reasoning: neighborSnapshot[nid]?.reasoning ?? "" 
+                                    }
+                                ])
+                            ),
+                            neighborAgents: neighborIds
+                                .map(id => agents.find(ag => ag.id === id))
+                                .filter(Boolean) as Agent[]
                         };
-                        console.error(`Simulation failed for agent ${agent.id}:`, result.reason);
-                    }
+                    }),
+                    scenarioId: scenario.id,
+                    customScenario: scenario.id === "custom" ? scenario : undefined,
+                    previousParams
+                };
+
+                const res = await fetch("/api/run-step", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || `Batch failure (HTTP ${res.status})`);
+                }
+
+                const data: RunStepBatchResponse = await res.json();
+
+                // ─── Phase 3: State Integration ──────────────────────────────────────
+                data.results.forEach((resItem: RunStepResponse) => {
+                    const agent = agents.find(a => a.id === resItem.agentId)!;
+                    
+                    // Special case for seeded agents in step 0
+                    const finalDecision = (currentStep === 0 && currentStates[agent.id]?.isSeeded) ? "support" as DecisionType : resItem.decision;
+                    const finalReasoning = (currentStep === 0 && currentStates[agent.id]?.isSeeded) ? "I am supporting this product as an early partner." : resItem.reasoning;
+
+                    newStates[resItem.agentId] = {
+                        ...newStates[resItem.agentId],
+                        decision: finalDecision,
+                        reasoning: finalReasoning,
+                        model: resItem.model,
+                        step: currentStep,
+                        pending: false,
+                    };
+
+                    simCtx.addAgentHistoryPoint(resItem.agentId, {
+                        step: currentStep,
+                        decision: finalDecision
+                    });
+
+                    simCtx.addLogEntry({
+                        step: currentStep,
+                        agentId: resItem.agentId,
+                        agentName: agent.name,
+                        persona: agent.persona,
+                        decision: finalDecision,
+                        reasoning: finalReasoning,
+                        timestamp: Date.now(),
+                    });
 
                     doneCount++;
-                    setProgress({ done: doneCount, total: agents.length });
-                }
+                });
+
+                setProgress({ done: doneCount, total: agents.length });
 
                 // Update local context state at end of batch for live feedback
                 simCtx.setAgentStates({ ...newStates });
+                
+                // Real-time Analyst Alert
+                const batchSupport = data.results.filter((r: RunStepResponse) => r.decision === 'support').length;
+                if (batchSupport / batch.length < 0.3) {
+                    simCtx.addTickerMsg(`ALERT: RESISTANCE_CRITICAL_IN_LATENT_GROUPS`, "alert");
+                } else if (batchSupport / batch.length > 0.7) {
+                    simCtx.addTickerMsg(`SIGNAL: STRONG_MOMENTUM_DETECTED`, "success");
+                }
 
-                // SAFE MODE DELAY: 3.5s pause ensures we process ~17 agents per minute (Under the 20 RPM limit).
+                // SAFE MODE DELAY: 1.5s pause (Optimized for multiple account rotation)
                 if (batches.length > 1) {
-                    const jitter = Math.floor(Math.random() * 500);
-                    await new Promise(resolve => setTimeout(resolve, 3000 + jitter));
+                    const jitter = Math.floor(Math.random() * 300);
+                    await new Promise(resolve => setTimeout(resolve, 1200 + jitter));
                 }
             }
 
             // ─── FINALIZATION: Only finalize step AFTER all batches complete ───
+            if (abortRef.current || controller.signal.aborted) {
+                setRunning(false);
+                setProgress(null);
+                setPhase("DONE");
+                return currentStates;
+            }
+
             const snap = buildSnapshot(currentStep, newStates);
             simCtx.addAdoptionPoint(snap);
             const prevSnap = simCtx.adoptionCurve.length > 0 ? simCtx.adoptionCurve[simCtx.adoptionCurve.length - 1] : undefined;
@@ -455,6 +479,8 @@ export default function SimulatePage() {
             setRunning(false);
             setPhase("DONE");
             setProgress(null);
+            
+            simCtx.addTickerMsg(`STEP_${currentStep + 1}_ANALYSIS_COMPLETE`, "success");
 
             return newStates;
         },
@@ -515,6 +541,11 @@ export default function SimulatePage() {
 
 
     const handleViewResults = useCallback(async () => {
+        // Kill simulation immediately
+        abortRef.current = true;
+        if (controllerRef.current) controllerRef.current.abort();
+        setRunning(false);
+
         if (simCtx.dbSimulationId && agents.length > 0) {
             try {
                 await supabase
@@ -524,7 +555,7 @@ export default function SimulatePage() {
                         total_agents: agents.length,
                         agents,
                         edges,
-                        config: {
+                        configuration: {
                             title: buildSimulationTitle(simCtx.product?.name, scenario.label),
                             product: simCtx.product,
                             filters: simCtx.marketFilters,
@@ -645,14 +676,38 @@ export default function SimulatePage() {
     }
 
     return (
-        <div className="sim-container" style={{ 
+        <div className="sim-container results-root" style={{ 
             position: "fixed", inset: 0, width: "100%", height: "100%", 
             overflow: "hidden", zIndex: 100, display: "flex", flexDirection: "column",
-            background: "radial-gradient(circle at 50% 0%, #111a24 0%, var(--bg) 70%)"
+            background: "radial-gradient(circle at 50% 50%, rgba(20, 24, 30, 1) 0%, rgba(8, 10, 12, 1) 100%)",
+            animation: "ambient-pulse 12s infinite alternate ease-in-out"
         }}>
-            {/* ── PREMIUM MISSION CONTROL BACKGROUND ── */}
-            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none" }} />
-            <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)", width: "150%", height: "150%", background: "radial-gradient(ellipse, rgba(255,107,53,0.03) 0%, rgba(0,208,132,0.01) 40%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+            <style jsx global>{`
+                @keyframes ambient-pulse {
+                    0% { filter: brightness(1); }
+                    100% { filter: brightness(1.2); }
+                }
+                .telemetry-label {
+                    position: absolute;
+                    font-family: var(--mono);
+                    font-size: 8px;
+                    color: rgba(255,255,255,0.06);
+                    pointer-events: none;
+                    letter-spacing: 0.25em;
+                    text-transform: uppercase;
+                    z-index: 5;
+                }
+            `}</style>
+
+            {/* Tactical Telemetry Overlays */}
+            <div className="telemetry-label" style={{ top: 80, left: 24 }}>TRINITY_SYS_LVL: 0.94</div>
+            <div className="telemetry-label" style={{ top: 80, right: 24 }}>SIM_ID_HASH: {simCtx.dbSimulationId?.slice(0,12) || "LOCAL_CACHE"}</div>
+            <div className="telemetry-label" style={{ bottom: 24, left: 24 }}>COORDS: 40.7128°N | 74.0060°W</div>
+            <div className="telemetry-label" style={{ bottom: 24, right: 24 }}>MEM_FLOW: {agents.length || 0}P / {new Date().toLocaleTimeString()}</div>
+
+            {/* ── PREMIUM MISSION CONTROL BACKGROUND (MATCH RESULTS ROOT) ── */}
+            <div style={{ position: "absolute", top: "0%", left: "50%", transform: "translateX(-50%)", width: "100%", height: "100%", background: "radial-gradient(circle at top left, rgba(0, 208, 178, 0.08), transparent 40%), radial-gradient(circle at top right, rgba(255, 107, 53, 0.06), transparent 35%)", pointerEvents: "none", zIndex: 0 }} />
+            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none", opacity: 0.5 }} />
             <style jsx global>{`
                 html, body {
                     overflow: hidden !important;
@@ -674,10 +729,19 @@ export default function SimulatePage() {
                 agentCount={agents.length}
             />
 
-            {/* ── Control bar ── */}
-            <div className="control-bar" style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 16px", height: "44px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(8, 12, 16, 0.6)", backdropFilter: "blur(24px)", flexShrink: 0, zIndex: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--orange)", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 800, marginRight: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--orange)", boxShadow: "0 0 12px 2px var(--orange)" }} />
+            {/* ── Control bar (MATCH RESULTS NAV) ── */}
+            <div className="control-bar" style={{ 
+                display: "flex", alignItems: "center", gap: 12, padding: "0 24px", height: "56px", 
+                borderBottom: "1px solid rgba(255,255,255,0.06)", 
+                background: "rgba(8, 8, 8, 0.8)", backdropFilter: "blur(24px)", 
+                flexShrink: 0, zIndex: 20, boxShadow: "0 4px 30px rgba(0,0,0,0.3)" 
+            }}>
+                <Link href="/dashboard" className="btn-ghost-setup" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "6px", marginRight: "12px" }}>
+                    <span style={{ fontSize: "14px" }}>←</span> DASHBOARD
+                </Link>
+
+                <div style={{ fontFamily: "var(--mono)", fontSize: 13, color: "var(--bright)", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 700, marginRight: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                    <div className="landing-nav-dot" style={{ width: 8, height: 8, boxShadow: "0 0 10px var(--orange)" }}>◉</div>
                     TRINITY_ENGINE
                 </div>
 
@@ -707,8 +771,8 @@ export default function SimulatePage() {
                     {(step >= 1 || phase === "DONE") && (
                         <button 
                             onClick={handleViewResults}
-                            className="btn btn-primary" 
-                            style={{ textDecoration: "none", border: "none", cursor: "pointer" }}
+                            className="btn-cta" 
+                            style={{ padding: "8px 16px", height: "32px" }}
                         >
                             View Results →
                         </button>
@@ -716,83 +780,107 @@ export default function SimulatePage() {
 
                     {isConfigured && (
                         <>
-                            <button id="btn-autorun" className="btn btn-ghost" onClick={handleAutoRun} disabled={running} title="Run 3 steps automatically" style={{ letterSpacing: "0.05em", fontSize: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.02)" }}>
+                            <button id="btn-autorun" className="btn-ghost-setup" onClick={handleAutoRun} disabled={running} title="Run 3 steps automatically" style={{ height: "32px", padding: "0 12px" }}>
                                 ▶▶ AUTO ×3
                             </button>
 
-                            <button id="btn-step" className="btn btn-primary" onClick={handleRunStep} disabled={running} style={{ outline: "none", boxShadow: "0 0 15px rgba(0,208,132,0.2)", letterSpacing: "0.05em", fontSize: 10, background: "linear-gradient(to right, var(--support), #00e696)", color: "#000", border: "none" }}>
+                            <button 
+                                id="btn-step" 
+                                className="btn-cta" 
+                                onClick={handleRunStep} 
+                                disabled={running} 
+                                style={{ 
+                                    height: "32px", 
+                                    padding: "0 16px", 
+                                    background: running ? "rgba(255,255,255,0.1)" : "linear-gradient(180deg, var(--support), #13b19a)",
+                                    color: running ? "rgba(255,255,255,0.4)" : "white",
+                                    border: running ? "1px solid rgba(255,255,255,0.1)" : "none",
+                                    transition: "all 0.3s ease"
+                                }}
+                            >
                                 {running ? (
-                                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
-                                        <span className="live-dot" style={{ width: 6, height: 6, background: "#000" }} />
-                                        COMPUTING
+                                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: "10px", letterSpacing: "0.05em" }}>
+                                        <div className="loading-spinner-tiny" style={{ width: 8, height: 8, border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "var(--support)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                                        COMPUTING...
                                     </span>
                                 ) : (
                                     <span style={{ fontWeight: 700 }}>▶ RUN STEP {step + 1}</span>
                                 )}
                             </button>
 
-                            <button id="btn-reset" className="btn btn-ghost" onClick={handleReset} disabled={running} title="Reset simulation (keep population)" style={{ letterSpacing: "0.05em", fontSize: 10 }}>
+                            <button id="btn-reset" className="btn-ghost-setup" onClick={handleReset} disabled={running} title="Reset simulation (keep population)" style={{ height: "32px", padding: "0 12px" }}>
                                 ⟳ RESET
                             </button>
                         </>
                     )}
 
-                    <button id="btn-reconfigure" className="btn btn-ghost" onClick={handleFullReset} disabled={running} title="Re-configure population">
+                    <button id="btn-reconfigure" className="btn-ghost-setup" onClick={handleFullReset} disabled={running} title="Re-configure population" style={{ height: "32px", padding: "0 12px" }}>
                         ◈ CONFIG
                     </button>
                 </div>
             </div>
 
             <div className="sim-main-content" style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0, position: "relative", zIndex: 10 }}>
-                {/* ── LEFT SIDEBAR ── */}
-                <div className="sidebar-left" style={{ 
+                {/* ── LEFT SIDEBAR (MATCH RESULTS RAIL) ── */}
+                <div className="sidebar-left results-card" style={{ 
                     display: "flex", flexDirection: "column", 
-                    width: leftSidebarCollapsed ? "40px" : "300px", 
-                    transition: "width 0.4s cubic-bezier(0.19, 1, 0.22, 1)",
-                    borderRight: "1px solid rgba(255,255,255,0.05)", 
-                    background: "rgba(10, 15, 22, 0.65)",
-                    backdropFilter: "blur(24px)",
+                    width: leftSidebarCollapsed ? "40px" : "320px", 
+                    transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+                    margin: "12px 0 12px 12px",
+                    background: "rgba(12, 12, 12, 0.8)",
+                    backdropFilter: "blur(32px)",
                     overflow: "hidden",
                     position: "relative",
-                    boxShadow: "5px 0 30px rgba(0,0,0,0.2)"
+                    borderRadius: leftSidebarCollapsed ? "12px" : "18px",
+                    border: "1px solid rgba(255,255,255,0.07)"
                 }}>
                     <button 
                         onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
-                        style={{ position: "absolute", top: 8, right: 8, zIndex: 50, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}
+                        style={{ position: "absolute", top: 12, right: 12, zIndex: 50, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}
                     >
                         {leftSidebarCollapsed ? "[+]" : "[-]"}
                     </button>
 
                     {!leftSidebarCollapsed && (
-                        <>
-                            <div className="panel" style={{ flexShrink: 0, borderRadius: 0, border: "none", background: "transparent", display: "flex", flexDirection: "column" }}>
-                                <div className="panel-header" style={{ borderTop: "none", background: "transparent" }}>
-                                    <span className="label">STRATEGIC_BRIEF</span>
-                                    <span style={{ fontSize: 9 }}>{scenario.tag}</span>
-                                </div>
-                                <ProductBrief scenario={scenario} />
-                                <div style={{ padding: "10px", borderTop: "1px solid var(--border)" }}>
-                                    <InterventionPanel />
+                        <div className="no-scrollbar" style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", padding: "12px" }}>
+                            <div style={{ flexShrink: 0, marginBottom: "16px" }}>
+                                <div className="results-side-label" style={{ fontSize: "9px", marginBottom: "8px", paddingLeft: "4px" }}>STRATEGIC_BRIEF</div>
+                                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: "12px", padding: "4px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                    <ProductBrief scenario={scenario} />
                                 </div>
                             </div>
-                            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", borderTop: "1px solid var(--border)" }}>
-                                <div className="panel-header" style={{ borderTop: "none", background: "transparent" }}>
-                                    <span className="label">PERSONA_DISTRIBUTION</span>
-                                    <span style={{ fontSize: 9 }}>N={agents.length || "—"}</span>
-                                </div>
-                                <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
+
+                            <div style={{ flexShrink: 0, marginBottom: "16px" }}>
+                                <InterventionPanel />
+                            </div>
+
+                            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                                <div className="results-side-label" style={{ fontSize: "9px", marginBottom: "8px", paddingLeft: "4px" }}>PERSONA_DISTRIBUTION</div>
+                                <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto", background: "rgba(255,255,255,0.02)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
                                     {agents.length > 0 && <PersonaBreakdown agents={agents} states={states} />}
                                 </div>
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
 
-                {/* ── MAIN VIEWPORT ── */}
-                <div className="sim-viewport" style={{ flex: 1, display: "flex", flexDirection: "column", background: "transparent", position: "relative", overflow: "hidden", height: "100%" }}>
+                {/* ── MAIN VIEWPORT (MATCH RESULTS CONTENT) ── */}
+                <div className="sim-viewport results-card" style={{ 
+                    flex: 1, display: "flex", flexDirection: "column", 
+                    background: "rgba(10, 10, 10, 0.4)", 
+                    margin: "12px", 
+                    borderRadius: "18px",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    position: "relative", overflow: "hidden", height: "calc(100% - 24px)" 
+                }}>
                     {isConfigured && (
-                        <div className="panel-header" style={{ borderTop: "none", borderLeft: "none", borderRight: "none", display: "flex", justifyContent: "space-between", flexShrink: 0, background: "linear-gradient(to right, rgba(0,0,0,0.4), transparent)", padding: "0 20px" }}>
-                            <span className="label" style={{ letterSpacing: "0.2em", color: "var(--bright)", textShadow: "0 0 10px rgba(255,255,255,0.2)" }}>AGENT POPULATION ({filteredAgents.length})</span>
+                        <div className="results-hero-top" style={{ 
+                            padding: "16px 20px", 
+                            background: "linear-gradient(to bottom, rgba(255,255,255,0.03), transparent)",
+                            borderBottom: "1px solid rgba(255,255,255,0.06)",
+                            alignItems: "center"
+                        }}>
+                             <div className="results-side-label" style={{ marginBottom: 0, color: "var(--bright)", opacity: 0.9 }}>AGENT_FIELD · {filteredAgents.length} MATCHES</div>
                              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                                 <button onClick={() => setMainView("network")} className="btn btn-ghost" style={{ border: "none", color: mainView === "network" ? "var(--support)" : "var(--muted)", fontSize: 10, background: mainView === "network" ? "rgba(0,208,132,0.1)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>🕸️ NETWORK</button>
                                 <button onClick={() => setMainView("grid")} className="btn btn-ghost" style={{ border: "none", color: mainView === "grid" ? "var(--support)" : "var(--muted)", fontSize: 10, background: mainView === "grid" ? "rgba(0,208,132,0.1)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>📦 GRID</button>
@@ -825,31 +913,38 @@ export default function SimulatePage() {
                     </div>
                 </div>
 
-                {/* ── RIGHT SIDEBAR ── */}
-                <div className="sidebar-right" style={{ 
+                {/* ── RIGHT SIDEBAR (MATCH RESULTS RAIL) ── */}
+                <div className="sidebar-right results-card" style={{ 
                     display: "flex", flexDirection: "column", 
                     width: rightSidebarCollapsed ? "40px" : "380px", 
-                    transition: "width 0.4s cubic-bezier(0.19, 1, 0.22, 1)",
-                    background: "rgba(10, 15, 22, 0.65)",
-                    backdropFilter: "blur(24px)",
-                    borderLeft: "1px solid rgba(255,255,255,0.05)", 
-                    boxShadow: "-5px 0 30px rgba(0,0,0,0.2)",
+                    transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+                    margin: "12px 12px 12px 0",
+                    background: "rgba(12, 12, 12, 0.8)",
+                    backdropFilter: "blur(32px)",
+                    border: "1px solid rgba(255,255,255,0.07)", 
+                    borderRadius: rightSidebarCollapsed ? "12px" : "18px",
                     overflow: "hidden",
                     position: "relative"
                 }}>
                     <button
                         onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
-                        style={{ position: "absolute", top: 8, left: 8, zIndex: 50, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}
+                        style={{ position: "absolute", top: 12, left: 12, zIndex: 50, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}
                     >
                         {rightSidebarCollapsed ? "[-]" : "[+]"}
                     </button>
 
                     {!rightSidebarCollapsed && (
-                        <>
-                            <div style={{ display: "flex", background: "transparent", borderBottom: "1px solid var(--border)", height: "36px", fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.1em", flexShrink: 0 }}>
-                                <div onClick={() => setActivePanel("chart")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: activePanel === "chart" ? "var(--orange)" : "var(--muted)", borderRight: "1px solid var(--border)", background: activePanel === "chart" ? "rgba(255,255,255,0.03)" : "transparent" }}>CASCADES</div>
-                                <div onClick={() => setActivePanel("log")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: activePanel === "log" ? "var(--orange)" : "var(--muted)", borderRight: "1px solid var(--border)", background: activePanel === "log" ? "rgba(255,255,255,0.03)" : "transparent" }}>LIVE_LOG</div>
-                                <div onClick={() => setActivePanel("snapshots")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: activePanel === "snapshots" ? "var(--orange)" : "var(--muted)", background: activePanel === "snapshots" ? "rgba(255,255,255,0.03)" : "transparent" }}>BRANCHES</div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                            <div style={{ 
+                                display: "flex", 
+                                background: "rgba(255,255,255,0.02)", 
+                                borderBottom: "1px solid rgba(255,255,255,0.06)", 
+                                height: "40px", 
+                                flexShrink: 0 
+                            }}>
+                                <div onClick={() => setActivePanel("chart")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "chart" ? "var(--orange)" : "var(--muted)", borderRight: "1px solid rgba(255,255,255,0.06)", background: activePanel === "chart" ? "rgba(255,107,53,0.05)" : "transparent", transition: "all 0.2s" }}>CASCADES</div>
+                                <div onClick={() => setActivePanel("log")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "log" ? "var(--orange)" : "var(--muted)", borderRight: "1px solid rgba(255,255,255,0.06)", background: activePanel === "log" ? "rgba(255,107,53,0.05)" : "transparent", transition: "all 0.2s" }}>LIVE_LOG</div>
+                                <div onClick={() => setActivePanel("snapshots")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "snapshots" ? "var(--orange)" : "var(--muted)", background: activePanel === "snapshots" ? "rgba(255,107,53,0.05)" : "transparent", transition: "all 0.2s" }}>BRANCHES</div>
                             </div>
                             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                                 {activePanel === "chart" ? (
@@ -915,18 +1010,31 @@ export default function SimulatePage() {
                                          </div>
                                     </div>
                                 )}
-                            </div>
-                        </>
-                    )}
-                </div>
+                        </div>
+                    </div>
+                )}
             </div>
+        </div>
 
-            {/* ── AGENT HIGHLIGHT ── */}
+            {/* ── AGENT HIGHLIGHT (MATCH RESULTS SIDE CARD / DRAWER) ── */}
             {selectedAgentId !== null && selectedAgent && selectedState && (
-                <div style={{ position: "fixed", top: 0, right: 0, width: "420px", height: "100%", background: "rgba(14, 20, 28, 0.85)", backdropFilter: "blur(32px)", borderLeft: "1px solid rgba(255,255,255,0.1)", zIndex: 1000, boxShadow: "-20px 0 80px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column", animation: "slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}>
-                    <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(to right, rgba(0,208,132,0.05), transparent)" }}>
-                        <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--support)", letterSpacing: "0.2em" }}>AGENT_TELEMETRY</span>
-                        <button onClick={() => setSelectedAgentId(null)} className="btn btn-ghost" style={{ fontSize: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.2)", borderRadius: "4px" }}>CLOSE [×]</button>
+                <div style={{ 
+                    position: "fixed", top: "12px", right: "12px", width: "440px", height: "calc(100% - 24px)", 
+                    background: "rgba(8, 10, 12, 0.92)", backdropFilter: "blur(40px)", 
+                    border: "1px solid rgba(255,255,255,0.12)", zIndex: 1000, 
+                    boxShadow: "-20px 0 100px rgba(0,0,0,0.9)", 
+                    display: "flex", flexDirection: "column", 
+                    borderRadius: "24px",
+                    animation: "slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)" 
+                }}>
+                    <div style={{ 
+                        padding: "16px 20px", 
+                        borderBottom: "1px solid rgba(255,255,255,0.08)", 
+                        display: "flex", justifyContent: "space-between", alignItems: "center", 
+                        background: "linear-gradient(to right, rgba(0,208,132,0.08), transparent)" 
+                    }}>
+                        <div className="results-side-label" style={{ marginBottom: 0, color: "var(--bright)", letterSpacing: "0.2em" }}>AGENT_TELEMETRY</div>
+                        <button onClick={() => setSelectedAgentId(null)} className="btn-ghost-setup" style={{ fontSize: 9, padding: "4px 10px", borderRadius: "100px" }}>CLOSE [×]</button>
                     </div>
                     <div style={{ flex: 1, overflow: "hidden" }}>
                         <AgentDetail agent={selectedAgent} state={selectedState} agentHistory={selectedHistory} allStates={states} agents={agents} edges={edges} onSelectAgent={setSelectedAgentId} onToggleSeed={handleToggleSeed} isConfigPhase={step === 0} />

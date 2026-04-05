@@ -112,22 +112,36 @@ export default function GlobalNetworkGraph({
         <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: "hidden", background: "var(--bg-darker)" }}>
             <style>
                 {`
-                    @keyframes pulse-seed {
-                        0% { filter: drop-shadow(0 0 4px var(--support)); stroke-width: 2; transform: scale(1); }
-                        50% { filter: drop-shadow(0 0 16px var(--support)); stroke-width: 4; transform: scale(1.1); }
-                        100% { filter: drop-shadow(0 0 4px var(--support)); stroke-width: 2; transform: scale(1); }
-                    }
-                    .node-seeded circle {
-                        animation: pulse-seed 2s infinite ease-in-out;
-                        transform-origin: center;
-                    }
                     @keyframes pulse-support {
-                        0% { filter: drop-shadow(0 0 2px var(--support)); }
-                        50% { filter: drop-shadow(0 0 10px var(--support)); }
-                        100% { filter: drop-shadow(0 0 2px var(--support)); }
+                        0% { filter: drop-shadow(0 0 2px var(--support)); opacity: 0.8; }
+                        50% { filter: drop-shadow(0 0 12px var(--support)); opacity: 1; }
+                        100% { filter: drop-shadow(0 0 2px var(--support)); opacity: 0.8; }
+                    }
+                    @keyframes pulse-oppose {
+                        0% { filter: drop-shadow(0 0 2px var(--oppose)); opacity: 0.8; }
+                        50% { filter: drop-shadow(0 0 12px var(--oppose)); opacity: 1; }
+                        100% { filter: drop-shadow(0 0 2px var(--oppose)); opacity: 0.8; }
                     }
                     .node-support circle {
-                        animation: pulse-support 4s infinite ease-in-out;
+                        animation: pulse-support 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                    .node-oppose circle {
+                        animation: pulse-oppose 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                    @keyframes dash-flow {
+                        to { stroke-dashoffset: -20; }
+                    }
+                    .edge-flow {
+                        stroke-dasharray: 4, 6;
+                        animation: dash-flow 1.5s linear infinite;
+                    }
+                    @keyframes reticle-rotate {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                    }
+                    .reticle-ring {
+                        animation: reticle-rotate 8s linear infinite;
+                        transform-origin: center;
                     }
                 `}
             </style>
@@ -138,6 +152,19 @@ export default function GlobalNetworkGraph({
                     height={dimensions.height}
                     style={{ position: "absolute", top: 0, left: 0 }}
                 >
+                    <defs>
+                        <pattern id="dotGrid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                            <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.05)" />
+                        </pattern>
+                        <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+
+                    {/* Background Grid */}
+                    <rect width="100%" height="100%" fill="url(#dotGrid)" />
+
                     <g>
                     {/* Render Curved Links */}
                     {links.map((link, i) => {
@@ -159,10 +186,11 @@ export default function GlobalNetworkGraph({
                                 key={`link-${i}`}
                                 d={`M${source.x},${source.y} Q${source.x + dx / 2 + dy / 4},${source.y + dy / 2 - dx / 4} ${target.x},${target.y}`}
                                 fill="none"
-                                stroke={isActive ? "var(--support)" : "var(--border)"}
+                                stroke={isActive ? (sState?.decision === "support" ? "var(--support)" : "var(--border)") : "var(--border)"}
                                 strokeWidth={isActive ? 1.5 : 1}
-                                opacity={isActive ? 0.6 : 0.3}
-                                style={{ transition: "stroke 0.5s, stroke-width 0.5s, opacity 0.5s" }}
+                                className={isActive ? "edge-flow" : ""}
+                                opacity={isActive ? 0.7 : 0.2}
+                                style={{ transition: "stroke 0.8s ease, stroke-width 0.8s ease, opacity 0.8s ease" }}
                             />
                         );
                     })}
@@ -187,41 +215,63 @@ export default function GlobalNetworkGraph({
                                 transform={`translate(${node.x || 0},${node.y || 0})`}
                                 onClick={() => onSelect(node.id)}
                                 className={className}
-                                style={{ cursor: "pointer", transition: "transform 0.1s linear" }}
+                                style={{ cursor: "pointer", transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)" }}
                             >
-                                {/* Selection Highlight Ping */}
+                                {/* TARGETING RETICLE (APPLE STYLE HIGH FIDELITY) */}
                                 {isSelected && (
+                                    <g className="reticle-ring">
+                                        <circle
+                                            r={radius + 8}
+                                            fill="none"
+                                            stroke="var(--orange)"
+                                            strokeWidth={0.5}
+                                            strokeDasharray="4 8"
+                                            opacity={0.8}
+                                        />
+                                        <path 
+                                            d={`M0,${-radius-12} L0,${-radius-6} M0,${radius+6} L0,${radius+12} M${-radius-12},0 L${-radius-6},0 M${radius+6},0 L${radius+12},0`}
+                                            stroke="var(--orange)"
+                                            strokeWidth={1}
+                                            opacity={0.6}
+                                        />
+                                    </g>
+                                )}
+
+                                {/* Node Ambient Glow */}
+                                {state?.decision && (
                                     <circle
-                                        r={radius + 6}
-                                        fill="none"
-                                        stroke="var(--orange)"
-                                        strokeWidth={1}
-                                        strokeDasharray="4 2"
+                                        r={radius + 4}
+                                        fill={color}
+                                        opacity={0.15}
+                                        filter="url(#bloom)"
                                     />
                                 )}
 
                                 {/* Main Node Circle */}
                                 <circle
                                     r={radius}
-                                    fill={state?.decision ? color : "var(--border-bright)"}
-                                    fillOpacity={state?.decision ? 0.8 : 0.4}
-                                    stroke={state?.decision ? color : "var(--border-bright)"}
-                                    strokeWidth={isSelected ? 1.5 : 0.5}
+                                    fill={state?.decision ? color : "rgba(255,255,255,0.05)"}
+                                    stroke={state?.decision ? color : "rgba(255,255,255,0.15)"}
+                                    strokeWidth={isSelected ? 2 : 1}
+                                    style={{ transition: "fill 0.6s ease, stroke 0.6s ease" }}
                                 />
-
-                                {/* Seeded Indicator */}
-                                {isSeeded && (
-                                    <text
-                                        y={-radius - 4}
-                                        textAnchor="middle"
-                                        fontSize={10}
-                                        fill="var(--support)"
+                                
+                                {/* Influence Pulse Ring */}
+                                {state?.decision === "support" && (
+                                    <circle
+                                        r={radius}
+                                        fill="none"
+                                        stroke="var(--support)"
+                                        strokeWidth={1}
+                                        opacity={0.5}
                                     >
-                                        🌱
-                                    </text>
+                                        <animate attributeName="r" from={radius} to={radius + 15} dur="2s" repeatCount="indefinite" />
+                                        <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite" />
+                                    </circle>
                                 )}
                             </g>
                         );
+;
                     })}
                 </g>
             </svg>

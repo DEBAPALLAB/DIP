@@ -29,6 +29,7 @@ export default function ProductBrief({ scenario }: ProductBriefProps) {
                             value: data.value,
                             risk: data.risk ?? scenario.params.risk,
                             loss: data.loss ?? scenario.params.loss,
+                            justification: data.justification || scenario.params.justification,
                         }
                     });
                 }
@@ -89,6 +90,22 @@ export default function ProductBrief({ scenario }: ProductBriefProps) {
             >
                 {scenario.brief}
             </div>
+
+            {scenario.params.justification && (
+                <div style={{ 
+                    marginTop: 12, 
+                    padding: "10px", 
+                    background: "rgba(255, 107, 53, 0.03)", 
+                    borderLeft: "2px solid var(--orange)",
+                    fontSize: "10px",
+                    color: "var(--muted)",
+                    lineHeight: 1.5,
+                    fontStyle: "italic"
+                }}>
+                    <div style={{ color: "var(--orange)", fontWeight: 800, fontSize: "8px", textTransform: "uppercase", marginBottom: "4px", letterSpacing: "0.05em" }}>Strategic Analysis</div>
+                    "{scenario.params.justification}"
+                </div>
+            )}
 
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--orange)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>

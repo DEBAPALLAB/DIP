@@ -66,6 +66,10 @@ export interface SimulationState {
     snapshots: { name: string; state: SimulationState }[];
     mainView: "grid" | "network";
     agentHistories: Record<number, any[]>;
+    branches: { id: string; name: string; adoption: number; step: number }[];
+    activeBranchId: string | null;
+    liveTicker: { msg: string; type: "alert" | "info" | "success" }[];
+    user: any | null;
 }
 
 const DEFAULT_MARKET_FILTERS: MarketFilters = {
@@ -90,11 +94,15 @@ const INITIAL_STATE: SimulationState = {
     log: [],
     insights: null,
     flowStep: "idle",
+    user: null,
     dbSimulationId: null,
     previousProduct: null,
     snapshots: [],
     mainView: "network",
     agentHistories: {},
+    branches: [],
+    activeBranchId: null,
+    liveTicker: [],
 };
 
 // ─── Context Shape ──────────────────────────────────────────────────────────────
@@ -124,6 +132,10 @@ interface SimulationContextValue extends SimulationState {
     restoreSnapshot: (name: string) => void;
     loadSimulationFromDb: (id: string) => Promise<boolean>;
     resetFlow: () => void;
+    setBranches: (b: { id: string; name: string; adoption: number; step: number }[]) => void;
+    addBranch: (b: { id: string; name: string; adoption: number; step: number }) => void;
+    addTickerMsg: (msg: string, type?: "alert" | "info" | "success") => void;
+    clearTicker: () => void;
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -160,13 +172,32 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
 
     // Hydrate from localStorage on mount
     useEffect(() => {
-        setState(loadState());
+        const s = loadState();
+        setState(s);
         setHydrated(true);
+
+        // Sync initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+                setState(prev => ({ ...prev, user: session.user }));
+            }
+        });
+
+        // Listen for changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setState(prev => ({ ...prev, user: session?.user ?? null }));
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     // Persist on every state change (after hydration)
     useEffect(() => {
-        if (hydrated) saveState(state);
+        if (hydrated) {
+            // Don't persist user object to localStorage to keep it fresh
+            const { user, ...toSave } = state;
+            saveState(toSave as SimulationState);
+        }
     }, [state, hydrated]);
 
     const setProduct = useCallback((p: ProductInput) => {
@@ -269,9 +300,27 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         setState((s) => {
             const found = s.snapshots.find(snap => snap.name === name);
             if (!found) return s;
-            // Restore state but keep the snapshots themselves
             return { ...found.state, snapshots: s.snapshots };
         });
+    }, []);
+
+    const setBranches = useCallback((branches: { id: string; name: string; adoption: number; step: number }[]) => {
+        setState((s) => ({ ...s, branches }));
+    }, []);
+
+    const addBranch = useCallback((branch: { id: string; name: string; adoption: number; step: number }) => {
+        setState((s) => ({ ...s, branches: [...s.branches, branch] }));
+    }, []);
+
+    const addTickerMsg = useCallback((msg: string, type: "alert" | "info" | "success" = "info") => {
+        setState((s) => ({
+            ...s,
+            liveTicker: [{ msg, type }, ...s.liveTicker].slice(0, 50)
+        }));
+    }, []);
+
+    const clearTicker = useCallback(() => {
+        setState((s) => ({ ...s, liveTicker: [] }));
     }, []);
 
     const loadSimulationFromDb = useCallback(async (id: string) => {
@@ -297,9 +346,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             const storedAgentHistories = results.agent_histories || {};
             const storedMainView = results.main_view || configuration.mainView || "network";
 
-            // Prefer the serialized runtime state first, then fall back to logs.
-            const hasResultStates = resultStates && Object.keys(resultStates).length > 0;
-            if (hasResultStates) {
+            if (resultStates && Object.keys(resultStates).length > 0) {
                 Object.entries(resultStates).forEach(([idKey, value]: any) => {
                     const agentId = Number(idKey);
                     if (Number.isNaN(agentId)) return;
@@ -313,12 +360,9 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                     };
                 });
             } else {
-                // Initialize every agent with a neutral state first
                 agents.forEach((a: Agent) => {
                     agentStates[a.id] = { decision: "neutral", reasoning: "", step: 0, pending: false };
                 });
-
-                // Layer logs on top if we have them.
                 if (logs) {
                     logs.forEach(l => {
                         agentStates[l.agent_id] = {
@@ -333,14 +377,10 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
 
             const normalizedHistory = Array.isArray(resultHistory) ? resultHistory : [];
             const normalizedLog = Array.isArray(resultLog) ? resultLog : [];
-            const resolvedStep =
-                typeof results.step === "number"
-                    ? results.step
-                    : normalizedHistory.length > 0
-                        ? normalizedHistory[normalizedHistory.length - 1].step
-                        : (snapshots ? snapshots.length : 0);
+            const resolvedStep = typeof results.step === "number" ? results.step : (normalizedHistory.length > 0 ? normalizedHistory[normalizedHistory.length - 1].step : (snapshots ? snapshots.length : 0));
 
-            setState({
+            setState(prev => ({
+                ...prev,
                 product: configuration.product || null,
                 marketFilters: configuration.filters || DEFAULT_MARKET_FILTERS,
                 agentCount: sim.total_agents || agents.length,
@@ -349,46 +389,19 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                 scenario: configuration.scenario || null,
                 agentStates,
                 step: resolvedStep,
-                adoptionCurve: normalizedHistory.length > 0 ? normalizedHistory.map((s: StepSnapshot) => ({
-                    step: s.step,
-                    support: s.support,
-                    neutral: s.neutral,
-                    oppose: s.oppose,
-                    pending: s.pending,
-                    timestamp: s.timestamp
-                })) : (snapshots || []).map(s => ({
-                    step: s.step,
-                    support: s.support,
-                    neutral: s.neutral,
-                    oppose: s.oppose,
-                    pending: s.pending,
-                    timestamp: s.timestamp
-                })),
-                log: normalizedLog.length > 0 ? normalizedLog.map((l: LogEntry) => ({
-                    step: l.step,
-                    agentId: l.agentId,
-                    agentName: l.agentName,
-                    persona: l.persona,
-                    decision: l.decision,
-                    reasoning: l.reasoning,
-                    timestamp: l.timestamp
-                })) : (logs || []).map(l => ({
-                    step: l.step,
-                    agentId: l.agent_id,
-                    agentName: l.agent_name,
-                    persona: l.persona,
-                    decision: l.decision,
-                    reasoning: l.reasoning,
-                    timestamp: l.timestamp
-                })),
+                adoptionCurve: normalizedHistory.map((s: any) => ({ ...s })),
+                log: normalizedLog.map((l: any) => ({ ...l })),
                 insights: results.insights || sim.insights || null,
                 flowStep: sim.status === 'Completed' ? 'complete' : (resolvedStep > 0 ? 'populated' : 'configured'),
                 dbSimulationId: id,
                 previousProduct: null,
                 snapshots: [],
                 mainView: storedMainView,
-                agentHistories: storedAgentHistories
-            });
+                agentHistories: storedAgentHistories,
+                branches: sim.branches || [],
+                activeBranchId: id,
+                liveTicker: []
+            }));
             return true;
         } catch (e) {
             console.error("Failed to load simulation from DB:", e);
@@ -397,7 +410,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const resetFlow = useCallback(() => {
-        setState(INITIAL_STATE);
+        setState(prev => ({ ...INITIAL_STATE, user: prev.user }));
         try {
             localStorage.removeItem(STORAGE_KEY);
         } catch { /* ignore */ }
@@ -429,6 +442,10 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         restoreSnapshot,
         loadSimulationFromDb,
         resetFlow,
+        setBranches,
+        addBranch,
+        addTickerMsg,
+        clearTicker
     };
 
     return (
@@ -437,8 +454,6 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         </SimulationContext.Provider>
     );
 }
-
-// ─── Hook ───────────────────────────────────────────────────────────────────────
 
 export function useSimulation(): SimulationContextValue {
     const ctx = useContext(SimulationContext);

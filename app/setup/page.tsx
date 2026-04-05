@@ -106,7 +106,7 @@ export default function SetupPage() {
                     return true;
                 });
 
-                const count = Math.min(agentCount, filteredPool.length);
+                const count = Math.min(agentCount, limits.maxAgents);
                 const generatedAgents = await generateAgents(count, filteredPool);
                 
                 sim.setAgents(generatedAgents);
@@ -168,6 +168,7 @@ export default function SetupPage() {
                             value: typeof precision.value === "number" ? precision.value : undefined,
                             risk: typeof precision.risk === "number" ? precision.risk : undefined,
                             loss: typeof precision.loss === "number" ? precision.loss : undefined,
+                            justification: precision.justification || undefined,
                         },
                     };
                     setProduct(preciseProduct);
@@ -203,6 +204,19 @@ export default function SetupPage() {
                     const f = { ...filters, ...data.market };
                     setFilters(f);
                     sim.setMarketFilters(f);
+                }
+                if (data.justification || typeof data.value === "number") {
+                    const p = {
+                        ...product,
+                        aiParamOverrides: {
+                            value: typeof data.value === "number" ? data.value : product.aiParamOverrides?.value,
+                            risk: typeof data.risk === "number" ? data.risk : product.aiParamOverrides?.risk,
+                            loss: typeof data.loss === "number" ? data.loss : product.aiParamOverrides?.loss,
+                            justification: data.justification || product.aiParamOverrides?.justification,
+                        }
+                    };
+                    setProduct(p);
+                    sim.setProduct(p);
                 }
             }
         } catch (err) {
@@ -243,6 +257,8 @@ export default function SetupPage() {
             sim.setDbSimulationId(null);
             sim.setFlowStep("populated");
 
+            let targetUrl = "/simulate";
+
             if (user) {
                 const { data, error } = await supabase.from('simulations').insert({
                     user_id: user.id,
@@ -253,14 +269,18 @@ export default function SetupPage() {
                     edges,
                     configuration: { title, product, filters, scenario, mainView: sim.mainView }
                 }).select().single();
-                if (!error && data) sim.setDbSimulationId(data.id);
+                
+                if (!error && data) {
+                    sim.setDbSimulationId(data.id);
+                    targetUrl = `/simulate?id=${data.id}`;
+                }
             }
 
             setLaunchStage(2);
             await new Promise((resolve) => setTimeout(resolve, 850));
             setLaunchStage(3);
             await new Promise((resolve) => setTimeout(resolve, 650));
-            router.push("/simulate");
+            router.push(targetUrl);
         } catch (err) {
             console.error("Failed to launch simulation:", err);
             setIsLaunching(false);
@@ -556,6 +576,43 @@ export default function SetupPage() {
             {/* ── RIGHT PANEL: AUDIENCE & GTM ── */}
             <div style={{ position: "absolute", top: 80, right: 32, bottom: 32, width: "380px", background: "rgba(10, 12, 16, 0.7)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 40px 100px rgba(0,0,0,0.4)" }}>
                 <div className="no-scrollbar" style={{ flex: 1, padding: "32px 24px", overflowY: "auto" }}>
+                    
+                    {/* STRATEGIC AI AUDIT CARD */}
+                    {product.aiParamOverrides?.justification && (
+                        <div style={{ 
+                            marginBottom: "40px", 
+                            padding: "20px", 
+                            background: "linear-gradient(135deg, rgba(255,107,53,0.1) 0%, transparent 100%)",
+                            border: "1px solid rgba(255,107,53,0.2)",
+                            borderRadius: "8px",
+                            position: "relative",
+                            overflow: "hidden"
+                        }}>
+                            <div style={{ position: "absolute", top: -10, right: -10, fontStyle: "italic", fontSize: "40px", color: "rgba(255,107,53,0.05)", fontWeight: 900, pointerEvents: "none" }}>AI</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                                <div style={{ width: 8, height: 8, background: "var(--orange)", borderRadius: "2px", boxShadow: "0 0 10px var(--orange)" }} />
+                                <h3 style={{ ...sectionLabel, marginBottom: 0, color: "var(--orange)" }}>Strategic Audit Result</h3>
+                            </div>
+                            <p style={{ fontSize: "12px", color: "var(--bright)", lineHeight: "1.6", margin: 0, fontStyle: "italic", opacity: 0.9 }}>
+                                "{product.aiParamOverrides.justification}"
+                            </p>
+                            <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: "8px", color: "var(--muted)", fontFamily: "var(--mono)", marginBottom: "4px" }}>VAL_EFFICIENCY</div>
+                                    <div style={{ height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px" }}>
+                                        <div style={{ height: "100%", background: "#00d084", width: `${(product.aiParamOverrides.value || 0.5) * 100}%`, borderRadius: "2px" }} />
+                                    </div>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: "8px", color: "var(--muted)", fontFamily: "var(--mono)", marginBottom: "4px" }}>RISK_CALIB</div>
+                                    <div style={{ height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px" }}>
+                                        <div style={{ height: "100%", background: "#ff4444", width: `${(product.aiParamOverrides.risk || 0.5) * 100}%`, borderRadius: "2px" }} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div style={{ marginBottom: "40px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                             <h3 style={{ ...sectionLabel, marginBottom: 0 }}>Target Micro-Demographics</h3>
@@ -675,7 +732,6 @@ export default function SetupPage() {
                         </div>
                     </div>
                 </div>
-                 {/* BOTTOM BUTTON PANEL INSIDE SIDEBAR OR FLOATING OVER? USER WANTED EVERYTHING LOCKED */}
             </div>
 
             {/* ── FLOATING INITIATE BUTTON ── */}
@@ -737,4 +793,3 @@ const miniLabel = {
     fontSize: "9px", fontFamily: "var(--mono)", fontWeight: 700, color: "rgba(255,255,255,0.3)", 
     letterSpacing: "0.05em", marginBottom: "2px", textTransform: "uppercase" as const
 };
-

@@ -10,29 +10,30 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No OPENROUTER_API_KEY set" }, { status: 500 });
         }
 
-        const insightPrompt = `You are a market research analyst.
-A product simulation has completed. Here are the results:
+        const insightPrompt = `You are a high-level strategic advisor.
+A product simulation has completed with the following data:
 
 Product: ${productName}
-${productBrief}
+Context: ${productBrief}
 
-Results:
-- Adoption rate: ${adoptionPct}%
-- Consensus score: ${consensusScore}
-- Persona breakdown: ${JSON.stringify(personaBreakdown)}
+MARKET PERFORMANCE:
+- Final Adoption: ${adoptionPct}%
+- Consensus Score: ${consensusScore}
+- Persona Balance: ${JSON.stringify(personaBreakdown)}
 
-Top agent reasoning (supporting):
-${(topSupportQuotes || []).map((q: { agent: string; persona: string; reasoning: string }) => `- ${q.agent} (${q.persona}): "${q.reasoning}"`).join("\n")}
+USER FEEDBACK (POSITIVE):
+${(topSupportQuotes || []).slice(0,3).map((q: any) => `- "${q.reasoning}"`).join("\n")}
 
-Top agent reasoning (opposing):
-${(topOpposeQuotes || []).map((q: { agent: string; persona: string; reasoning: string }) => `- ${q.agent} (${q.persona}): "${q.reasoning}"`).join("\n")}
+USER FEEDBACK (NEGATIVE):
+${(topOpposeQuotes || []).slice(0,3).map((q: any) => `- "${q.reasoning}"`).join("\n")}
 
-Write a concise strategic analysis with exactly 3 sections:
-PRIMARY BARRIER: [one sentence identifying the main objection]
-PRIMARY DRIVER: [one sentence identifying what's driving support]
-RECOMMENDATION: [one actionable sentence for the product team]
+Provide a definitive market signal in exactly 3 sections.
+IMPORTANT: Each section must be a SINGLE, COMPLETE, HIGH-DENSITY sentence.
+Do NOT repeat the section labels ("PRIMARY BARRIER", etc.) inside your explanation text.
 
-Be specific. Reference actual personas and reasoning from the data. No fluff.`;
+PRIMARY BARRIER: [Identify the single biggest point of friction]
+PRIMARY DRIVER: [Identify the most compelling value proposition]
+RECOMMENDATION: [One concrete, high-impact tactical shift]`;
 
         // ─── Retry Logic ───
         let response: Response | null = null;

@@ -24,7 +24,7 @@ const CATEGORIES = [
     "Other",
 ];
 
-type PrecisionKey = keyof ScenarioParams;
+type PrecisionKey = "value" | "risk" | "loss";
 
 function normalizePrecisionOverrides(overrides?: Partial<ScenarioParams>): Partial<ScenarioParams> | undefined {
     if (!overrides) return undefined;

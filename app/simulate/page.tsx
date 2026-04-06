@@ -127,8 +127,41 @@ export default function SimulatePage() {
     const abortRef = useRef(false);
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoadingDb, setIsLoadingDb] = useState(false);
+    const lastSavedStepRef = useRef<number>(-1);
 
     // ─── Lifecycle: Cleanup on unmount ───
+    const persistSimulation = useCallback(async (status: "Pending" | "Running" | "Completed") => {
+        if (!simCtx.dbSimulationId || agents.length === 0) return;
+        const persistScenario = customScenario ?? simCtx.scenario ?? getScenario(scenarioId);
+
+        await supabase
+            .from("simulations")
+            .update({
+                status,
+                total_agents: agents.length,
+                agents,
+                edges,
+                configuration: {
+                    title: buildSimulationTitle(simCtx.product?.name, persistScenario.label),
+                    product: simCtx.product,
+                    filters: simCtx.marketFilters,
+                    scenario: persistScenario,
+                    mainView,
+                    branches: simCtx.branches,
+                },
+                results: {
+                    states,
+                    history,
+                    log,
+                    agent_histories: agentHistories,
+                    step,
+                    main_view: mainView,
+                    insights: simCtx.insights,
+                },
+            })
+            .eq("id", simCtx.dbSimulationId);
+    }, [simCtx.dbSimulationId, agents, edges, customScenario, simCtx.scenario, scenarioId, simCtx.product, simCtx.marketFilters, mainView, states, history, log, agentHistories, step, simCtx.insights]);
+
     useEffect(() => {
         return () => {
             abortRef.current = true;
@@ -181,38 +214,26 @@ export default function SimulatePage() {
 
         const timer = setTimeout(async () => {
             try {
-                await supabase
-                    .from("simulations")
-                    .update({
-                        status: step > 0 ? "Running" : "Pending",
-                        total_agents: agents.length,
-                        agents,
-                        edges,
-                        config: {
-                            title: buildSimulationTitle(simCtx.product?.name, scenario.label),
-                            product: simCtx.product,
-                            filters: simCtx.marketFilters,
-                            scenario,
-                            mainView,
-                        },
-                        results: {
-                            states,
-                            history,
-                            log,
-                            agent_histories: agentHistories,
-                            step,
-                            main_view: mainView,
-                            insights: simCtx.insights,
-                        },
-                    })
-                    .eq("id", simCtx.dbSimulationId);
+                await persistSimulation(step > 0 ? "Running" : "Pending");
             } catch (err) {
                 console.warn("Auto-save failed:", err);
             }
         }, 2000);
 
         return () => clearTimeout(timer);
-    }, [states, history, log, agentHistories, step, mainView, simCtx.dbSimulationId, isLoadingDb, agents.length, agents, edges, scenario, simCtx.product, simCtx.marketFilters, simCtx.insights]);
+    }, [states, history, log, agentHistories, step, mainView, simCtx.dbSimulationId, isLoadingDb, agents.length, agents, edges, scenario, simCtx.product, simCtx.marketFilters, simCtx.insights, persistSimulation]);
+
+    useEffect(() => {
+        if (!simCtx.dbSimulationId || isLoadingDb || agents.length === 0) return;
+        if (step <= 0) return;
+        if (lastSavedStepRef.current === step) return;
+
+        lastSavedStepRef.current = step;
+
+        void persistSimulation("Running").catch((err) => {
+            console.warn("Immediate step save failed:", err);
+        });
+    }, [step, persistSimulation, isLoadingDb, agents.length, simCtx.dbSimulationId]);
 
 
     // ─── Initial states factory ────────────────────────────────────────────────
@@ -251,13 +272,14 @@ export default function SimulatePage() {
                     await supabase
                         .from("simulations")
                     .update({
-                        config: {
+                        configuration: {
                             title: buildSimulationTitle(simCtx.product?.name, scenario.label),
                             agents: newAgents,
                             edges: newEdges,
                             scenario_id: scenarioId,
-                            custom_scenario: customScenario
-                            }
+                            custom_scenario: customScenario,
+                            branches: simCtx.branches,
+                        }
                         })
                         .eq("id", simCtx.dbSimulationId);
                 }
@@ -276,6 +298,7 @@ export default function SimulatePage() {
     const handleReset = useCallback(() => {
         abortRef.current = true;
         setRunning(false);
+        lastSavedStepRef.current = -1;
         simCtx.setAgentStates(makeInitialStates(agents));
         simCtx.setAgentHistories({});
         simCtx.setAdoptionCurve([]);
@@ -292,6 +315,7 @@ export default function SimulatePage() {
     const handleFullReset = useCallback(() => {
         abortRef.current = true;
         setRunning(false);
+        lastSavedStepRef.current = -1;
         simCtx.setAgents([]);
         simCtx.setEdges([]);
         simCtx.setAgentStates({});
@@ -561,6 +585,7 @@ export default function SimulatePage() {
                             filters: simCtx.marketFilters,
                             scenario,
                             mainView,
+                            branches: simCtx.branches,
                         },
                         results: {
                             states,
@@ -976,7 +1001,7 @@ export default function SimulatePage() {
                                             <button 
                                                 onClick={() => {
                                                     const name = prompt("Enter branch name:", `Branch at Step ${step}`);
-                                                    if (name) simCtx.saveSnapshot(name);
+                                                    if (name) void simCtx.saveSnapshot(name);
                                                 }}
                                                 className="btn btn-primary" style={{ fontSize: 9, padding: "4px 10px" }}
                                             >
@@ -985,24 +1010,24 @@ export default function SimulatePage() {
                                          </div>
 
                                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                            {simCtx.snapshots.length === 0 ? (
+                                            {simCtx.branches.length === 0 ? (
                                                 <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", textAlign: "center", padding: "40px 0" }}>No branches saved yet.</div>
                                             ) : (
-                                                simCtx.snapshots.map((snap, idx) => (
-                                                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "4px" }}>
+                                                simCtx.branches.map((snap) => (
+                                                    <div key={snap.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "4px" }}>
                                                         <div>
                                                             <div style={{ fontSize: 11, color: "var(--bright)", fontWeight: 600 }}>{snap.name}</div>
-                                                            <div style={{ fontSize: 9, color: "var(--muted)" }}>Step {snap.state.step} · {snap.state.agents.length} Agents</div>
+                                                            <div style={{ fontSize: 9, color: "var(--muted)" }}>Step {snap.step} - {snap.adoption}% adoption</div>
                                                         </div>
-                                                        <button 
+                                                        <button
+                                                            disabled={!snap.simulationId}
                                                             onClick={() => {
-                                                                if (confirm("Restore this branch? Current unsaved progress will be lost.")) {
-                                                                    simCtx.restoreSnapshot(snap.name);
-                                                                }
+                                                                const branchId = snap.simulationId || snap.id;
+                                                                if (branchId) router.push(`/simulate?id=${branchId}`);
                                                             }}
-                                                            className="btn btn-ghost" style={{ fontSize: 9, color: "var(--orange)", border: "1px solid rgba(255,107,53,0.3)" }}
+                                                            className="btn btn-ghost" style={{ fontSize: 9, color: "var(--orange)", border: "1px solid rgba(255,107,53,0.3)", opacity: snap.simulationId ? 1 : 0.5 }}
                                                         >
-                                                            LOAD
+                                                            {snap.simulationId ? "OPEN" : "SAVING..."}
                                                         </button>
                                                     </div>
                                                 ))
@@ -1052,3 +1077,4 @@ export default function SimulatePage() {
         </div>
     );
 }
+

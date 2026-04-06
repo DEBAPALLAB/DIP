@@ -1,8 +1,14 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import type { Agent, AgentState, SimulationStates, StepSnapshot, LogEntry, Scenario, ScenarioParams } from "./types";
+import type { Agent, AgentState, SimulationStates, StepSnapshot, LogEntry, Scenario, ScenarioParams, BranchSummary } from "./types";
 import { supabase } from "./supabase";
+
+function buildSimulationTitle(productName?: string, scenarioLabel?: string) {
+    const cleanProduct = productName?.trim() || "Untitled Simulation";
+    const cleanScenario = scenarioLabel?.trim() || "Custom Scenario";
+    return `${cleanProduct} - ${cleanScenario}`;
+}
 
 // ─── Product Input ──────────────────────────────────────────────────────────────
 
@@ -66,7 +72,7 @@ export interface SimulationState {
     snapshots: { name: string; state: SimulationState }[];
     mainView: "grid" | "network";
     agentHistories: Record<number, any[]>;
-    branches: { id: string; name: string; adoption: number; step: number }[];
+    branches: BranchSummary[];
     activeBranchId: string | null;
     liveTicker: { msg: string; type: "alert" | "info" | "success" }[];
     user: any | null;
@@ -128,12 +134,12 @@ interface SimulationContextValue extends SimulationState {
     setFlowStep: (fs: FlowStep) => void;
     setDbSimulationId: (id: string | null) => void;
     updateProduct: (p: ProductInput) => void;
-    saveSnapshot: (name: string) => void;
+    saveSnapshot: (name: string) => Promise<void>;
     restoreSnapshot: (name: string) => void;
     loadSimulationFromDb: (id: string) => Promise<boolean>;
     resetFlow: () => void;
-    setBranches: (b: { id: string; name: string; adoption: number; step: number }[]) => void;
-    addBranch: (b: { id: string; name: string; adoption: number; step: number }) => void;
+    setBranches: (b: BranchSummary[]) => void;
+    addBranch: (b: BranchSummary) => void;
     addTickerMsg: (msg: string, type?: "alert" | "info" | "success") => void;
     clearTicker: () => void;
 }
@@ -289,12 +295,99 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         }));
     }, []);
 
-    const saveSnapshot = useCallback((name: string) => {
+    const saveSnapshot = useCallback(async (name: string) => {
+        const snapshotState = JSON.parse(JSON.stringify(state));
+        const totalAgents = state.agents.length;
+        const supportCount = Object.values(state.agentStates).filter((s) => s.decision === "support").length;
+        const adoption = totalAgents > 0 ? Math.round((supportCount / totalAgents) * 100) : 0;
+
+        const tempBranchId = crypto.randomUUID();
+        const branchSummary: BranchSummary = {
+            id: tempBranchId,
+            name,
+            adoption,
+            step: state.step,
+            parentId: state.dbSimulationId,
+            createdAt: new Date().toISOString(),
+        };
+
         setState((s) => ({
             ...s,
-            snapshots: [...s.snapshots, { name, state: JSON.parse(JSON.stringify(s)) }]
+            snapshots: [...s.snapshots, { name, state: snapshotState }],
+            branches: [...s.branches, branchSummary],
         }));
-    }, []);
+
+        if (!state.user || !state.dbSimulationId) return;
+
+        try {
+            const branchConfiguration = {
+                title: name,
+                product: state.product,
+                filters: state.marketFilters,
+                scenario: state.scenario,
+                mainView: state.mainView,
+                parent_id: state.dbSimulationId,
+                branch_name: name,
+                branch_step: state.step,
+                branch_adoption: adoption,
+            };
+
+            const branchResults = {
+                states: state.agentStates,
+                history: state.adoptionCurve,
+                log: state.log,
+                agent_histories: state.agentHistories,
+                step: state.step,
+                main_view: state.mainView,
+                insights: state.insights,
+            };
+
+            const { data, error } = await supabase
+                .from("simulations")
+                .insert({
+                    user_id: state.user.id,
+                    scenario_id: state.scenario?.id || "custom",
+                    total_agents: totalAgents,
+                    agents: state.agents,
+                    edges: state.edges,
+                    status: state.step > 0 ? "Completed" : "Pending",
+                    configuration: branchConfiguration,
+                    results: branchResults,
+                })
+                .select()
+                .single();
+
+            if (error || !data) throw error ?? new Error("Failed to create branch");
+
+            const persistedBranch: BranchSummary = {
+                ...branchSummary,
+                id: data.id,
+                simulationId: data.id,
+            };
+
+            const nextBranches = [...state.branches, persistedBranch];
+            setState((s) => ({
+                ...s,
+                branches: s.branches.map((b) => (b.id === tempBranchId ? persistedBranch : b)),
+            }));
+
+            await supabase
+                .from("simulations")
+                .update({
+                    configuration: {
+                        title: buildSimulationTitle(state.product?.name, state.scenario?.label),
+                        product: state.product,
+                        filters: state.marketFilters,
+                        scenario: state.scenario,
+                        mainView: state.mainView,
+                        branches: nextBranches,
+                    },
+                })
+                .eq("id", state.dbSimulationId);
+        } catch (err) {
+            console.error("Failed to save branch:", err);
+        }
+    }, [state]);
 
     const restoreSnapshot = useCallback((name: string) => {
         setState((s) => {
@@ -304,11 +397,11 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
-    const setBranches = useCallback((branches: { id: string; name: string; adoption: number; step: number }[]) => {
+    const setBranches = useCallback((branches: BranchSummary[]) => {
         setState((s) => ({ ...s, branches }));
     }, []);
 
-    const addBranch = useCallback((branch: { id: string; name: string; adoption: number; step: number }) => {
+    const addBranch = useCallback((branch: BranchSummary) => {
         setState((s) => ({ ...s, branches: [...s.branches, branch] }));
     }, []);
 
@@ -345,6 +438,33 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             const resultLog = results.log || [];
             const storedAgentHistories = results.agent_histories || {};
             const storedMainView = results.main_view || configuration.mainView || "network";
+            let storedBranches = configuration.branches || sim.branches || [];
+
+            if ((!Array.isArray(storedBranches) || storedBranches.length === 0) && id) {
+                const { data: childRows } = await supabase
+                    .from("simulations")
+                    .select("id, created_at, configuration, results")
+                    .contains("configuration", { parent_id: id })
+                    .order("created_at", { ascending: true });
+
+                storedBranches = (childRows || []).map((row: any) => {
+                    const childResults = row.results || {};
+                    const childStates = childResults.states || {};
+                    const childTotal = Object.keys(childStates).length;
+                    const childSupport = Object.values(childStates).filter((s: any) => s?.decision === "support").length;
+                    const childAdoption = childTotal > 0 ? Math.round((childSupport / childTotal) * 100) : 0;
+                    const childStep = typeof childResults.step === "number" ? childResults.step : 0;
+                    return {
+                        id: row.id,
+                        simulationId: row.id,
+                        name: row.configuration?.branch_name || row.configuration?.title || row.configuration?.product?.name || "Branch",
+                        adoption: childAdoption,
+                        step: childStep,
+                        parentId: id,
+                        createdAt: row.created_at,
+                    };
+                });
+            }
 
             if (resultStates && Object.keys(resultStates).length > 0) {
                 Object.entries(resultStates).forEach(([idKey, value]: any) => {
@@ -398,7 +518,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                 snapshots: [],
                 mainView: storedMainView,
                 agentHistories: storedAgentHistories,
-                branches: sim.branches || [],
+                branches: storedBranches,
                 activeBranchId: id,
                 liveTicker: []
             }));

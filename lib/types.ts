@@ -84,6 +84,16 @@ export interface StepSnapshot {
   timestamp: number;
 }
 
+export interface BranchSummary {
+  id: string;
+  name: string;
+  adoption: number;
+  step: number;
+  simulationId?: string;
+  parentId?: string | null;
+  createdAt?: string;
+}
+
 export interface LogEntry {
   step: number;
   agentId: number;

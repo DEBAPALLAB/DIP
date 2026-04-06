@@ -58,6 +58,7 @@ export default function GlobalNetworkGraph({
     useEffect(() => {
         if (!agents.length) return;
 
+        const visibleIds = new Set(agents.map((a) => a.id));
         const simNodes: SimNode[] = agents.map((a) => ({
             id: a.id,
             agent: a,
@@ -65,10 +66,13 @@ export default function GlobalNetworkGraph({
             y: Math.random() * dimensions.height,
         }));
 
-        const simLinks: SimLink[] = edges.map(([source, target]) => ({
-            source,
-            target,
-        }));
+        // Only keep links whose endpoints are still present after filtering.
+        const simLinks: SimLink[] = edges
+            .filter(([source, target]) => visibleIds.has(source) && visibleIds.has(target))
+            .map(([source, target]) => ({
+                source,
+                target,
+            }));
 
         // Dynamic scaling based on container size and population
         const density = (dimensions.width * dimensions.height) / Math.max(agents.length, 1);

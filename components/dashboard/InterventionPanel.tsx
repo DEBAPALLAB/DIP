@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSimulation, type ProductInput } from "@/lib/SimulationContext";
-import { buildScenarioFromProduct } from "@/lib/productParams";
+import { buildProductBrief, buildScenarioFromProduct } from "@/lib/productParams";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -26,6 +26,36 @@ export default function InterventionPanel() {
         setIsForking(true);
         
         try {
+            let branchProduct = localProduct;
+
+            try {
+                const res = await fetch("/api/auto-params", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ brief: buildProductBrief(localProduct) }),
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    branchProduct = {
+                        ...localProduct,
+                        aiParamOverrides: {
+                            value: typeof data.value === "number" ? data.value : undefined,
+                            risk: typeof data.risk === "number" ? data.risk : undefined,
+                            loss: typeof data.loss === "number" ? data.loss : undefined,
+                            justification: typeof data.justification === "string" ? data.justification : undefined,
+                        },
+                    };
+                }
+            } catch (autoParamsError) {
+                console.warn("Failed to auto-synthesize branch params, using current product:", autoParamsError);
+            }
+
+            const branchScenario = {
+                ...buildScenarioFromProduct(branchProduct),
+                parent_id: dbSimulationId,
+            };
+
             // Create a new simulation record as a branch
             const { data, error } = await supabase
                 .from("simulations")
@@ -37,7 +67,11 @@ export default function InterventionPanel() {
                     edges,
                     status: "Running",
                     configuration: {
-                        product: localProduct,
+                        title: branchProduct.name,
+                        product: branchProduct,
+                        scenario: branchScenario,
+                        filters: simCtx.marketFilters,
+                        mainView: simCtx.mainView,
                         parent_id: dbSimulationId,
                         is_branch: true,
                     }

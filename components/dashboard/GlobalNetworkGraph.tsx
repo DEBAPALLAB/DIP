@@ -104,7 +104,7 @@ export default function GlobalNetworkGraph({
             .force("link", d3Force.forceLink<SimNode, SimLink>(simLinks).id((d) => d.id).distance(desiredDistance).strength(0.75))
             .force("charge", d3Force.forceManyBody().strength(desiredCharge))
             .force("center", d3Force.forceCenter(dimensions.width / 2, dimensions.height / 2))
-            .force("collide", d3Force.forceCollide().radius((d) => 10 + (d.agent.influence_score * 8)))
+            .force("collide", d3Force.forceCollide<SimNode>().radius((d) => 10 + (d.agent.influence_score * 8)))
             .alphaDecay(0.035)
             .on("tick", () => {
                 // Keep simulation organic but within broad boundaries

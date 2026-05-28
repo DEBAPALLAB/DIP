@@ -53,52 +53,77 @@ FORMAT: [{"id": 0, "reasoning": "..."}]`;
 
         const userPrompt = `SCENARIO: ${scenario.brief}\nCOHORT:\n${cohortListString}\n\nOUTPUT JSON NOW.`;
 
-        // AUTHORIZED FREE MODELS
+        // AUTHORIZED HIGH-SPEED MODELS (High-capacity models paired with active lightweight fallbacks)
         const FREE_MODELS = [
-            "nvidia/nemotron-3-super-120b-a12b:free",
-            "stepfun/step-3.5-flash:free",
-            "liquid/lfm-2.5-1.2b-thinking:free",
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "nousresearch/hermes-3-llama-3.1-8b:free",
+            "meta-llama/llama-3.2-3b-instruct:free",
+            "openai/gpt-oss-120b:free",
             "z-ai/glm-4.5-air:free",
-            "arcee-ai/trinity-large-preview:free"
+            "nvidia/nemotron-3-super-120b-a12b:free",
+            "gryphe/mythomax-l2-13b:free",
+            "google/gemma-4-31b-it:free"
         ];
 
         const allKeys = (process.env.OPENROUTER_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
         if (allKeys.length === 0) throw new Error("No API keys found");
 
-        let response: Response | null = null;
-        let lastError: any = null;
+        let response = null;
         let finalModel = "";
+        let errorMsg = "";
 
-        // Fallback Loop
-        for (const model of FREE_MODELS) {
-            finalModel = model;
-            const key = allKeys[keyRotationIndex % allKeys.length];
-            keyRotationIndex++;
+        // Try models sequentially until one succeeds
+        for (let i = 0; i < FREE_MODELS.length; i++) {
+            const currentModel = FREE_MODELS[(keyRotationIndex + i) % FREE_MODELS.length];
+            const currentKey = allKeys[keyRotationIndex % allKeys.length];
+            
+            console.log(`[API_ROUTE] Attempting with model: ${currentModel}...`);
 
-            try {
-                response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            const apiCall = async () => {
+                const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
-                        "Authorization": `Bearer ${key}`,
+                        "Authorization": `Bearer ${currentKey}`,
                         "Content-Type": "application/json",
+                        "HTTP-Referer": "https://strawberry-platform.vercel.app",
+                        "X-Title": "Strawberry Decision Platform",
                     },
                     body: JSON.stringify({
-                        model: model,
+                        model: currentModel,
                         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-                        temperature: 0.3, // Lower temp = more predictable JSON
-                        max_tokens: 4000  // Massive buffer for 10 agents
+                        temperature: 0.3,
+                        max_tokens: 500 // Drastically reduced from 4000 to maximize generation speed and minimize timeouts
                     }),
-                    signal: AbortSignal.timeout(60000) // 1 minute timeout per model
+                    signal: AbortSignal.timeout(7000) // 7s timeout to fail fast and fallback immediately if a model is congested or queueing
                 });
 
-                if (response.ok) break;
-                lastError = await response.text();
-            } catch (e) {
-                lastError = e;
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`Model ${currentModel} HTTP error ${res.status}: ${errText}`);
+                }
+                return res;
+            };
+
+            try {
+                const res = await apiCall();
+                if (res && res.ok) {
+                    response = res;
+                    finalModel = currentModel;
+                    // Advance index beyond this successful one for next time
+                    keyRotationIndex = (keyRotationIndex + i + 1) % FREE_MODELS.length;
+                    break;
+                }
+            } catch (e: any) {
+                console.error(`[API_ROUTE] Attempt with ${currentModel} failed: ${e.message}`);
+                errorMsg = e.message;
             }
         }
 
-        if (!response || !response.ok) throw new Error(`Model error: ${lastError}`);
+        if (!response) {
+            return NextResponse.json({ 
+                error: `All authorized models failed or rate-limited. Last error: ${errorMsg}` 
+            }, { status: 504 });
+        }
 
         const data = await response.json();
         const text = data.choices?.[0]?.message?.content ?? "";

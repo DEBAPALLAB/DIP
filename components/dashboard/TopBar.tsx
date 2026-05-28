@@ -29,91 +29,81 @@ export default function TopBar({ step, running, states, history, scenarioLabel, 
 
     return (
         <div className="ticker-bar" style={{ 
-            height: 44, 
-            background: "rgba(4, 6, 8, 0.9)", 
-            backdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            padding: "0 12px"
+            height: 48, 
+            background: "rgba(13, 12, 11, 0.8)", 
+            backdropFilter: "blur(24px)",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            padding: "0 24px"
         }}>
             {/* Live indicator */}
-            <div className="ticker-item" style={{ padding: "0 16px", gap: 8, borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-                {running && <div className="landing-nav-dot" style={{ width: 8, height: 8, background: "var(--orange)", boxShadow: "0 0 10px var(--orange)" }} />}
+            <div className="ticker-item" style={{ padding: "0 20px 0 0", gap: 10, borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                {running && <div className="landing-nav-dot" style={{ width: 8, height: 8, background: "var(--support)", boxShadow: "0 0 15px var(--support)" }} />}
                 {!running && <div style={{ width: 6, height: 6, borderRadius: "50%", background: step === 0 ? "var(--support)" : "var(--muted)", opacity: 0.6 }} />}
                 <span className="ticker-label" style={{ 
-                    color: running ? "var(--orange)" : "var(--muted)",
+                    color: running ? "var(--support)" : "var(--muted)",
                     fontSize: "9px",
-                    letterSpacing: "0.15em"
+                    fontWeight: 800,
+                    letterSpacing: "0.2em"
                 }}>
-                    {running ? "COMPUTING_SIGNAL" : step === 0 ? "SYSTEM_READY" : "EXECUTION_PAUSED"}
+                    {running ? "LIVE_COMPUTE" : "SYS_STABLE"}
                 </span>
             </div>
 
-            {/* Scenario */}
-            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="ticker-label">SCENARIO</span>
-                <span className="ticker-val" style={{ color: "var(--bright)", fontWeight: 500, fontSize: "11px" }}>
+            {/* Scenario - THE EDITORIAL TOUCH */}
+            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)", padding: "0 24px" }}>
+                <span className="ticker-label" style={{ marginRight: 12 }}>STRATEGY</span>
+                <span style={{ 
+                    fontFamily: "var(--serif)", 
+                    color: "var(--bright)", 
+                    fontSize: "16px", 
+                    fontStyle: "italic",
+                    letterSpacing: "-0.01em"
+                }}>
                     {scenarioLabel}
                 </span>
             </div>
 
-            {/* Step */}
-            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="ticker-label">EPOCH</span>
-                <span className="ticker-val" style={{ color: "var(--orange)" }}>{step}</span>
-            </div>
+            {/* Stats Group */}
+            <div style={{ display: "flex", alignItems: "center", gap: 0, height: "100%" }}>
+                <div className="ticker-item">
+                    <span className="ticker-label">EPOCH</span>
+                    <span className="ticker-val" style={{ color: "var(--bright)", fontWeight: 700 }}>{step}</span>
+                </div>
 
-            {/* Support */}
-            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="ticker-label">ADOPTION</span>
-                <span className="ticker-val" style={{ color: "var(--support)", fontSize: "12px" }}>
-                    {pct(support, total)}
-                </span>
-                {delta !== 0 && (
-                    <span className="results-side-chip" style={{ 
-                        marginTop: 0, padding: "2px 6px", 
-                        background: delta > 0 ? "rgba(0, 208, 132, 0.15)" : "rgba(255, 68, 68, 0.15)",
-                        color: delta > 0 ? "var(--support)" : "var(--oppose)",
-                        border: "none",
-                        fontSize: "9px"
-                    }}>
-                        {delta > 0 ? "+" : ""}{delta}
+                <div className="ticker-item">
+                    <span className="ticker-label">ADOPTION</span>
+                    <span className="ticker-val" style={{ color: "var(--support)", fontSize: "14px", fontWeight: 800 }}>
+                        {pct(support, total)}
                     </span>
-                )}
-            </div>
+                </div>
 
-            {/* Neutral */}
-            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="ticker-label">FRICTION</span>
-                <span className="ticker-val" style={{ color: "var(--neutral)" }}>
-                    {pct(neutral, total)}
-                </span>
-            </div>
+                <div className="ticker-item">
+                    <span className="ticker-label">FRICTION</span>
+                    <span className="ticker-val" style={{ color: "var(--neutral)" }}>
+                        {pct(neutral, total)}
+                    </span>
+                </div>
 
-            {/* Oppose */}
-            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="ticker-label">RESISTANCE</span>
-                <span className="ticker-val" style={{ color: "var(--oppose)" }}>
-                    {pct(oppose, total)}
-                </span>
-            </div>
-
-            {/* Pending */}
-            <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="ticker-label">UNEXPOSED</span>
-                <span className="ticker-val" style={{ color: "var(--pending)" }}>
-                    {pending}
-                </span>
+                <div className="ticker-item">
+                    <span className="ticker-label">RESISTANCE</span>
+                    <span className="ticker-val" style={{ color: "var(--oppose)" }}>
+                        {pct(oppose, total)}
+                    </span>
+                </div>
             </div>
 
             {/* Consensus */}
-            <div className="ticker-item" style={{ marginLeft: "auto", borderRight: "none", borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: "24px" }}>
-                <span className="ticker-label">STABILITY</span>
-                <span className="ticker-val" style={{ 
-                    color: "var(--orange)", 
-                    textShadow: "0 0 15px rgba(255, 107, 53, 0.3)",
-                    letterSpacing: "0.05em"
+            <div className="ticker-item" style={{ marginLeft: "auto", borderRight: "none", borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: "32px" }}>
+                <span className="ticker-label" style={{ marginRight: 12 }}>MARKET_STATE</span>
+                <span style={{ 
+                    fontFamily: "var(--mono)",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    color: "var(--support)", 
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase"
                 }}>
-                    {consensusLabel(states).toUpperCase()}
+                    {consensusLabel(states)}
                 </span>
             </div>
         </div>

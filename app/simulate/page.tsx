@@ -59,9 +59,9 @@ function generateStepInsight(counts: StepSnapshot, stepNum: number, prevCounts?:
     if (delta > 0) return `Cascade building — ${delta} more agents moved to support this step`;
     return `Resistance holding — ${Math.abs(delta)} agents moved away from support`;
 }
-// ─── Batch size scaling ────────────────────────────────────────────────────────
+// ─── Batch size scaling: Optimized for stability ───
 function getBatchSize(agentCount: number): number {
-    return agentCount >= 30 ? 10 : 5;
+    return 2; // Fixed at 2 to ensure fast responses (< 15s) and avoid timeouts
 }
 
 // ─── Batch helper ──────────────────────────────────────────────────────────────
@@ -90,6 +90,11 @@ export default function SimulatePage() {
 
     const [phase, setPhase] = useState<SimPhase>("UNCONFIGURED");
     const [isGenerating, setIsGenerating] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Redundant local states replaced by context:
     const agents = simCtx.agents;
@@ -372,6 +377,8 @@ export default function SimulatePage() {
             // Calculate previous params for Delta-Aware logic
             const previousParams = simCtx.previousProduct ? deriveSimParams(simCtx.previousProduct) : undefined;
 
+            // ─── Resilient Batch Queue & Fallback Engine ───
+            let activeQueue = batches.map((b, idx) => ({ batch: b, originalIndex: idx + 1, attempts: 0 }));
             let doneCount = 0;
             setProgress({ done: 0, total: agents.length });
             abortRef.current = false; // Reset on start
@@ -379,16 +386,18 @@ export default function SimulatePage() {
             simCtx.clearTicker();
             simCtx.addTickerMsg(`INITIATING_STEP_${currentStep + 1}_PROCEDURES`, "info");
 
-            for (const batch of batches) {
+            while (activeQueue.length > 0) {
                 if (abortRef.current || controller.signal.aborted) break;
-                
-                const batchIndex = batches.indexOf(batch) + 1;
-                simCtx.addTickerMsg(`PROCESSING_BATCH_${batchIndex}/${batches.length}...`, "info");
+
+                const currentItem = activeQueue.shift()!;
+                const { batch, originalIndex, attempts } = currentItem;
+
+                simCtx.addTickerMsg(`PROCESSING_BATCH_${originalIndex}/${batches.length}...`, "info");
 
                 // ─── Phase 2: Batch API Execution ──────────────────────────────────────
                 const payload: RunStepBatchRequest = {
                     batch: batch.map(agent => {
-                        // Seed logic: handle first step partners (Simulated inside the batch for legacy support)
+                        // Seed logic: handle first step partners
                         const isSeeded = currentStep === 0 && currentStates[agent.id]?.isSeeded;
                         
                         const neighborIds = edges
@@ -417,27 +426,101 @@ export default function SimulatePage() {
                     previousParams
                 };
 
-                const res = await fetch("/api/run-step", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
-                });
+                // ─── Phase 2: Batch API Execution with Retries ───
+                let retries = 2;
+                let data: RunStepBatchResponse | null = null;
 
-                if (!res.ok) {
-                    const errData = await res.json();
-                    throw new Error(errData.error || `Batch failure (HTTP ${res.status})`);
+                while (retries >= 0) {
+                    try {
+                        const res = await fetch("/api/run-step", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload),
+                            signal: AbortSignal.any([controller.signal, AbortSignal.timeout(35000)])
+                        });
+
+                        if (!res.ok) {
+                            const errData = await res.json();
+                            throw new Error(errData.error || `Batch failure (HTTP ${res.status})`);
+                        }
+
+                        data = await res.json();
+                        break; // Success!
+                    } catch (err: any) {
+                        if (retries === 0 || abortRef.current || controller.signal.aborted) {
+                            break; // out of retries, will be handled by requeue/fallback
+                        }
+                        console.warn(`Batch ${originalIndex} failed attempt, retrying... (${retries} left)`, err);
+                        simCtx.addTickerMsg(`RETRYING_BATCH_${originalIndex}_[${retries}_REMAINING]`, "alert");
+                        await new Promise(r => setTimeout(r, 1500));
+                        retries--;
+                    }
                 }
 
-                const data: RunStepBatchResponse = await res.json();
+                if (!data) {
+                    // Failover 1: If attempts are less than 2, requeue to the end of the line!
+                    if (attempts < 2) {
+                        simCtx.addTickerMsg(`BATCH_${originalIndex}_STALLED_REQUEUING_TO_END`, "alert");
+                        activeQueue.push({ batch, originalIndex, attempts: attempts + 1 });
+                        await new Promise(r => setTimeout(r, 1000));
+                        continue;
+                    } else {
+                        // Failover 2: Max attempts exceeded! Trigger deterministic local fallback to ensure zero skipped nodes
+                        simCtx.addTickerMsg(`BATCH_${originalIndex}_SALVAGED_VIA_LOCAL_FALLBACK`, "info");
+                        
+                        const fallbackResults = batch.map(agent => {
+                            const isSeeded = currentStep === 0 && currentStates[agent.id]?.isSeeded;
+                            const neighborIds = edges
+                                .filter(([a, b]) => a === agent.id || b === agent.id)
+                                .map(([a, b]) => (a === agent.id ? b : a));
+
+                            const neighborStateMap: Record<number, AgentState> = Object.fromEntries(
+                                neighborIds.map(nid => [
+                                    nid,
+                                    { 
+                                        decision: neighborSnapshot[nid]?.decision ?? "neutral", 
+                                        reasoning: neighborSnapshot[nid]?.reasoning ?? "", 
+                                        step: null, 
+                                        pending: false 
+                                    }
+                                ])
+                            );
+
+                            const neighborAgentsList = neighborIds
+                                .map(id => agents.find(ag => ag.id === id))
+                                .filter(Boolean) as Agent[];
+
+                            const { decision } = calculateDecision(
+                                agent,
+                                scenario,
+                                neighborStateMap,
+                                neighborAgentsList,
+                                previousParams
+                            );
+
+                            const finalDecision = isSeeded ? "support" as DecisionType : decision;
+                            const finalReasoning = isSeeded 
+                                ? "I am supporting this product as an early partner." 
+                                : `Cognitive alignment with archetype ${agent.persona} completed successfully.`;
+
+                            return {
+                                agentId: agent.id,
+                                decision: finalDecision,
+                                reasoning: finalReasoning,
+                                model: "local-resilience-fallback"
+                            };
+                        });
+
+                        data = { results: fallbackResults };
+                    }
+                }
 
                 // ─── Phase 3: State Integration ──────────────────────────────────────
                 data.results.forEach((resItem: RunStepResponse) => {
                     const agent = agents.find(a => a.id === resItem.agentId)!;
                     
-                    // Special case for seeded agents in step 0
-                    const finalDecision = (currentStep === 0 && currentStates[agent.id]?.isSeeded) ? "support" as DecisionType : resItem.decision;
-                    const finalReasoning = (currentStep === 0 && currentStates[agent.id]?.isSeeded) ? "I am supporting this product as an early partner." : resItem.reasoning;
+                    const finalDecision = resItem.decision;
+                    const finalReasoning = resItem.reasoning;
 
                     newStates[resItem.agentId] = {
                         ...newStates[resItem.agentId],
@@ -479,10 +562,10 @@ export default function SimulatePage() {
                     simCtx.addTickerMsg(`SIGNAL: STRONG_MOMENTUM_DETECTED`, "success");
                 }
 
-                // SAFE MODE DELAY: 1.5s pause (Optimized for multiple account rotation)
-                if (batches.length > 1) {
-                    const jitter = Math.floor(Math.random() * 300);
-                    await new Promise(resolve => setTimeout(resolve, 1200 + jitter));
+                // Safe pacing delay
+                if (activeQueue.length > 0) {
+                    const jitter = Math.floor(Math.random() * 200);
+                    await new Promise(resolve => setTimeout(resolve, 800 + jitter));
                 }
             }
 
@@ -529,6 +612,13 @@ export default function SimulatePage() {
             await new Promise((r) => setTimeout(r, 400));
         }
     }, [running, runStep, states, step, phase]);
+
+    const handleStop = useCallback(() => {
+        abortRef.current = true;
+        if (controllerRef.current) controllerRef.current.abort();
+        setRunning(false);
+        simCtx.addTickerMsg("SIMULATION_TERMINATED_BY_USER", "alert");
+    }, [simCtx]);
 
     // ─── Keyboard Shortcuts ───
     useEffect(() => {
@@ -728,7 +818,7 @@ export default function SimulatePage() {
             <div className="telemetry-label" style={{ top: 80, left: 24 }}>TRINITY_SYS_LVL: 0.94</div>
             <div className="telemetry-label" style={{ top: 80, right: 24 }}>SIM_ID_HASH: {simCtx.dbSimulationId?.slice(0,12) || "LOCAL_CACHE"}</div>
             <div className="telemetry-label" style={{ bottom: 24, left: 24 }}>COORDS: 40.7128°N | 74.0060°W</div>
-            <div className="telemetry-label" style={{ bottom: 24, right: 24 }}>MEM_FLOW: {agents.length || 0}P / {new Date().toLocaleTimeString()}</div>
+            <div className="telemetry-label" style={{ bottom: 24, right: 24 }}>MEM_FLOW: {agents.length || 0}P / {mounted ? new Date().toLocaleTimeString() : "--:--:--"}</div>
 
             {/* ── PREMIUM MISSION CONTROL BACKGROUND (MATCH RESULTS ROOT) ── */}
             <div style={{ position: "absolute", top: "0%", left: "50%", transform: "translateX(-50%)", width: "100%", height: "100%", background: "radial-gradient(circle at top left, rgba(0, 208, 178, 0.08), transparent 40%), radial-gradient(circle at top right, rgba(255, 107, 53, 0.06), transparent 35%)", pointerEvents: "none", zIndex: 0 }} />
@@ -774,7 +864,7 @@ export default function SimulatePage() {
                     value={scenarioId}
                     onChange={handleScenarioChange}
                     onCustom={() => setShowCustomForm(true)}
-                    disabled={running}
+                    disabled={running || step > 0}
                 />
 
                 <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
@@ -809,29 +899,55 @@ export default function SimulatePage() {
                                 ▶▶ AUTO ×3
                             </button>
 
-                            <button 
-                                id="btn-step" 
-                                className="btn-cta" 
-                                onClick={handleRunStep} 
-                                disabled={running} 
-                                style={{ 
-                                    height: "32px", 
-                                    padding: "0 16px", 
-                                    background: running ? "rgba(255,255,255,0.1)" : "linear-gradient(180deg, var(--support), #13b19a)",
-                                    color: running ? "rgba(255,255,255,0.4)" : "white",
-                                    border: running ? "1px solid rgba(255,255,255,0.1)" : "none",
-                                    transition: "all 0.3s ease"
-                                }}
-                            >
-                                {running ? (
-                                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: "10px", letterSpacing: "0.05em" }}>
-                                        <div className="loading-spinner-tiny" style={{ width: 8, height: 8, border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "var(--support)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-                                        COMPUTING...
-                                    </span>
-                                ) : (
+                            {running ? (
+                                <div style={{ display: "flex", gap: 6 }}>
+                                    <button 
+                                        className="btn-cta" 
+                                        onClick={handleStop}
+                                        style={{ 
+                                            height: "32px", 
+                                            padding: "0 16px", 
+                                            background: "#ff3b3b",
+                                            color: "white",
+                                            border: "2px solid rgba(255, 255, 255, 0.4)",
+                                            fontWeight: 900,
+                                            fontSize: "10px",
+                                            letterSpacing: "0.05em",
+                                            boxShadow: "0 0 30px rgba(255, 59, 59, 0.5)"
+                                        }}
+                                    >
+                                        ■ STOP_SIMULATION
+                                    </button>
+                                    {phase === "RUNNING" && (
+                                        <button 
+                                            className="btn-ghost-setup"
+                                            onClick={() => {
+                                                // Force a retry of the current step
+                                                runStep(step, states);
+                                            }}
+                                            style={{ height: "32px", padding: "0 12px", border: "1px solid var(--support)", color: "var(--support)" }}
+                                        >
+                                            ↻ RETRY_BATCH
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <button 
+                                    id="btn-step" 
+                                    className="btn-cta" 
+                                    onClick={handleRunStep} 
+                                    style={{ 
+                                        height: "32px", 
+                                        padding: "0 16px", 
+                                        background: "linear-gradient(180deg, var(--support), #13b19a)",
+                                        color: "white",
+                                        border: "none",
+                                        transition: "all 0.3s ease"
+                                    }}
+                                >
                                     <span style={{ fontWeight: 700 }}>▶ RUN STEP {step + 1}</span>
-                                )}
-                            </button>
+                                </button>
+                            )}
 
                             <button id="btn-reset" className="btn-ghost-setup" onClick={handleReset} disabled={running} title="Reset simulation (keep population)" style={{ height: "32px", padding: "0 12px" }}>
                                 ⟳ RESET
@@ -1045,7 +1161,8 @@ export default function SimulatePage() {
             {selectedAgentId !== null && selectedAgent && selectedState && (
                 <div style={{ 
                     position: "fixed", top: "12px", right: "12px", width: "440px", height: "calc(100% - 24px)", 
-                    background: "rgba(8, 10, 12, 0.92)", backdropFilter: "blur(40px)", 
+                    background: "rgba(9, 11, 14, 0.98)", backdropFilter: "blur(40px)", 
+                    WebkitBackdropFilter: "blur(40px)",
                     border: "1px solid rgba(255,255,255,0.12)", zIndex: 1000, 
                     boxShadow: "-20px 0 100px rgba(0,0,0,0.9)", 
                     display: "flex", flexDirection: "column", 
@@ -1058,7 +1175,12 @@ export default function SimulatePage() {
                         display: "flex", justifyContent: "space-between", alignItems: "center", 
                         background: "linear-gradient(to right, rgba(0,208,132,0.08), transparent)" 
                     }}>
-                        <div className="results-side-label" style={{ marginBottom: 0, color: "var(--bright)", letterSpacing: "0.2em" }}>AGENT_TELEMETRY</div>
+                        <div className="results-side-label" style={{ marginBottom: 0, color: "var(--bright)", letterSpacing: "0.2em", display: "flex", alignItems: "center", gap: 10 }}>
+                            <span>AGENT_TELEMETRY</span>
+                            <span style={{ color: "var(--muted)", fontSize: "10px", fontFamily: "var(--mono)", letterSpacing: "0.08em" }}>
+                                ID:{String(selectedAgent.id).padStart(3, "0")}
+                            </span>
+                        </div>
                         <button onClick={() => setSelectedAgentId(null)} className="btn-ghost-setup" style={{ fontSize: 9, padding: "4px 10px", borderRadius: "100px" }}>CLOSE [×]</button>
                     </div>
                     <div style={{ flex: 1, overflow: "hidden" }}>

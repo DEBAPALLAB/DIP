@@ -1,3 +1,4 @@
+// FORCE_RECOMPILE: 2026-05-14T16:54:52Z
 import type { Metadata } from "next";
 import "./globals.css";
 import { ClientProviders } from "./providers";

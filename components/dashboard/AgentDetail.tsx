@@ -87,15 +87,7 @@ export default function AgentDetail({
                 overflow: "hidden",
             }}
         >
-            {/* Panel header */}
-            <div className="panel-header">
-                <span className="label">AGENT PROFILE</span>
-                <span style={{ color: "var(--muted)" }}>
-                    ID:{String(agent.id).padStart(3, "0")}
-                </span>
-            </div>
-
-            <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, padding: "10px" }}>
+            <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, padding: "16px" }}>
                 {/* Identity */}
                 <div
                     style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}

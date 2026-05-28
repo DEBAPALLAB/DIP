@@ -120,163 +120,127 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
             onKeyDown={(e) => e.key === "Enter" && onClick()}
             style={{
                 position: "relative",
-                padding: "24px 20px",
-                minHeight: "160px",
-                background: selected ? "rgba(30,35,45,0.95)" : "rgba(22,25,30,0.85)",
-                backdropFilter: "blur(40px)",
-                borderRadius: "24px",
-                border: selected ? "1.5px solid var(--orange)" : "1.5px solid rgba(255,255,255,0.15)",
+                padding: "20px 18px",
+                minHeight: "140px",
+                background: selected ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.02)",
+                backdropFilter: "blur(24px)",
+                borderRadius: "16px",
+                border: selected ? "1px solid var(--support)" : "1px solid rgba(255, 255, 255, 0.08)",
                 cursor: "pointer",
-                transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
-                boxShadow: selected ? "0 25px 50px rgba(0,0,0,0.7), inset 0 0 20px rgba(255,107,53,0.15)" : "0 10px 30px rgba(0,0,0,0.4)",
-                transform: selected ? "scale(1.025)" : "scale(1)",
+                transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+                boxShadow: selected ? "0 20px 40px rgba(0,0,0,0.5), 0 0 15px rgba(200, 241, 53, 0.1)" : "none",
                 display: "flex",
                 flexDirection: "column",
                 overflow: "hidden"
             }}
         >
             <style jsx>{`
-                .results-card::before {
-                    content: "";
-                    position: absolute;
-                    inset: 0;
-                    border-radius: 24px;
-                    padding: 1.5px;
-                    background: linear-gradient(135deg, rgba(255,255,255,0.25), transparent 40%);
-                    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-                    -webkit-mask-composite: xor;
-                    mask-composite: exclude;
-                    pointer-events: none;
-                }
-            `}</style>
-            <style jsx>{`
                 .results-card::after {
                     content: "";
                     position: absolute;
                     inset: 0;
-                    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.05), transparent);
-                    height: 20%;
-                    width: 100%;
-                    transform: translateY(-100%);
-                    transition: transform 0s;
+                    background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent 60%);
                     pointer-events: none;
-                    z-index: 20;
-                }
-                .results-card:hover::after {
-                    transform: translateY(500%);
-                    transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
                 }
             `}</style>
-            <TacticalBrackets />
-            <CardBackground />
-
-            {/* Inner Highlight Stroke */}
-            <div style={{ position: "absolute", inset: 0, borderRadius: "20px", border: "1.5px solid rgba(255,255,255,0.03)", pointerEvents: "none", mixBlendMode: "overlay" }} />
-
-            {/* Corner Telemetry Strings - Moved Inward significantly to avoid Curve Clipping */}
-            <div style={{ position: "absolute", top: 6, left: 24, fontFamily: "var(--mono)", fontSize: 5, color: "rgba(255,255,255,0.3)", letterSpacing: "0.2em", zIndex: 10 }}>AGT_ID::{agent.id.toString().padStart(4, "0")}</div>
-            <div style={{ position: "absolute", bottom: 6, right: 24, fontFamily: "var(--mono)", fontSize: 5, color: "rgba(255,255,255,0.3)", letterSpacing: "0.2em", zIndex: 10 }}>LINK_STATE::OPTIMIZED</div>
+            
             {/* Ambient Sentiment Glow */}
             {state.decision && (
                 <div style={{ 
                     position: "absolute", 
-                    top: -40, right: -40, width: 100, height: 100, 
+                    top: -30, right: -30, width: 80, height: 80, 
                     borderRadius: "50%",
                     background: state.decision === "support" ? "var(--support)" : state.decision === "oppose" ? "var(--oppose)" : "var(--neutral)",
-                    filter: "blur(40px)",
-                    opacity: 0.1,
+                    filter: "blur(30px)",
+                    opacity: 0.15,
                     pointerEvents: "none"
                 }} />
             )}
 
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {/* Compact Profile Circle */}
                     <div
                         style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: "12px",
+                            width: 32,
+                            height: 32,
+                            borderRadius: "10px",
                             background: agent.color,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: 900,
-                            color: "rgba(0,0,0,0.7)",
-                            boxShadow: `0 6px 16px ${agent.color}55`,
-                            flexShrink: 0,
-                            border: "1px solid rgba(255,255,255,0.2)"
+                            color: "rgba(0,0,0,0.8)",
+                            boxShadow: `0 4px 12px ${agent.color}44`,
+                            flexShrink: 0
                         }}
                     >
                         {agent.name.charAt(0)}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                        <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--bright)", fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.06em" }}>
-                            {agent.name.toUpperCase()}
+                        <div style={{ 
+                            fontFamily: "var(--serif)", 
+                            fontSize: 14, 
+                            color: "var(--bright)", 
+                            fontWeight: 400,
+                            fontStyle: "italic",
+                            whiteSpace: "nowrap", 
+                            overflow: "hidden", 
+                            textOverflow: "ellipsis",
+                            letterSpacing: "-0.01em"
+                        }}>
+                            {agent.name}
                         </div>
-                        <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 2, display: "flex", alignItems: "center", gap: 4, fontWeight: 500, letterSpacing: "0.03em" }}>
-                            {agent.job.toUpperCase()}
+                        <div style={{ fontSize: 8, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 1 }}>
+                            {agent.job}
                         </div>
                     </div>
                 </div>
                 <DecisionBadge decision={state.decision} model={state.model} />
             </div>
 
-            {/* Meta Tags */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 16, alignItems: "center" }}>
-                <span
-                    style={{
-                        fontFamily: "var(--mono)",
-                        fontSize: 8,
-                        color: "var(--bright)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        background: "rgba(255,255,255,0.05)",
-                        padding: "2px 8px",
-                        borderRadius: "100px",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                    }}
-                >
-                    {agent.persona}
+            {/* Trait Tags */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 12, alignItems: "center", opacity: 0.8 }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 7, color: "var(--muted)", border: "1px solid rgba(255,255,255,0.1)", padding: "1px 6px", borderRadius: "4px" }}>
+                    {agent.persona.toUpperCase()}
                 </span>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 8, color: "var(--muted)" }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 7, color: "rgba(255,255,255,0.3)" }}>
                     AGE_{agent.age}
                 </span>
             </div>
 
-            {/* Trait bars */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <TraitBar label="Risk" value={agent.risk} color="var(--oppose)" />
-                <TraitBar label="Trust" value={agent.trust} color="var(--support)" />
-            </div>
-
-            {/* Pending indicator */}
-            {state.pending && (
-                <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, opacity: 0.8 }}>
-                    <div className="live-dot" style={{ width: 4, height: 4, background: "var(--orange)" }} />
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 8, color: "var(--orange)", letterSpacing: "0.1em" }}>
-                        ANALYZING_BEHAVIOR...
-                    </span>
-                </div>
-            )}
-
             {/* Reasoning snippet */}
-            {state.reasoning && (
+            {state.reasoning ? (
                 <div
                     style={{
-                        marginTop: 6,
-                        fontSize: 10,
-                        color: "var(--muted)",
-                        lineHeight: 1.4,
+                        fontSize: 11,
+                        color: "var(--text)",
+                        lineHeight: 1.5,
                         display: "-webkit-box",
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
+                        opacity: 0.9,
+                        fontStyle: "italic"
                     }}
                 >
-                    {state.reasoning}
+                    "{state.reasoning}"
+                </div>
+            ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <TraitBar label="Risk" value={agent.risk} color="var(--oppose)" />
+                    <TraitBar label="Trust" value={agent.trust} color="var(--support)" />
+                </div>
+            )}
+
+            {/* Status Indicator */}
+            {state.pending && (
+                <div style={{ marginTop: "auto", paddingTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                    <div className="live-dot" style={{ width: 4, height: 4, background: "var(--support)" }} />
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 7, color: "var(--support)", letterSpacing: "0.15em", fontWeight: 800 }}>
+                        ANALYZING...
+                    </span>
                 </div>
             )}
         </div>

@@ -146,12 +146,12 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
             style={{
                 position: "fixed",
                 inset: 0,
-                background: "rgba(0,0,0,0.72)",
+                background: "rgba(0,0,0,0.85)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 zIndex: 1000,
-                backdropFilter: "blur(2px)",
+                backdropFilter: "blur(20px)",
             }}
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
@@ -171,17 +171,24 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "10px 16px",
-                    borderBottom: "1px solid #1e2e40",
+                    padding: "16px 24px",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    background: "linear-gradient(to right, rgba(200, 241, 53, 0.05), transparent)"
                 }}>
-                    <span style={{ fontSize: 9, color: "var(--orange)", textAnchor: "start", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>
-                        STRATEGIC SCENARIO EDITOR
+                    <span style={{ 
+                        fontFamily: "var(--serif)", 
+                        fontSize: 20, 
+                        color: "var(--bright)", 
+                        fontStyle: "italic",
+                        letterSpacing: "-0.01em" 
+                    }}>
+                        Scenario Studio
                     </span>
                     <button
                         onClick={onClose}
-                        style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 14, lineHeight: 1 }}
+                        style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
                     >
-                        ✕
+                        ×
                     </button>
                 </div>
 
@@ -303,24 +310,24 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                     {/* Sliders */}
                     <SliderRow
                         label="Perceived Value"
-                        hint="real-time market efficiency"
+                        hint="market efficiency"
                         value={value}
                         onChange={setValue}
-                        color="#00d084"
+                        color="var(--support)"
                     />
                     <SliderRow
                         label="Risk Level"
-                        hint="financial/emotional stakes"
+                        hint="financial stakes"
                         value={risk}
                         onChange={setRisk}
                         color="#ff4444"
                     />
                     <SliderRow
                         label="Loss Trigger"
-                        hint="FOMO / status quo penalty"
+                        hint="FOMO penalty"
                         value={loss}
                         onChange={setLoss}
-                        color="#f0b429"
+                        color="var(--neutral)"
                     />
 
                     {/* Actions */}

@@ -40,6 +40,7 @@ import ConfigScreen from "@/components/dashboard/ConfigScreen";
 import CustomScenarioForm, { loadSavedCustomScenario } from "@/components/dashboard/CustomScenarioForm";
 import AgentListFilter from "@/components/dashboard/AgentListFilter";
 import { deriveSimParams } from "@/lib/productParams";
+import { calculateDecision } from "@/lib/prompts";
 
 
 // ─── Step insight generator ────────────────────────────────────────────────────

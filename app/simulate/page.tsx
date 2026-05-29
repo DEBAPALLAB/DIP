@@ -136,7 +136,7 @@ export default function SimulatePage() {
     const lastSavedStepRef = useRef<number>(-1);
 
     // ─── Lifecycle: Cleanup on unmount ───
-    const persistSimulation = useCallback(async (status: "Pending" | "Running" | "Completed") => {
+    const persistSimulation = useCallback(async (status: "Pending" | "Completed") => {
         if (!simCtx.dbSimulationId || agents.length === 0) return;
         const persistScenario = customScenario ?? simCtx.scenario ?? getScenario(scenarioId);
 
@@ -227,7 +227,7 @@ export default function SimulatePage() {
 
         const timer = setTimeout(async () => {
             try {
-                await persistSimulation(step > 0 ? "Running" : "Pending");
+                await persistSimulation("Pending");
             } catch (err) {
                 console.warn("Auto-save failed:", err);
             }
@@ -243,7 +243,7 @@ export default function SimulatePage() {
 
         lastSavedStepRef.current = step;
 
-        void persistSimulation("Running").catch((err) => {
+        void persistSimulation("Pending").catch((err) => {
             console.warn("Immediate step save failed:", err);
         });
     }, [step, persistSimulation, isLoadingDb, agents.length, simCtx.dbSimulationId]);

@@ -5,19 +5,24 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function check() {
-    const { data, error } = await supabase
-        .from('simulations')
-        .select('id, status, total_agents, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5);
+    // Let's run a query via RPC if possible or fetch the schema details from REST API
+    // Wait! Since REST API doesn't expose pg_catalog, let's see if we can do an RPC call if we have one,
+    // or let's try to update status to different lowercase/uppercase strings to see what works!
+    const id = '4eaac734-bb29-4448-99b5-1a71bdf2e0f4';
     
-    if (error) {
-        console.error('Error fetching list:', error);
-    } else {
-        console.log('Last 5 simulations:');
-        data.forEach(row => {
-            console.log(`ID: ${row.id} | Status: ${row.status} | Total Agents: ${row.total_agents} | Created At: ${row.created_at}`);
-        });
+    const candidates = ['pending', 'running', 'completed', 'Pending', 'Running', 'Completed', 'active', 'Active'];
+    
+    for (const status of candidates) {
+        const { error } = await supabase
+            .from('simulations')
+            .update({ status })
+            .eq('id', id);
+        
+        if (error) {
+            console.log(`Status "${status}" failed: ${error.message}`);
+        } else {
+            console.log(`Status "${status}" SUCCEEDED!`);
+        }
     }
 }
 

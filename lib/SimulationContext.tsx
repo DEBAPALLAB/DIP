@@ -185,13 +185,19 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         // Sync initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
-                setState(prev => ({ ...prev, user: session.user }));
+                setState(prev => {
+                    const currentState = prev.dbSimulationId ? prev : s;
+                    return { ...currentState, user: session.user };
+                });
             }
         });
 
         // Listen for changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setState(prev => ({ ...prev, user: session?.user ?? null }));
+            setState(prev => {
+                const currentState = prev.dbSimulationId ? prev : s;
+                return { ...currentState, user: session?.user ?? null };
+            });
         });
 
         return () => subscription.unsubscribe();
@@ -444,7 +450,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                 const { data: childRows } = await supabase
                     .from("simulations")
                     .select("id, created_at, configuration, results")
-                    .contains("configuration", { parent_id: id })
+                    .eq("configuration->>parent_id", id)
                     .order("created_at", { ascending: true });
 
                 storedBranches = (childRows || []).map((row: any) => {

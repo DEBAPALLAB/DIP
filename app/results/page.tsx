@@ -204,12 +204,16 @@ export default function ResultsPage() {
         return "Awaiting more steps before the market signal becomes clear.";
     }, [adoptionPct, latestSnapshot, previousSnapshot, sim.insights, supportDelta, undecidedPct]);
 
-    if (sim.agents.length === 0) {
+    const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const simId = searchParams.get("id");
+    const isMismatch = simId && sim.dbSimulationId !== simId;
+
+    if (sim.agents.length === 0 || isMismatch || !sim.hydrated) {
         return (
             <div className="results-empty-state">
                 <div className="results-empty-glow" />
                 <div className="results-empty-orb">◉</div>
-                <p>{(!sim.hydrated || insightsLoading) ? "HYDRATING_SIMULATION..." : "FETCHING_DATA..."}</p>
+                <p>{(!sim.hydrated || insightsLoading || isMismatch) ? "HYDRATING_SIMULATION..." : "FETCHING_DATA..."}</p>
             </div>
         );
     }

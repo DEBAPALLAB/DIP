@@ -140,7 +140,7 @@ export default function SimulatePage() {
         if (!simCtx.dbSimulationId || agents.length === 0) return;
         const persistScenario = customScenario ?? simCtx.scenario ?? getScenario(scenarioId);
 
-        await supabase
+        const { error } = await supabase
             .from("simulations")
             .update({
                 status,
@@ -166,6 +166,12 @@ export default function SimulatePage() {
                 },
             })
             .eq("id", simCtx.dbSimulationId);
+
+        if (error) {
+            console.error("[AUTO-SAVE] Failed to persist simulation step to Supabase:", error);
+        } else {
+            console.log("[AUTO-SAVE] Successfully persisted simulation step to Supabase");
+        }
     }, [simCtx.dbSimulationId, agents, edges, customScenario, simCtx.scenario, scenarioId, simCtx.product, simCtx.marketFilters, mainView, states, history, log, agentHistories, step, simCtx.insights]);
 
     useEffect(() => {
@@ -664,7 +670,7 @@ export default function SimulatePage() {
 
         if (simCtx.dbSimulationId && agents.length > 0) {
             try {
-                await supabase
+                const { error } = await supabase
                     .from("simulations")
                     .update({
                         status: "Completed",
@@ -690,6 +696,12 @@ export default function SimulatePage() {
                         },
                     })
                     .eq("id", simCtx.dbSimulationId);
+
+                if (error) {
+                    console.error("[VIEW-RESULTS-SAVE] Failed to persist final results to Supabase:", error);
+                } else {
+                    console.log("[VIEW-RESULTS-SAVE] Successfully persisted final results to Supabase");
+                }
             } catch (err) {
                 console.warn("Final save before results failed:", err);
             }
@@ -783,7 +795,11 @@ export default function SimulatePage() {
 
     // ─── Render ────────────────────────────────────────────────────────────────
 
-    if (isLoadingDb) {
+    const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const urlId = searchParams.get('id');
+    const isMismatchSim = urlId && simCtx.dbSimulationId !== urlId;
+
+    if (isLoadingDb || !simCtx.hydrated || isMismatchSim) {
         return (
             <div style={{ height: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "20px" }}>
                 <div className="live-dot" style={{ width: 40, height: 40 }} />

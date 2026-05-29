@@ -154,15 +154,15 @@ export default function SimulatePage() {
                     scenario: persistScenario,
                     mainView,
                     branches: simCtx.branches,
-                },
-                results: {
-                    states,
-                    history,
-                    log,
-                    agent_histories: agentHistories,
-                    step,
-                    main_view: mainView,
-                    insights: simCtx.insights,
+                    results: {
+                        states,
+                        history,
+                        log,
+                        agent_histories: agentHistories,
+                        step,
+                        main_view: mainView,
+                        insights: simCtx.insights,
+                    },
                 },
             })
             .eq("id", simCtx.dbSimulationId);
@@ -689,15 +689,15 @@ export default function SimulatePage() {
                             scenario,
                             mainView,
                             branches: simCtx.branches,
-                        },
-                        results: {
-                            states,
-                            history,
-                            log,
-                            agent_histories: agentHistories,
-                            step,
-                            main_view: mainView,
-                            insights: simCtx.insights,
+                            results: {
+                                states,
+                                history,
+                                log,
+                                agent_histories: agentHistories,
+                                step,
+                                main_view: mainView,
+                                insights: simCtx.insights,
+                            },
                         },
                     })
                     .eq("id", simCtx.dbSimulationId);

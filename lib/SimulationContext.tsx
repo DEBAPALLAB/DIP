@@ -344,16 +344,15 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                 branch_name: name,
                 branch_step: state.step,
                 branch_adoption: adoption,
-            };
-
-            const branchResults = {
-                states: state.agentStates,
-                history: state.adoptionCurve,
-                log: state.log,
-                agent_histories: state.agentHistories,
-                step: state.step,
-                main_view: state.mainView,
-                insights: state.insights,
+                results: {
+                    states: state.agentStates,
+                    history: state.adoptionCurve,
+                    log: state.log,
+                    agent_histories: state.agentHistories,
+                    step: state.step,
+                    main_view: state.mainView,
+                    insights: state.insights,
+                }
             };
 
             const { data, error } = await supabase
@@ -366,7 +365,6 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                     edges: state.edges,
                     status: state.step > 0 ? "Completed" : "Pending",
                     configuration: branchConfiguration,
-                    results: branchResults,
                 })
                 .select()
                 .single();
@@ -444,7 +442,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             const { data: logs } = await supabase.from('simulation_logs').select('*').eq('simulation_id', id).order('timestamp', { ascending: true });
 
             const configuration = sim.configuration || sim.config || {};
-            const results = sim.results || {};
+            const results = sim.results || configuration.results || {};
             const agents = sim.agents || configuration.agents || [];
             const agentStates: SimulationStates = {};
             const resultStates = results.states || results.agent_states || {};
@@ -457,12 +455,12 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             if ((!Array.isArray(storedBranches) || storedBranches.length === 0) && id) {
                 const { data: childRows } = await supabase
                     .from("simulations")
-                    .select("id, created_at, configuration, results")
+                    .select("id, created_at, configuration")
                     .eq("configuration->>parent_id", id)
                     .order("created_at", { ascending: true });
 
                 storedBranches = (childRows || []).map((row: any) => {
-                    const childResults = row.results || {};
+                    const childResults = row.configuration?.results || {};
                     const childStates = childResults.states || {};
                     const childTotal = Object.keys(childStates).length;
                     const childSupport = Object.values(childStates).filter((s: any) => s?.decision === "support").length;

@@ -23,6 +23,8 @@ export default function ResultsPage() {
         const simId = searchParams.get("id");
 
         async function init() {
+            if (!sim.hydrated) return; // Wait for context hydration to finish!
+
             if (simId) {
                 // If we already have this simulation loaded, don't reload
                 if (sim.dbSimulationId === simId && sim.agents.length > 0) return;
@@ -39,7 +41,7 @@ export default function ResultsPage() {
             }
         }
         init();
-    }, [sim.agents.length, sim.dbSimulationId, sim.loadSimulationFromDb, router]);
+    }, [sim.hydrated, sim.agents.length, sim.dbSimulationId, sim.loadSimulationFromDb, router]);
 
     // Fetch parent data for comparison
     useEffect(() => {
@@ -207,7 +209,7 @@ export default function ResultsPage() {
             <div className="results-empty-state">
                 <div className="results-empty-glow" />
                 <div className="results-empty-orb">◉</div>
-                <p>{insightsLoading ? "HYDRATING_SIMULATION..." : "FETCHING_DATA..."}</p>
+                <p>{(!sim.hydrated || insightsLoading) ? "HYDRATING_SIMULATION..." : "FETCHING_DATA..."}</p>
             </div>
         );
     }

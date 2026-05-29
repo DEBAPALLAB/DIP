@@ -196,6 +196,7 @@ export default function SimulatePage() {
         const urlId = searchParams.get('id');
 
         async function hydrate() {
+            if (!simCtx.hydrated) return; // Wait for hydration!
             if (urlId && urlId !== simCtx.dbSimulationId) {
                 setIsLoadingDb(true);
                 await simCtx.loadSimulationFromDb(urlId);
@@ -203,7 +204,7 @@ export default function SimulatePage() {
             }
         }
         hydrate();
-    }, [simCtx.dbSimulationId]);
+    }, [simCtx.hydrated, simCtx.dbSimulationId]);
 
     // Update phase based on state
     useEffect(() => {

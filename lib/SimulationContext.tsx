@@ -114,6 +114,7 @@ const INITIAL_STATE: SimulationState = {
 // ─── Context Shape ──────────────────────────────────────────────────────────────
 
 interface SimulationContextValue extends SimulationState {
+    hydrated: boolean;
     setProduct: (p: ProductInput) => void;
     setMarketFilters: (f: MarketFilters) => void;
     setAgentCount: (n: number) => void;
@@ -551,6 +552,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
 
     const value: SimulationContextValue = {
         ...state,
+        hydrated,
         setProduct,
         setMarketFilters,
         setAgentCount,

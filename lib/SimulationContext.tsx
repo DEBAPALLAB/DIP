@@ -180,7 +180,11 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const s = loadState();
         setState(s);
-        setHydrated(true);
+        
+        // Defer hydration flag to next event loop tick to ensure s has committed in React
+        const timer = setTimeout(() => {
+            setHydrated(true);
+        }, 0);
 
         // Sync initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -200,7 +204,10 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             });
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            clearTimeout(timer);
+            subscription.unsubscribe();
+        };
     }, []);
 
     // Persist on every state change (after hydration)

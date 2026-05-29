@@ -168,12 +168,7 @@ export default function SimulatePage() {
             .eq("id", simCtx.dbSimulationId);
 
         if (error) {
-            console.error("[AUTO-SAVE] Failed to persist simulation step to Supabase:", {
-                message: error.message,
-                code: error.code,
-                details: error.details,
-                hint: error.hint
-            });
+            console.error("[AUTO-SAVE] Failed to persist simulation step to Supabase. Code: " + error.code + " | Message: " + error.message + " | Details: " + error.details);
         } else {
             console.log("[AUTO-SAVE] Successfully persisted simulation step to Supabase");
         }
@@ -703,12 +698,7 @@ export default function SimulatePage() {
                     .eq("id", simCtx.dbSimulationId);
 
                 if (error) {
-                    console.error("[VIEW-RESULTS-SAVE] Failed to persist final results to Supabase:", {
-                        message: error.message,
-                        code: error.code,
-                        details: error.details,
-                        hint: error.hint
-                    });
+                    console.error("[VIEW-RESULTS-SAVE] Failed to persist final results to Supabase. Code: " + error.code + " | Message: " + error.message + " | Details: " + error.details);
                 } else {
                     console.log("[VIEW-RESULTS-SAVE] Successfully persisted final results to Supabase");
                 }

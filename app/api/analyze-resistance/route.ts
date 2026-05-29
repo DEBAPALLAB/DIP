@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateChatCompletion } from "@/lib/ai";
 
 export async function POST(req: NextRequest) {
     try {
         const { logs, currentStep, scenarioLabel } = await req.json();
-        const apiKey = process.env.OPENROUTER_API_KEY;
-
-        if (!apiKey) {
-            return NextResponse.json({ error: "OPENROUTER_API_KEY not set" }, { status: 500 });
+        if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+            return NextResponse.json({ error: "AI API Key not configured." }, { status: 500 });
         }
 
         // Filter for opposition in the current step
@@ -24,32 +23,22 @@ Synthesize them into 1-2 punchy, professional sentences that help a product mana
 
         const userPrompt = `VERBATIMS FROM STEP ${currentStep}:\n${reasoningSamples}`;
 
-        const response = await fetch("https://openrouter.ai/ai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://decision-intelligence.app",
-                "X-Title": "Decision Intelligence Platform",
-            },
-            body: JSON.stringify({
-                model: process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free",
+        let completionResult;
+        try {
+            completionResult = await generateChatCompletion({
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userPrompt },
                 ],
                 max_tokens: 150,
                 temperature: 0.5,
-            }),
-        });
-
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`OpenRouter error: ${err}`);
+                openRouterModel: process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free"
+            });
+        } catch (err: any) {
+            throw new Error(`AI error: ${err.message}`);
         }
 
-        const data = await response.json();
-        const insight = data.choices?.[0]?.message?.content ?? "Unable to synthesize insights at this time.";
+        const insight = completionResult.text || "Unable to synthesize insights at this time.";
 
         return NextResponse.json({ insight });
     } catch (err) {

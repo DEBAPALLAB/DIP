@@ -173,11 +173,18 @@ export default function SetupPage() {
                     };
                     setProduct(preciseProduct);
                     sim.setProduct(preciseProduct);
+
+                    if (precision.market) {
+                        const mergedFilters = { ...filters, ...precision.market };
+                        setFilters(mergedFilters);
+                        sim.setMarketFilters(mergedFilters);
+                    }
                 }
             }
             if (data.marketFilters) {
-                setFilters({ ...filters, ...data.marketFilters });
-                sim.setMarketFilters({ ...filters, ...data.marketFilters });
+                const merged = { ...filters, ...data.marketFilters };
+                setFilters(merged);
+                sim.setMarketFilters(merged);
             }
             setAiPrompt("");
         } catch (e) {
@@ -368,6 +375,10 @@ export default function SetupPage() {
                     margin: 0;
                     padding: 0;
                 }
+                @keyframes radar-spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
             `}</style>
 
             {/* ── BACKGROUND VISUALIZATION ── */}
@@ -426,6 +437,16 @@ export default function SetupPage() {
                 <text x="70%" y="78%" fill="var(--bright)" fontSize="14" fontFamily="var(--mono)" textAnchor="end" opacity="0.15" pointerEvents="none" fontWeight="700">LOYAL_PRAGMATISTS</text>
                 <line x1="25%" y1="50%" x2="75%" y2="50%" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="10 10" />
                 <line x1="50%" y1="20%" x2="50%" y2="80%" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="10 10" />
+
+                {/* Holographic Radar Scanner Grid (Active during Synthesis) */}
+                {(isGenerating || isAiLoading) && (
+                    <g style={{ transform: "translate(50%, 50%)", transformOrigin: "center" }}>
+                        <circle cx="0" cy="0" r="100" fill="none" stroke="rgba(255,107,53,0.15)" strokeWidth="1" strokeDasharray="5 5" />
+                        <circle cx="0" cy="0" r="200" fill="none" stroke="rgba(255,107,53,0.08)" strokeWidth="1.5" />
+                        <circle cx="0" cy="0" r="300" fill="none" stroke="rgba(255,107,53,0.04)" strokeWidth="1" strokeDasharray="10 5" />
+                        <line x1="0" y1="0" x2="0" y2="-300" stroke="var(--orange)" strokeWidth="1.5" strokeOpacity="0.6" style={{ transformOrigin: "0px 0px", animation: "radar-spin 2.5s linear infinite" }} />
+                    </g>
+                )}
 
                 {sim.agents.map((ag, idx) => {
                     // Central spread (35% to 65% width, 25% to 75% height)

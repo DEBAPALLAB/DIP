@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateChatCompletion } from "@/lib/ai";
 
 export async function POST(req: NextRequest) {
     try {
@@ -8,9 +9,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing brief" }, { status: 400 });
         }
 
-        const apiKey = process.env.OPENROUTER_API_KEY;
-        if (!apiKey) {
-            return NextResponse.json({ error: "OPENROUTER_API_KEY not set" }, { status: 500 });
+        if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+            return NextResponse.json({ error: "AI API Key not configured." }, { status: 500 });
         }
 
         const systemPrompt = `You are a Global Strategic Audit Engine. Evaluate the product brief against 2024-2025 real-world market contexts. 
@@ -41,33 +41,37 @@ Respond ONLY with a valid JSON object:
   "market": { "ageMin": 18, "ageMax": 55, "incomeMin": 0, "incomeMax": 100, "education": "any", "wrkstat": "any" }
 }`;
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://decision-intelligence.app",
-                "X-Title": "Decision Intelligence Platform",
-            },
-            body: JSON.stringify({
-                model: "arcee-ai/trinity-large-preview:free",
+        const FREE_MODELS = [
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "google/gemini-2.5-flash:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "nousresearch/hermes-3-llama-3.1-8b:free",
+            "meta-llama/llama-3.2-3b-instruct:free",
+            "openai/gpt-oss-120b:free",
+            "nvidia/nemotron-3-super-120b-a12b:free",
+            "google/gemma-4-31b-it:free"
+        ];
+
+        let completionResult;
+        try {
+            completionResult = await generateChatCompletion({
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: brief },
                 ],
                 temperature: 0.2,
                 max_tokens: 400,
-            }),
-        });
-
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error(`OpenRouter error [${response.status}]:`, errText);
-            return NextResponse.json({ error: "API error" }, { status: 502 });
+                timeoutMs: 8000,
+                openRouterModels: FREE_MODELS
+            });
+        } catch (err: any) {
+            return NextResponse.json({ 
+                error: "API error", 
+                details: err.message || "AI request failed all fallback endpoints." 
+            }, { status: 502 });
         }
 
-        const data = await response.json();
-        let text: string = data.choices?.[0]?.message?.content ?? "{}";
+        let text: string = completionResult.text;
 
         // Clean up markdown blocks if the model disobeys
         text = text.replace(/```json\n?/, "").replace(/```\n?/, "").trim();

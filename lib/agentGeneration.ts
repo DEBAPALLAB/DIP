@@ -270,12 +270,18 @@ export function assignNameAndJob(
 ): { name: string; job: string } {
     const namePool = respondent.sex === "female" ? FIRST_NAMES.female : FIRST_NAMES.male;
     
-    // Hash the respondent's internal properties to get a stable but pseudo-random index
-    // so that the same person gets the same name across renders, but it looks random globally.
-    const pseudoSeed = (respondent.age * 13) + (respondent.income_percentile * 100) + index;
+    const ageVal = isNaN(respondent.age) || respondent.age === undefined ? 42 : respondent.age;
+    const incomeVal = isNaN(respondent.income_percentile) || respondent.income_percentile === undefined ? 0.5 : respondent.income_percentile;
     
-    const firstName = namePool[pseudoSeed % namePool.length];
-    const lastName = LAST_NAMES[(pseudoSeed * 7) % LAST_NAMES.length];
+    let seedVal = (ageVal * 13) + (incomeVal * 100) + index;
+    if (isNaN(seedVal) || !isFinite(seedVal)) {
+        seedVal = index;
+    }
+    
+    const pseudoSeed = Math.floor(seedVal);
+    
+    const firstName = namePool[pseudoSeed % namePool.length] || namePool[0];
+    const lastName = LAST_NAMES[(pseudoSeed * 7) % LAST_NAMES.length] || LAST_NAMES[0];
 
     let jobPool: string[];
     const stat = respondent.wrkstat;

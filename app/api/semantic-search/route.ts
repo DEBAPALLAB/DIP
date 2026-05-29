@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateChatCompletion } from "@/lib/ai";
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { query, jobs } = body;
 
-        const apiKey = process.env.OPENROUTER_API_KEY;
-        if (!apiKey) {
-            return NextResponse.json({ error: "OPENROUTER_API_KEY not set" }, { status: 500 });
+        if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+            return NextResponse.json({ error: "AI API Key not configured." }, { status: 500 });
         }
 
         const prompt = `You are a semantic categorization engine.
@@ -22,61 +22,25 @@ Return the results as a JSON array of strings containing ONLY the matching job t
 If no jobs match, return an empty array [].
 Do not include any prose or explanation. Just the JSON array.`;
 
-        // ─── Retry Logic ───
-        let response: Response | null = null;
-        let lastError: any = null;
-        const maxRetries = 2;
-
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s for semantic search (fast)
-
-                response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${apiKey}`,
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://decision-intelligence.app",
-                        "X-Title": "Decision Intelligence Platform",
-                    },
-                    body: JSON.stringify({
-                        model: process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free",
-                        messages: [
-                            { role: "system", content: "You are a precise semantic filter. You only output JSON arrays of strings." },
-                            { role: "user", content: prompt },
-                        ],
-                        max_tokens: 1000,
-                        temperature: 0.1,
-                        response_format: { type: "json_object" }
-                    }),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (response.ok) break;
-                
-                const errText = await response.text();
-                lastError = new Error(`HTTP ${response.status}: ${errText}`);
-                if (response.status >= 400 && response.status < 500) break;
-
-            } catch (err: any) {
-                lastError = err;
-            }
-
-            if (attempt < maxRetries) {
-                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-            }
+        let completionResult;
+        try {
+            completionResult = await generateChatCompletion({
+                messages: [
+                    { role: "system", content: "You are a precise semantic filter. You only output JSON arrays of strings." },
+                    { role: "user", content: prompt },
+                ],
+                temperature: 0.1,
+                max_tokens: 1000,
+                response_format: { type: "json_object" },
+                timeoutMs: 30000,
+                openRouterModel: process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free"
+            });
+        } catch (err: any) {
+            console.error(`AI semantic-search failed:`, err.message);
+            return NextResponse.json({ error: `AI Search Error: ${err.message}` }, { status: 502 });
         }
 
-        if (!response || !response.ok) {
-            console.error(`OpenRouter semantic-search failed:`, lastError?.message);
-            return NextResponse.json({ error: `AI Search Error: ${lastError?.message}` }, { status: 502 });
-        }
-
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content ?? "[]";
+        const content = completionResult.text;
         
         let matches = [];
         try {

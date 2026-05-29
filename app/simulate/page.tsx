@@ -62,7 +62,7 @@ function generateStepInsight(counts: StepSnapshot, stepNum: number, prevCounts?:
 }
 // ─── Batch size scaling: Optimized for stability ───
 function getBatchSize(agentCount: number): number {
-    return 2; // Fixed at 2 to ensure fast responses (< 15s) and avoid timeouts
+    return 10; // Increased to 10 to reduce API call overhead and cut token usage by 5x
 }
 
 // ─── Batch helper ──────────────────────────────────────────────────────────────

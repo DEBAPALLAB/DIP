@@ -38,13 +38,14 @@ function getDisplayName(user: { email?: string; metadata?: any } | null) {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { tier, limits, isAtLeast } = useEntitlements();
   const router = useRouter();
   
   const [pastSimulations, setPastSimulations] = useState<SimulationRecord[]>([]);
   const [loadingSims, setLoadingSims] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const displayName = getDisplayName(user);
 
   const totalAgents = pastSimulations.reduce((acc, sim) => acc + (sim.total_agents || 0), 0);
@@ -244,28 +245,84 @@ export default function DashboardPage() {
                 {tier.toUpperCase()}_NODE
             </span>
 
-            {/* Profile Avatar */}
-            <div style={{ 
-                width: "36px", height: "36px", borderRadius: "50%", 
-                background: "rgba(255,107,53,0.08)", 
-                border: "1.5px solid var(--orange)", 
-                display: "flex", alignItems: "center", justifyContent: "center", 
-                fontSize: "12px", fontWeight: 900, color: "var(--orange)",
-                boxShadow: "0 0 12px rgba(255,107,53,0.2)",
-                fontFamily: "var(--mono)",
-                cursor: "pointer",
-                transition: "all 0.3s ease"
-            }}
-            onMouseOver={(e) => {
-                e.currentTarget.style.transform = "scale(1.08)";
-                e.currentTarget.style.boxShadow = "0 0 18px rgba(255,107,53,0.45)";
-            }}
-            onMouseOut={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-                e.currentTarget.style.boxShadow = "0 0 12px rgba(255,107,53,0.2)";
-            }}
-            >
-              {(displayName.charAt(0) || user?.email?.charAt(0) || "U").toUpperCase()}
+            {/* Profile Avatar & Interactive Dropdown Menu */}
+            <div style={{ position: "relative" }}>
+                <div 
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    style={{ 
+                        width: "36px", height: "36px", borderRadius: "50%", 
+                        background: "rgba(255,107,53,0.08)", 
+                        border: "1.5px solid var(--orange)", 
+                        display: "flex", alignItems: "center", justifyContent: "center", 
+                        fontSize: "12px", fontWeight: 900, color: "var(--orange)",
+                        boxShadow: "0 0 12px rgba(255,107,53,0.2)",
+                        fontFamily: "var(--mono)",
+                        cursor: "pointer",
+                        transition: "all 0.3s ease"
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.transform = "scale(1.08)";
+                        e.currentTarget.style.boxShadow = "0 0 18px rgba(255,107,53,0.45)";
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "0 0 12px rgba(255,107,53,0.2)";
+                    }}
+                >
+                  {(displayName.charAt(0) || user?.email?.charAt(0) || "U").toUpperCase()}
+                </div>
+
+                {showProfileMenu && (
+                    <div style={{
+                        position: "absolute",
+                        top: "48px",
+                        right: 0,
+                        width: "280px",
+                        background: "rgba(9, 11, 14, 0.95)",
+                        backdropFilter: "blur(24px)",
+                        border: "1px solid rgba(255,107,53,0.3)",
+                        borderRadius: "8px",
+                        boxShadow: "0 10px 40px rgba(0,0,0,0.8)",
+                        padding: "20px",
+                        zIndex: 1000,
+                        fontFamily: "var(--mono)",
+                        fontSize: "11px",
+                    }}>
+                        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "12px", marginBottom: "12px" }}>
+                            <div style={{ color: "var(--muted)", fontSize: "8px", marginBottom: "4px" }}>[ACCOUNT_IDENTIFIER]</div>
+                            <div style={{ color: "var(--bright)", fontWeight: 700, wordBreak: "break-all" }}>{user?.email}</div>
+                        </div>
+
+                        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "12px", marginBottom: "12px" }}>
+                            <div style={{ color: "var(--orange)", fontSize: "8px", marginBottom: "4px" }}>ACTIVE_PLAN_TIER</div>
+                            <div style={{ color: "var(--bright)", fontSize: "14px", fontWeight: 800 }}>{tier.toUpperCase()} NODE</div>
+                            <div style={{ color: "var(--muted)", fontSize: "9px", marginTop: "4px" }}>CAPACITY: {limits.maxAgents === 99999 ? "UNLIMITED" : `${limits.maxAgents} units`}</div>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <Link href="/pricing" onClick={() => setShowProfileMenu(false)} style={{ textDecoration: "none", color: "var(--orange)", textAlign: "center", border: "1px dashed rgba(255,107,53,0.3)", padding: "8px", borderRadius: "4px", fontWeight: 700 }} onMouseOver={(e) => e.currentTarget.style.background = "rgba(255,107,53,0.05)"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
+                                MANAGED_SUBSCRIBER_LAB →
+                            </Link>
+                            <button 
+                                onClick={() => { setShowProfileMenu(false); logout(); }}
+                                style={{
+                                    background: "rgba(255, 68, 68, 0.1)",
+                                    border: "1px solid rgba(255, 68, 68, 0.3)",
+                                    color: "#ff4444",
+                                    padding: "8px",
+                                    borderRadius: "4px",
+                                    cursor: "pointer",
+                                    fontWeight: 800,
+                                    fontFamily: "var(--mono)",
+                                    fontSize: "11px",
+                                    textTransform: "uppercase"
+                                }}
+                            >
+                                TERMINATE_SESSION [LOGOUT]
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
       </nav>

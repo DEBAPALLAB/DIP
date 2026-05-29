@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getScenario } from "@/lib/scenarios";
 import { calculateDecision } from "@/lib/prompts";
 import type { RunStepBatchRequest, RunStepBatchResponse, RunStepResponse, AgentState } from "@/lib/types";
+import { generateChatCompletion } from "@/lib/ai";
 
 let keyRotationIndex = 0;
 
@@ -36,20 +37,19 @@ export async function POST(req: NextRequest) {
             };
         });
 
-        // ─── Phase 2: Narrative Generation ───
+        // ─── Phase 2: Narrative Generation (Optimized for ultra-low token footprint) ───
         const cohortListString = cohortData.map(d => {
             const neighborLines = (d.neighborAgents ?? [])
-                .map(nb => `${nb.name} (${nb.persona}): ${d.neighborStateMap[nb.id]?.decision?.toUpperCase() || "NEUTRAL"}`)
-                .join(", ");
+                .map(nb => `${nb.persona}:${d.neighborStateMap[nb.id]?.decision?.toUpperCase() || "NEUTRAL"}`)
+                .join(",");
 
-            return `ID: ${d.agentId} | NAME: ${d.agent.name} | ARCHETYPE: ${d.agent.persona} | DECISION: ${(d.decision || "neutral").toUpperCase()} | NETWORK: [${neighborLines}]`;
+            return `${d.agentId}|${d.agent.persona}|${(d.decision || "neutral").toUpperCase()}|${neighborLines}`;
         }).join("\n");
 
-        // ULTRA-BRIEF PROMPT (Prevents token-wasting preamble/reflection)
-        const systemPrompt = `ACT AS A DATA GENERATOR.
-JSON ARRAY ONLY. NO PREAMBLE. NO THINKING ALOUD.
-For each ID, provide ONE concise character-driven sentence explaining their decision.
-FORMAT: [{"id": 0, "reasoning": "..."}]`;
+        // ULTRA-BRIEF PROMPT (Prevents token-wasting and reduces input size)
+        const systemPrompt = `ACT AS A DATA GENERATOR. JSON ARRAY ONLY. NO THINKING. NO PREAMBLE.
+Input: agentId|Archetype|Decision|NeighborArchetype:NeighborStance,...
+Output format: [{"id": agentId, "reasoning": "ONE concise sentence matching Archetype, explaining their Decision based on Scenario and NeighborStances"}]`;
 
         const userPrompt = `SCENARIO: ${scenario.brief}\nCOHORT:\n${cohortListString}\n\nOUTPUT JSON NOW.`;
 
@@ -65,68 +65,38 @@ FORMAT: [{"id": 0, "reasoning": "..."}]`;
             "google/gemma-4-31b-it:free"
         ];
 
-        const allKeys = (process.env.OPENROUTER_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
-        if (allKeys.length === 0) throw new Error("No API keys found");
+        // Prepare rotated free models list
+        const rotatedModels = FREE_MODELS.map((_, idx) => FREE_MODELS[(keyRotationIndex + idx) % FREE_MODELS.length]);
 
-        let response = null;
-        let finalModel = "";
-        let errorMsg = "";
-
-        // Try models sequentially until one succeeds
-        for (let i = 0; i < FREE_MODELS.length; i++) {
-            const currentModel = FREE_MODELS[(keyRotationIndex + i) % FREE_MODELS.length];
-            const currentKey = allKeys[keyRotationIndex % allKeys.length];
+        let completionResult;
+        try {
+            completionResult = await generateChatCompletion({
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt }
+                ],
+                temperature: 0.3,
+                max_tokens: 1500,
+                timeoutMs: 12000,
+                openRouterModels: rotatedModels
+            });
             
-            console.log(`[API_ROUTE] Attempting with model: ${currentModel}...`);
-
-            const apiCall = async () => {
-                const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${currentKey}`,
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://strawberry-platform.vercel.app",
-                        "X-Title": "Strawberry Decision Platform",
-                    },
-                    body: JSON.stringify({
-                        model: currentModel,
-                        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-                        temperature: 0.3,
-                        max_tokens: 500 // Drastically reduced from 4000 to maximize generation speed and minimize timeouts
-                    }),
-                    signal: AbortSignal.timeout(7000) // 7s timeout to fail fast and fallback immediately if a model is congested or queueing
-                });
-
-                if (!res.ok) {
-                    const errText = await res.text();
-                    throw new Error(`Model ${currentModel} HTTP error ${res.status}: ${errText}`);
+            // Advance the rotation index if we ended up using OpenRouter
+            if (completionResult.source === "openrouter") {
+                const usedIndex = FREE_MODELS.indexOf(completionResult.model);
+                if (usedIndex !== -1) {
+                    keyRotationIndex = (usedIndex + 1) % FREE_MODELS.length;
                 }
-                return res;
-            };
-
-            try {
-                const res = await apiCall();
-                if (res && res.ok) {
-                    response = res;
-                    finalModel = currentModel;
-                    // Advance index beyond this successful one for next time
-                    keyRotationIndex = (keyRotationIndex + i + 1) % FREE_MODELS.length;
-                    break;
-                }
-            } catch (e: any) {
-                console.error(`[API_ROUTE] Attempt with ${currentModel} failed: ${e.message}`);
-                errorMsg = e.message;
             }
-        }
-
-        if (!response) {
+        } catch (e: any) {
+            console.error(`[API_ROUTE] API execution failed: ${e.message}`);
             return NextResponse.json({ 
-                error: `All authorized models failed or rate-limited. Last error: ${errorMsg}` 
+                error: `All authorized models failed or rate-limited. Last error: ${e.message}` 
             }, { status: 504 });
         }
 
-        const data = await response.json();
-        const text = data.choices?.[0]?.message?.content ?? "";
+        const text = completionResult.text;
+        const finalModel = completionResult.model;
         
         // ─── Phase 3: Rescue Parser (Hyper-Resiliency) ───
         let reasonings: { id: number, reasoning: string }[] = [];

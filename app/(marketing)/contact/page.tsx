@@ -17,7 +17,7 @@ export default function ContactPage() {
             </p>
             <div style={{ marginTop: "40px" }}>
               <div style={{ color: "var(--orange)", fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "8px" }}>// EMAIL</div>
-              <div style={{ color: "var(--bright)", fontSize: "18px" }}>agency@strawberry.ai</div>
+              <div style={{ color: "var(--bright)", fontSize: "18px" }}>agency@notaprompt.in</div>
             </div>
           </div>
 

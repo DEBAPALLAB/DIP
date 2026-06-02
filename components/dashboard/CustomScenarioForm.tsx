@@ -176,10 +176,10 @@ export default function CustomScenarioForm({ existing, onApply, onClose }: Custo
                     background: "linear-gradient(to right, rgba(200, 241, 53, 0.05), transparent)"
                 }}>
                     <span style={{ 
-                        fontFamily: "var(--serif)", 
-                        fontSize: 20, 
+                        fontFamily: "'Plus Jakarta Sans', sans-serif", 
+                        fontSize: 18, 
                         color: "var(--bright)", 
-                        fontStyle: "italic",
+                        fontWeight: 800,
                         letterSpacing: "-0.01em" 
                     }}>
                         Scenario Studio

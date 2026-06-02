@@ -122,8 +122,8 @@ export async function generateChatCompletion(options: ChatCompletionOptions): Pr
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${currentKey}`,
-                    "HTTP-Referer": "https://strawberry-platform.vercel.app",
-                    "X-Title": "Strawberry Decision Platform",
+                    "HTTP-Referer": "https://notaprompt.in",
+                    "X-Title": "Not A Prompt Decision Platform",
                 },
                 body: JSON.stringify(bodyPayload),
                 signal: controller.signal,

@@ -53,10 +53,10 @@ export default function TopBar({ step, running, states, history, scenarioLabel, 
             <div className="ticker-item" style={{ borderRight: "1px solid rgba(255,255,255,0.06)", padding: "0 24px" }}>
                 <span className="ticker-label" style={{ marginRight: 12 }}>STRATEGY</span>
                 <span style={{ 
-                    fontFamily: "var(--serif)", 
+                    fontFamily: "'Plus Jakarta Sans', sans-serif", 
                     color: "var(--bright)", 
-                    fontSize: "16px", 
-                    fontStyle: "italic",
+                    fontSize: "14px", 
+                    fontWeight: 700,
                     letterSpacing: "-0.01em"
                 }}>
                     {scenarioLabel}

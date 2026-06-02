@@ -43,7 +43,7 @@ export function Navbar() {
       <nav className={`marketing-nav${scrolled ? " nav-scrolled" : ""}`}>
         <div className="nav-container">
           <Link href="/" className="nav-logo">
-            STRAWBERRY <span className="logo-dot">.</span>
+            NOTAPROMPT <span className="logo-dot">.in</span>
           </Link>
 
           {/* Desktop links */}

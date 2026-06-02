@@ -180,11 +180,10 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
                     </div>
                     <div style={{ minWidth: 0 }}>
                         <div style={{ 
-                            fontFamily: "var(--serif)", 
+                            fontFamily: "'Plus Jakarta Sans', sans-serif", 
                             fontSize: 14, 
                             color: "var(--bright)", 
-                            fontWeight: 400,
-                            fontStyle: "italic",
+                            fontWeight: 700,
                             whiteSpace: "nowrap", 
                             overflow: "hidden", 
                             textOverflow: "ellipsis",

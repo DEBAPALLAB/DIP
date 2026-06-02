@@ -379,11 +379,26 @@ export default function SetupPage() {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }
                 }
+                /* Premium Glassmorphic input overrides */
+                .no-scrollbar input, .no-scrollbar select, .no-scrollbar textarea {
+                    background: rgba(6, 8, 12, 0.4) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+                    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                }
+                .no-scrollbar input:hover, .no-scrollbar select:hover, .no-scrollbar textarea:hover {
+                    border-color: rgba(255, 255, 255, 0.16) !important;
+                    background: rgba(6, 8, 12, 0.6) !important;
+                }
+                .no-scrollbar input:focus, .no-scrollbar select:focus, .no-scrollbar textarea:focus {
+                    border-color: var(--orange) !important;
+                    background: rgba(6, 8, 12, 0.85) !important;
+                    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15), inset 0 1px 3px rgba(0,0,0,0.2) !important;
+                }
             `}</style>
 
             {/* ── BACKGROUND VISUALIZATION ── */}
-            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none" }} />
-            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "120%", height: "120%", background: "radial-gradient(circle, rgba(255,107,53,0.08) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none" }} />
+            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "120%", height: "120%", background: "radial-gradient(circle, rgba(255,107,53,0.06) 0%, rgba(200,241,53,0.02) 40%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
             {/* ── TOP NAVIGATION ── */}
             <div style={{ position: "absolute", top: 24, left: 32, zIndex: 40, display: "flex", alignItems: "center", gap: "24px" }}>
@@ -480,7 +495,7 @@ export default function SetupPage() {
             </svg>
 
             {/* ── LEFT PANEL: CONFIGURATION ── */}
-            <div style={{ position: "absolute", top: 80, left: 32, bottom: 32, width: "380px", background: "rgba(10, 12, 16, 0.7)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 40px 100px rgba(0,0,0,0.4)" }}>
+            <div style={{ position: "absolute", top: 80, left: 32, bottom: 32, width: "380px", background: "rgba(6, 7, 9, 0.75)", backdropFilter: "blur(28px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "24px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 40px 100px rgba(0,0,0,0.5)" }}>
                 {/* AI ARCHITECT HEADER */}
                 <div style={{ padding: "32px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(to bottom, rgba(255,107,53,0.08), transparent)", flexShrink: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
@@ -497,7 +512,7 @@ export default function SetupPage() {
                         onClick={handleAiGenerate} 
                         disabled={isAiLoading || !aiPrompt} 
                         className={isAiLoading ? "" : "btn-v2-primary"}
-                        style={{ width: "100%", height: "44px", borderRadius: "6px", fontSize: "12px", fontWeight: 800, letterSpacing: "0.1em", border: isAiLoading ? "1px solid var(--border)" : "none", color: isAiLoading ? "var(--muted)" : "#000", background: isAiLoading ? "transparent" : "var(--orange)" }}
+                        style={{ width: "100%", height: "44px", borderRadius: "99px", fontSize: "12px", fontWeight: 800, letterSpacing: "0.1em", border: isAiLoading ? "1px solid var(--border)" : "none", color: isAiLoading ? "var(--muted)" : "#000", background: isAiLoading ? "transparent" : "var(--orange)" }}
                     >
                         {isAiLoading ? "SYNTHESIZING..." : "GENERATE SCENARIO"}
                     </button>
@@ -595,7 +610,7 @@ export default function SetupPage() {
             </div>
 
             {/* ── RIGHT PANEL: AUDIENCE & GTM ── */}
-            <div style={{ position: "absolute", top: 80, right: 32, bottom: 32, width: "380px", background: "rgba(10, 12, 16, 0.7)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 40px 100px rgba(0,0,0,0.4)" }}>
+            <div style={{ position: "absolute", top: 80, right: 32, bottom: 32, width: "380px", background: "rgba(6, 7, 9, 0.75)", backdropFilter: "blur(28px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "24px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 40px 100px rgba(0,0,0,0.5)" }}>
                 <div className="no-scrollbar" style={{ flex: 1, padding: "32px 24px", overflowY: "auto" }}>
                     
                     {/* STRATEGIC AI AUDIT CARD */}
@@ -762,9 +777,10 @@ export default function SetupPage() {
                   disabled={sim.agents.length === 0 || isGenerating || isLaunching} 
                   className="btn-v2-primary"
                   style={{ 
-                    height: "56px", padding: "0 64px", borderRadius: "8px", fontSize: "15px", fontWeight: 900, 
-                    letterSpacing: "0.2em", boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(255,107,53,0.2)",
-                    pointerEvents: "auto"
+                    height: "56px", padding: "0 64px", borderRadius: "99px", fontSize: "14px", fontWeight: 900, 
+                    letterSpacing: "0.15em", boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(255,107,53,0.25)",
+                    pointerEvents: "auto",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif"
                   }}
                 >
                     {isLaunching ? "BOOTING_SIMULATION_CORE..." : isGenerating ? "RECALIBRATING..." : "START_SIMULATION_SEQUENCES"}
@@ -786,9 +802,9 @@ export default function SetupPage() {
 const fieldWrapper = { display: "flex", flexDirection: "column" as const, gap: "6px" };
 
 const inputStyle = { 
-    width: "100%", height: "40px", padding: "0 14px", 
-    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", 
-    borderRadius: "6px", color: "var(--bright)", fontFamily: "var(--sans)", fontSize: "13px", 
+    width: "100%", height: "42px", padding: "0 16px", 
+    background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", 
+    borderRadius: "10px", color: "var(--bright)", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "13px", 
     outline: "none", transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
     boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2)"
 };
@@ -796,21 +812,21 @@ const inputStyle = {
 const selectStyle = { 
     ...inputStyle, cursor: "pointer", 
     appearance: "none" as const, 
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='white' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E")`,
-    backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center"
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat", backgroundPosition: "right 16px center"
 };
 
 const textareaStyle = { 
-    ...inputStyle, height: "auto", padding: "12px 14px", resize: "none" as const, lineHeight: "1.5" 
+    ...inputStyle, height: "auto", padding: "12px 16px", resize: "none" as const, lineHeight: "1.6" 
 };
 
 const sectionLabel = { 
-    fontFamily: "var(--mono)", fontSize: "11px", fontWeight: 800, color: "var(--orange)", 
-    textTransform: "uppercase" as const, marginBottom: "20px", letterSpacing: "0.15em",
+    fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "12px", fontWeight: 800, color: "var(--orange)", 
+    textTransform: "uppercase" as const, marginBottom: "20px", letterSpacing: "0.1em",
     display: "flex", alignItems: "center", gap: "12px"
 };
 
 const miniLabel = { 
-    fontSize: "9px", fontFamily: "var(--mono)", fontWeight: 700, color: "rgba(255,255,255,0.3)", 
-    letterSpacing: "0.05em", marginBottom: "2px", textTransform: "uppercase" as const
+    fontSize: "9px", fontFamily: "var(--mono)", fontWeight: 700, color: "rgba(255,255,255,0.35)", 
+    letterSpacing: "0.08em", marginBottom: "4px", textTransform: "uppercase" as const
 };

@@ -86,7 +86,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at 50% 0%, #12100f 0%, #060505 100%)", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at 50% 0%, #0c0b0a 0%, #030303 100%)", display: "flex", flexDirection: "column", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       {/* Dynamic Styling Overrides for Cyberpunk Dashboard theme */}
       <style>
         {`
@@ -94,11 +94,11 @@ export default function DashboardPage() {
               background: linear-gradient(135deg, var(--orange) 0%, #ff8b45 100%);
               color: #000 !important;
               border: 1px solid var(--orange);
-              font-family: var(--mono);
-              font-size: 11px;
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-size: 12px;
               font-weight: 800;
-              letter-spacing: 0.08em;
-              border-radius: 4px;
+              letter-spacing: 0.05em;
+              border-radius: 99px;
               cursor: pointer;
               transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
               box-shadow: 0 4px 15px rgba(255, 107, 53, 0.15);
@@ -115,22 +115,22 @@ export default function DashboardPage() {
           }
 
           .btn-v2-ghost {
-              background: rgba(255, 255, 255, 0.01);
+              background: rgba(255, 255, 255, 0.02);
               color: var(--muted);
-              border: 1px solid var(--border);
-              font-family: var(--mono);
-              font-size: 10px;
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-size: 11px;
               font-weight: 700;
-              letter-spacing: 0.06em;
-              border-radius: 4px;
+              letter-spacing: 0.04em;
+              border-radius: 99px;
               cursor: pointer;
               transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
               text-transform: uppercase;
           }
           .btn-v2-ghost:hover:not(:disabled) {
               color: var(--bright);
-              border-color: var(--border-bright);
-              background: rgba(255, 255, 255, 0.04);
+              border-color: rgba(255, 255, 255, 0.25);
+              background: rgba(255, 255, 255, 0.05);
               box-shadow: 0 6px 20px rgba(255, 255, 255, 0.03);
               transform: translateY(-2px);
           }
@@ -142,7 +142,7 @@ export default function DashboardPage() {
               font-size: 11px;
               color: var(--muted);
               text-decoration: none;
-              font-family: var(--mono);
+              font-family: 'Plus Jakarta Sans', sans-serif;
               letter-spacing: 0.1em;
               font-weight: 700;
               transition: all 0.25s ease;
@@ -167,8 +167,8 @@ export default function DashboardPage() {
           }
 
           @keyframes line-pulse {
-              0% { opacity: 0.05; }
-              100% { opacity: 0.18; }
+              0% { opacity: 0.03; }
+              100% { opacity: 0.12; }
           }
           .tactical-line {
               animation: line-pulse 4s infinite alternate ease-in-out;
@@ -349,16 +349,17 @@ export default function DashboardPage() {
         </header>
 
         {/* Vital Stats Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px", marginBottom: "64px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "28px", marginBottom: "64px" }}>
           
           {/* Level Card */}
           <div style={{ 
-              background: "linear-gradient(135deg, rgba(255,107,53,0.06) 0%, rgba(255,107,53,0.01) 100%)", 
-              border: "1.5px solid var(--orange)", 
+              background: "linear-gradient(135deg, rgba(255,107,53,0.08) 0%, rgba(255,107,53,0.01) 100%)", 
+              border: "1px solid rgba(255,107,53,0.3)", 
               padding: "32px", position: "relative",
+              borderRadius: "24px",
               boxShadow: "0 10px 30px rgba(255,107,53,0.04)"
           }}>
-            <div style={{ position: "absolute", top: 0, right: 0, padding: "6px 12px", background: "var(--orange)", color: "var(--bg)", fontSize: "9px", fontWeight: 900, fontFamily: "var(--mono)", letterSpacing: "0.08em" }}>PLAN</div>
+            <div style={{ position: "absolute", top: 0, right: 0, padding: "6px 16px", background: "var(--orange)", color: "var(--bg)", fontSize: "10px", fontWeight: 900, fontFamily: "var(--mono)", letterSpacing: "0.08em", borderRadius: "0 22px 0 22px" }}>PLAN</div>
             <div style={{ color: "var(--orange)", fontSize: "10px", fontWeight: 700, marginBottom: "10px", fontFamily: "var(--mono)", letterSpacing: "0.12em" }}>TIER_LEVEL</div>
             <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--bright)", marginBottom: "14px", letterSpacing: "-0.03em" }}>{tier.toUpperCase()}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -371,9 +372,10 @@ export default function DashboardPage() {
 
           {/* Stats Box 1 */}
           <div style={{ 
-              background: "var(--panel)", 
+              background: "rgba(255,255,255,0.02)", 
               border: "1px solid rgba(255,255,255,0.06)", 
               padding: "32px",
+              borderRadius: "24px",
               boxShadow: "inset 0 0 20px rgba(255,255,255,0.01), 0 8px 24px rgba(0,0,0,0.2)"
           }}>
             <div style={{ color: "var(--muted)", fontSize: "10px", fontWeight: 700, marginBottom: "10px", fontFamily: "var(--mono)", letterSpacing: "0.12em" }}>TOTAL_VALIDATIONS</div>
@@ -382,9 +384,10 @@ export default function DashboardPage() {
           
           {/* Stats Box 2 */}
           <div style={{ 
-              background: "var(--panel)", 
+              background: "rgba(255,255,255,0.02)", 
               border: "1px solid rgba(255,255,255,0.06)", 
               padding: "32px",
+              borderRadius: "24px",
               boxShadow: "inset 0 0 20px rgba(255,255,255,0.01), 0 8px 24px rgba(0,0,0,0.2)"
           }}>
             <div style={{ color: "var(--muted)", fontSize: "10px", fontWeight: 700, marginBottom: "10px", fontFamily: "var(--mono)", letterSpacing: "0.12em" }}>POPULATION_COUNT</div>
@@ -393,9 +396,10 @@ export default function DashboardPage() {
           
           {/* Stats Box 3 */}
           <div style={{ 
-              background: "var(--panel)", 
+              background: "rgba(255,255,255,0.02)", 
               border: "1px solid rgba(255,255,255,0.06)", 
               padding: "32px",
+              borderRadius: "24px",
               boxShadow: "inset 0 0 20px rgba(255,255,255,0.01), 0 8px 24px rgba(0,0,0,0.2)"
           }}>
             <div style={{ color: "var(--muted)", fontSize: "10px", fontWeight: 700, marginBottom: "10px", fontFamily: "var(--mono)", letterSpacing: "0.12em" }}>SYS_AVAILABILITY</div>
@@ -417,30 +421,31 @@ export default function DashboardPage() {
                NO_DATA_FOUND. START_FIRST_SIMULATION_TO_GENERATE_ANALYTICS.
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: "24px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: "28px" }}>
               {pastSimulations.map((sim) => (
                 <div 
                   key={sim.id} 
                   style={{ 
-                    background: "rgba(255,255,255,0.015)", 
+                    background: "rgba(255,255,255,0.02)", 
                     border: "1px solid rgba(255,255,255,0.06)", 
                     padding: "32px", display: "flex", flexDirection: "column", gap: "24px",
                     transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                    borderRadius: "6px",
-                    boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
-                    position: "relative"
+                    borderRadius: "24px",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+                    position: "relative",
+                    overflow: "hidden"
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.borderColor = "var(--orange)";
                     e.currentTarget.style.transform = "translateY(-6px)";
-                    e.currentTarget.style.backgroundColor = "rgba(255,107,53,0.015)";
-                    e.currentTarget.style.boxShadow = "0 15px 40px rgba(255,107,53,0.06)";
+                    e.currentTarget.style.backgroundColor = "rgba(255,107,53,0.02)";
+                    e.currentTarget.style.boxShadow = "0 20px 40px rgba(255,107,53,0.08)";
                   }}
                   onMouseOut={(e) => {
                     e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
                     e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.015)";
-                    e.currentTarget.style.boxShadow = "0 8px 30px rgba(0,0,0,0.15)";
+                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)";
+                    e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.2)";
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
@@ -515,7 +520,7 @@ export default function DashboardPage() {
       </main>
 
       <footer style={{ marginTop: "120px", textAlign: "center", padding: "64px 0", borderTop: "1px solid rgba(255,255,255,0.06)", opacity: 0.5 }}>
-         <span style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--muted)", letterSpacing: "0.55em" }}>STRAWBERRY // BUILT_BY_LUCIDE_TECH</span>
+         <span style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--muted)", letterSpacing: "0.55em" }}>NOTAPROMPT // BUILT_BY_LUCIDE_TECH</span>
       </footer>
     </div>
   );

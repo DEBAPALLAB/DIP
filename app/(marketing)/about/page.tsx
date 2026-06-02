@@ -7,7 +7,7 @@ const MILESTONES = [
   { year: "2024 Q1", title: "Research Begins", desc: "Behavioral data pipeline built on top of GSS 2024 dataset. First agent prototypes created." },
   { year: "2024 Q2", title: "Trinity Engine v1", desc: "First working integration of Prospect Theory, social graph dynamics, and LLM reasoning." },
   { year: "2024 Q3", title: "Closed Beta", desc: "Invited 12 strategic research teams to validate simulation accuracy against real market outcomes." },
-  { year: "2024 Q4", title: "Public Launch", desc: "Strawberry platform opens to the public. Explorer tier available free for all researchers." },
+  { year: "2024 Q4", title: "Public Launch", desc: "Notaprompt platform opens to the public. Explorer tier available free for all researchers." },
 ];
 
 const VALUES = [

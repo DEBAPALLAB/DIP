@@ -122,7 +122,7 @@ export default function FeaturesPage() {
             <span className="accent">Precision.</span>
           </h1>
           <p className="hero-sub">
-            Strawberry provides a level of granularity in social simulation
+            Notaprompt provides a level of granularity in social simulation
             never before accessible outside academic research. By combining real
             behavioral data with modern LLM reasoning, we map the latent
             landscape of public opinion.

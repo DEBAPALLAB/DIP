@@ -1870,17 +1870,26 @@ body::before {
 /* ─── Marketing Navbar ─── */
 .marketing-nav {
   position: fixed;
-  top: 0; /* Align to top */
+  top: 0;
   left: 0;
   right: 0;
-  height: 64px;
-  background: rgba(8, 12, 16, 0.8);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
+  height: 72px;
+  background: rgba(6, 7, 9, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   z-index: 100;
   display: flex;
   align-items: center;
-  padding: 0 4vw;
+  padding: 0 6vw;
+  transition: all 0.3s ease;
+}
+
+.marketing-nav.nav-scrolled {
+  background: rgba(6, 7, 9, 0.85);
+  height: 64px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 .nav-container {
@@ -1893,16 +1902,20 @@ body::before {
 }
 
 .nav-logo {
-  font-family: var(--mono);
-  font-size: 18px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
   font-weight: 800;
   color: var(--bright);
   text-decoration: none;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .logo-dot {
   color: var(--orange);
+  font-weight: 900;
 }
 
 .nav-links {
@@ -1911,28 +1924,35 @@ body::before {
 }
 
 .nav-links a {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--muted);
   text-decoration: none;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   transition: all 0.2s ease;
   position: relative;
+  padding: 6px 0;
 }
 
 .nav-links a:hover, .nav-links a.active {
   color: var(--bright);
 }
 
-.nav-links a.active::after {
+.nav-links a::after {
   content: "";
   position: absolute;
-  bottom: -8px;
-  left: 0;
-  width: 100%;
+  bottom: 0;
+  left: 50%;
+  width: 0;
   height: 2px;
   background: var(--orange);
+  transition: all 0.25s ease;
+  transform: translateX(-50%);
+}
+
+.nav-links a:hover::after, .nav-links a.active::after {
+  width: 100%;
 }
 
 .nav-actions {
@@ -1942,12 +1962,12 @@ body::before {
 }
 
 .btn-ghost-nav {
-  font-family: var(--mono);
-  font-size: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
   font-weight: 700;
   color: var(--muted);
   text-decoration: none;
-  padding: 8px 16px;
+  padding: 8px 18px;
   transition: all 0.2s ease;
 }
 
@@ -1956,15 +1976,19 @@ body::before {
 }
 
 .btn-primary-nav {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: #000;
-  background: var(--orange);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  color: #000 !important;
+  background: linear-gradient(135deg, var(--orange) 0%, #ff8b45 100%);
   text-decoration: none;
-  padding: 8px 20px;
-  border-radius: 2px;
-  transition: all 0.2s ease;
+  padding: 10px 24px;
+  border-radius: 99px;
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.15);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary-nav:hover {

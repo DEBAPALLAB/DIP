@@ -356,12 +356,12 @@ export default function SetupPage() {
     }, [isLaunching]);
 
     return (
-        <div style={{ 
+        <div className="marketing-theme" style={{ 
             position: "fixed", 
             inset: 0, 
             width: "100%", 
             height: "100%", 
-            background: "#050507", 
+            background: "var(--bg)", 
             overflow: "hidden", 
             fontFamily: "var(--sans)", 
             color: "var(--text)",
@@ -381,31 +381,32 @@ export default function SetupPage() {
                 }
                 /* Premium Glassmorphic input overrides */
                 .no-scrollbar input, .no-scrollbar select, .no-scrollbar textarea {
-                    background: rgba(6, 8, 12, 0.4) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+                    background: rgba(255, 255, 255, 0.58) !important;
+                    border: 1px solid var(--border) !important;
+                    color: var(--bright) !important;
                     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
                 }
                 .no-scrollbar input:hover, .no-scrollbar select:hover, .no-scrollbar textarea:hover {
-                    border-color: rgba(255, 255, 255, 0.16) !important;
-                    background: rgba(6, 8, 12, 0.6) !important;
+                    border-color: var(--border-bright) !important;
+                    background: rgba(255, 255, 255, 0.8) !important;
                 }
                 .no-scrollbar input:focus, .no-scrollbar select:focus, .no-scrollbar textarea:focus {
-                    border-color: var(--orange) !important;
-                    background: rgba(6, 8, 12, 0.85) !important;
-                    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15), inset 0 1px 3px rgba(0,0,0,0.2) !important;
+                    border-color: var(--accent) !important;
+                    background: rgba(255, 255, 255, 0.95) !important;
+                    box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.15), inset 0 1px 3px rgba(0,0,0,0.05) !important;
                 }
             `}</style>
 
             {/* ── BACKGROUND VISUALIZATION ── */}
-            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none" }} />
-            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "120%", height: "120%", background: "radial-gradient(circle, rgba(255,107,53,0.06) 0%, rgba(200,241,53,0.02) 40%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(0,82,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,82,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none" }} />
+            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "120%", height: "120%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.02) 40%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
             {/* ── TOP NAVIGATION ── */}
             <div style={{ position: "absolute", top: 24, left: 32, zIndex: 40, display: "flex", alignItems: "center", gap: "24px" }}>
                 <Link href="/dashboard" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "16px" }}>
-                    <div style={{ width: 14, height: 14, background: "var(--orange)", boxShadow: "0 0 15px var(--orange)" }} />
+                    <div style={{ width: 14, height: 14, background: "var(--accent)", boxShadow: "0 0 15px rgba(0, 82, 255, 0.4)" }} />
                     <span style={{ color: "var(--bright)", fontWeight: 800, letterSpacing: "0.2em", fontSize: "14px", fontFamily: "var(--mono)" }}>DI//MISSION CONTROL</span>
-                    <span style={{ background: "rgba(255,107,53,0.15)", color: "var(--orange)", padding: "3px 10px", borderRadius: "2px", fontSize: "10px", fontWeight: 900, fontFamily: "var(--mono)", border: "1px solid rgba(255,107,53,0.3)" }}>{tier.toUpperCase()}</span>
+                    <span style={{ background: "rgba(0, 82, 255, 0.08)", color: "var(--accent)", padding: "3px 10px", borderRadius: "2px", fontSize: "10px", fontWeight: 900, fontFamily: "var(--mono)", border: "1px solid rgba(0, 82, 255, 0.25)" }}>{tier.toUpperCase()}</span>
                 </Link>
             </div>
 
@@ -413,7 +414,7 @@ export default function SetupPage() {
             <div style={{ 
                 position: "absolute", top: "64px", left: "50%", transform: "translateX(-50%)", 
                 zIndex: 40, display: "flex", gap: "16px", padding: "8px 24px", 
-                background: "rgba(0,0,0,0.5)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)",
+                background: "var(--panel)", borderRadius: "8px", border: "1px solid var(--border)",
                 backdropFilter: "blur(8px)", pointerEvents: "none"
             }}>
                 {[
@@ -429,7 +430,7 @@ export default function SetupPage() {
                         }} />
                         <span style={{ 
                             fontFamily: "var(--mono)", fontSize: "10px", fontWeight: 800, 
-                            color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em" 
+                            color: "var(--muted)", letterSpacing: "0.05em" 
                         }}>
                             {p.l}
                         </span>
@@ -495,11 +496,11 @@ export default function SetupPage() {
             </svg>
 
             {/* ── LEFT PANEL: CONFIGURATION ── */}
-            <div style={{ position: "absolute", top: 80, left: 32, bottom: 32, width: "380px", background: "rgba(6, 7, 9, 0.75)", backdropFilter: "blur(28px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "24px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 40px 100px rgba(0,0,0,0.5)" }}>
+            <div style={{ position: "absolute", top: 80, left: 32, bottom: 32, width: "380px", background: "var(--panel)", backdropFilter: "blur(28px)", border: "1px solid var(--border)", borderRadius: "24px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 28px 70px rgba(0, 82, 255, 0.05)" }}>
                 {/* AI ARCHITECT HEADER */}
-                <div style={{ padding: "32px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(to bottom, rgba(255,107,53,0.08), transparent)", flexShrink: 0 }}>
+                <div style={{ padding: "32px 24px", borderBottom: "1px solid var(--border)", background: "linear-gradient(to bottom, rgba(0, 82, 255, 0.05), transparent)", flexShrink: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
-                        <span style={{ color: "var(--orange)", fontSize: "14px" }}>✦</span>
+                        <span style={{ color: "var(--accent)", fontSize: "14px" }}>✦</span>
                         <span style={{ fontFamily: "var(--mono)", fontSize: "11px", fontWeight: 800, color: "var(--bright)", letterSpacing: "0.2em" }}>PARSING_ENGINE</span>
                     </div>
                     <textarea 
@@ -512,7 +513,7 @@ export default function SetupPage() {
                         onClick={handleAiGenerate} 
                         disabled={isAiLoading || !aiPrompt} 
                         className={isAiLoading ? "" : "btn-v2-primary"}
-                        style={{ width: "100%", height: "44px", borderRadius: "99px", fontSize: "12px", fontWeight: 800, letterSpacing: "0.1em", border: isAiLoading ? "1px solid var(--border)" : "none", color: isAiLoading ? "var(--muted)" : "#000", background: isAiLoading ? "transparent" : "var(--orange)" }}
+                        style={{ width: "100%", height: "44px", borderRadius: "99px", fontSize: "12px", fontWeight: 800, letterSpacing: "0.1em", border: isAiLoading ? "1px solid var(--border)" : "none", color: isAiLoading ? "var(--muted)" : "#fff", background: isAiLoading ? "transparent" : "var(--accent)" }}
                     >
                         {isAiLoading ? "SYNTHESIZING..." : "GENERATE SCENARIO"}
                     </button>
@@ -523,12 +524,12 @@ export default function SetupPage() {
                                 key={t.label} 
                                 onClick={() => { setProduct({ ...product, ...t.product, aiParamOverrides: undefined }); setFilters({ ...filters, ...t.filters }); }}
                                 style={{ 
-                                    padding: "6px 12px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px", fontSize: "10px", 
-                                    whiteSpace: "nowrap", cursor: "pointer", background: "rgba(255,255,255,0.03)", color: "var(--muted)",
+                                    padding: "6px 12px", border: "1px solid var(--border)", borderRadius: "4px", fontSize: "10px", 
+                                    whiteSpace: "nowrap", cursor: "pointer", background: "rgba(0, 82, 255, 0.02)", color: "var(--muted)",
                                     transition: "all 0.2s"
                                 }}
-                                onMouseOver={(e) => { e.currentTarget.style.borderColor = "var(--orange)"; e.currentTarget.style.color = "var(--bright)"; }}
-                                onMouseOut={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "var(--muted)"; }}
+                                onMouseOver={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--bright)"; }}
+                                onMouseOut={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted)"; }}
                             >
                                 {t.icon} {t.label.toUpperCase()}
                             </div>
@@ -554,8 +555,8 @@ export default function SetupPage() {
                                     <label style={miniLabel}>INDUSTRY</label>
                                     <input type="text" value={product.category} onChange={e => updateProduct("category", e.target.value)} style={inputStyle} placeholder="Sector" />
                                 </div>
-                            </div>
-                            <div style={{ display: "flex", gap: "12px" }}>
+                              </div>
+                              <div style={{ display: "flex", gap: "12px" }}>
                                 <div style={{ ...fieldWrapper, flex: 1 }}>
                                     <label style={miniLabel}>VALUE_PROP</label>
                                     <select value={product.valueProp} onChange={e => updateProduct("valueProp", e.target.value)} style={selectStyle}>
@@ -610,7 +611,7 @@ export default function SetupPage() {
             </div>
 
             {/* ── RIGHT PANEL: AUDIENCE & GTM ── */}
-            <div style={{ position: "absolute", top: 80, right: 32, bottom: 32, width: "380px", background: "rgba(6, 7, 9, 0.75)", backdropFilter: "blur(28px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "24px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 40px 100px rgba(0,0,0,0.5)" }}>
+            <div style={{ position: "absolute", top: 80, right: 32, bottom: 32, width: "380px", background: "var(--panel)", backdropFilter: "blur(28px)", border: "1px solid var(--border)", borderRadius: "24px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 28px 70px rgba(0, 82, 255, 0.05)" }}>
                 <div className="no-scrollbar" style={{ flex: 1, padding: "32px 24px", overflowY: "auto" }}>
                     
                     {/* STRATEGIC AI AUDIT CARD */}
@@ -618,30 +619,30 @@ export default function SetupPage() {
                         <div style={{ 
                             marginBottom: "40px", 
                             padding: "20px", 
-                            background: "linear-gradient(135deg, rgba(255,107,53,0.1) 0%, transparent 100%)",
-                            border: "1px solid rgba(255,107,53,0.2)",
+                            background: "linear-gradient(135deg, rgba(0, 82, 255, 0.06) 0%, transparent 100%)",
+                            border: "1px solid rgba(0, 82, 255, 0.2)",
                             borderRadius: "8px",
                             position: "relative",
                             overflow: "hidden"
                         }}>
-                            <div style={{ position: "absolute", top: -10, right: -10, fontStyle: "italic", fontSize: "40px", color: "rgba(255,107,53,0.05)", fontWeight: 900, pointerEvents: "none" }}>AI</div>
+                            <div style={{ position: "absolute", top: -10, right: -10, fontStyle: "italic", fontSize: "40px", color: "rgba(0, 82, 255, 0.05)", fontWeight: 900, pointerEvents: "none" }}>AI</div>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                                <div style={{ width: 8, height: 8, background: "var(--orange)", borderRadius: "2px", boxShadow: "0 0 10px var(--orange)" }} />
-                                <h3 style={{ ...sectionLabel, marginBottom: 0, color: "var(--orange)" }}>Strategic Audit Result</h3>
+                                <div style={{ width: 8, height: 8, background: "var(--accent)", borderRadius: "2px", boxShadow: "0 0 10px rgba(0, 82, 255, 0.3)" }} />
+                                <h3 style={{ ...sectionLabel, marginBottom: 0, color: "var(--accent)" }}>Strategic Audit Result</h3>
                             </div>
                             <p style={{ fontSize: "12px", color: "var(--bright)", lineHeight: "1.6", margin: 0, fontStyle: "italic", opacity: 0.9 }}>
                                 "{product.aiParamOverrides.justification}"
-                            </p>
-                            <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
+                             </p>
+                             <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: "8px", color: "var(--muted)", fontFamily: "var(--mono)", marginBottom: "4px" }}>VAL_EFFICIENCY</div>
-                                    <div style={{ height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px" }}>
+                                    <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px" }}>
                                         <div style={{ height: "100%", background: "#00d084", width: `${(product.aiParamOverrides.value || 0.5) * 100}%`, borderRadius: "2px" }} />
                                     </div>
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: "8px", color: "var(--muted)", fontFamily: "var(--mono)", marginBottom: "4px" }}>RISK_CALIB</div>
-                                    <div style={{ height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px" }}>
+                                    <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px" }}>
                                         <div style={{ height: "100%", background: "#ff4444", width: `${(product.aiParamOverrides.risk || 0.5) * 100}%`, borderRadius: "2px" }} />
                                     </div>
                                 </div>
@@ -657,8 +658,8 @@ export default function SetupPage() {
                                 disabled={isAiLoading || !product.name}
                                 style={{
                                     background: "none",
-                                    border: "1px solid var(--orange)",
-                                    color: "var(--orange)",
+                                    border: "1px solid var(--accent)",
+                                    color: "var(--accent)",
                                     borderRadius: "3px",
                                     padding: "4px 8px",
                                     fontSize: "9px",
@@ -735,10 +736,10 @@ export default function SetupPage() {
                                 </select>
                             </div>
                             
-                            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", padding: "20px", borderRadius: "8px", marginTop: "12px" }}>
+                            <div style={{ background: "rgba(0, 82, 255, 0.02)", border: "1px solid var(--border)", padding: "20px", borderRadius: "8px", marginTop: "12px" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", alignItems: "baseline" }}>
                                     <span style={{ fontSize: "11px", color: "var(--muted)", fontFamily: "var(--mono)", letterSpacing: "0.1em" }}>AGENT_DENSITY (N)</span>
-                                    <span style={{ fontFamily: "var(--mono)", fontSize: "18px", color: "var(--orange)", fontWeight: 800 }}>{agentCount}</span>
+                                    <span style={{ fontFamily: "var(--mono)", fontSize: "18px", color: "var(--accent)", fontWeight: 800 }}>{agentCount}</span>
                                 </div>
                                 <input 
                                     type="range" 
@@ -747,20 +748,20 @@ export default function SetupPage() {
                                     step="10" 
                                     value={agentCount} 
                                     onChange={(e) => setAgentCount(Number(e.target.value))} 
-                                    style={{ width: "100%", accentColor: "var(--orange)", cursor: "pointer" }} 
+                                    style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }} 
                                 />
                                 {agentCount >= limits.maxAgents && (
-                                    <div style={{ marginTop: "16px", background: "rgba(255,107,53,0.1)", border: "1px solid rgba(255,107,53,0.2)", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px" }}>
-                                        <Link href="/pricing" style={{ fontSize: "10px", color: "var(--orange)", textDecoration: "none", fontWeight: 800, fontFamily: "var(--mono)", letterSpacing: "0.1em" }}>[UPGRADE_CAPACITY_LIMITS]</Link>
+                                    <div style={{ marginTop: "16px", background: "rgba(0, 82, 255, 0.08)", border: "1px solid rgba(0, 82, 255, 0.25)", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px" }}>
+                                        <Link href="/pricing" style={{ fontSize: "10px", color: "var(--accent)", textDecoration: "none", fontWeight: 800, fontFamily: "var(--mono)", letterSpacing: "0.1em" }}>[UPGRADE_CAPACITY_LIMITS]</Link>
                                     </div>
                                 )}
                             </div>
 
                             {!isAtLeast("strategic") && (
-                                <div style={{ padding: "16px", background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "6px", marginTop: "12px", opacity: 0.6 }}>
+                                <div style={{ padding: "16px", background: "rgba(0, 82, 255, 0.01)", border: "1px dashed var(--border)", borderRadius: "6px", marginTop: "12px", opacity: 0.6 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                                        <div style={{ width: 6, height: 6, background: "var(--orange)", borderRadius: "50%" }} />
-                                        <span style={{ fontSize: "10px", color: "var(--orange)", fontWeight: 800, fontFamily: "var(--mono)" }}>ADVANCED_NETWORK_LOCKED</span>
+                                        <div style={{ width: 6, height: 6, background: "var(--accent)", borderRadius: "50%" }} />
+                                        <span style={{ fontSize: "10px", color: "var(--accent)", fontWeight: 800, fontFamily: "var(--mono)" }}>ADVANCED_NETWORK_LOCKED</span>
                                     </div>
                                     <p style={{ fontSize: "11px", color: "var(--muted)", lineHeight: "1.4", margin: 0 }}>Strategic tiers unlock custom Watts-Strogatz and Scale-Free topology controls.</p>
                                 </div>
@@ -778,9 +779,9 @@ export default function SetupPage() {
                   className="btn-v2-primary"
                   style={{ 
                     height: "56px", padding: "0 64px", borderRadius: "99px", fontSize: "14px", fontWeight: 900, 
-                    letterSpacing: "0.15em", boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 40px rgba(255,107,53,0.25)",
+                    letterSpacing: "0.15em", boxShadow: "0 20px 50px rgba(0, 82, 255, 0.15)",
                     pointerEvents: "auto",
-                    fontFamily: "'Plus Jakarta Sans', sans-serif"
+                    fontFamily: "var(--sans)"
                   }}
                 >
                     {isLaunching ? "BOOTING_SIMULATION_CORE..." : isGenerating ? "RECALIBRATING..." : "START_SIMULATION_SEQUENCES"}
@@ -803,16 +804,16 @@ const fieldWrapper = { display: "flex", flexDirection: "column" as const, gap: "
 
 const inputStyle = { 
     width: "100%", height: "42px", padding: "0 16px", 
-    background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", 
-    borderRadius: "10px", color: "var(--bright)", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "13px", 
+    background: "rgba(255, 255, 255, 0.58)", border: "1px solid var(--border)", 
+    borderRadius: "10px", color: "var(--bright)", fontFamily: "var(--sans)", fontSize: "13px", 
     outline: "none", transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2)"
+    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)"
 };
 
 const selectStyle = { 
     ...inputStyle, cursor: "pointer", 
     appearance: "none" as const, 
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E")`,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='rgba(0,0,0,0.5)' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E")`,
     backgroundRepeat: "no-repeat", backgroundPosition: "right 16px center"
 };
 
@@ -821,12 +822,12 @@ const textareaStyle = {
 };
 
 const sectionLabel = { 
-    fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "12px", fontWeight: 800, color: "var(--orange)", 
+    fontFamily: "var(--sans)", fontSize: "12px", fontWeight: 800, color: "var(--accent)", 
     textTransform: "uppercase" as const, marginBottom: "20px", letterSpacing: "0.1em",
     display: "flex", alignItems: "center", gap: "12px"
 };
 
 const miniLabel = { 
-    fontSize: "9px", fontFamily: "var(--mono)", fontWeight: 700, color: "rgba(255,255,255,0.35)", 
+    fontSize: "9px", fontFamily: "var(--mono)", fontWeight: 700, color: "var(--muted)", 
     letterSpacing: "0.08em", marginBottom: "4px", textTransform: "uppercase" as const
 };

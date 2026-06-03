@@ -1,23 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface ConfigScreenProps {
     onGenerate: (count: number) => void;
     isGenerating: boolean;
+    initialCount?: number;
+    maxCount?: number;
 }
 
-const PRESET_COUNTS = [10, 25, 50, 100];
+const PRESET_COUNTS = [10, 25, 50, 100, 250, 500];
+
+function clampCount(value: number, maxCount: number) {
+    return Math.min(Math.max(value, 2), maxCount);
+}
 
 export default function ConfigScreen({
     onGenerate,
     isGenerating,
+    initialCount = 50,
+    maxCount = 1499,
 }: ConfigScreenProps) {
-    const [selectedCount, setSelectedCount] = useState<number>(50);
+    const safeMaxCount = Math.max(2, maxCount);
+    const [selectedCount, setSelectedCount] = useState<number>(() => clampCount(initialCount, safeMaxCount));
     const [customCount, setCustomCount] = useState<string>("");
 
     const effectiveCount =
-        customCount !== "" ? Math.min(Number(customCount), 200) : selectedCount;
+        customCount !== "" ? clampCount(Number(customCount), safeMaxCount) : selectedCount;
+
+    useEffect(() => {
+        const nextCount = clampCount(initialCount, safeMaxCount);
+        setSelectedCount(nextCount);
+        setCustomCount(PRESET_COUNTS.includes(nextCount) ? "" : String(nextCount));
+    }, [initialCount, safeMaxCount]);
 
     const handleCustomChange = (v: string) => {
         // Allow only digits
@@ -139,7 +154,7 @@ export default function ConfigScreen({
                                         padding: "6px 0",
                                     }}
                                 />
-                                <span style={{ fontSize: 9, color: "#2a3a4a" }}>≤200</span>
+                                <span style={{ fontSize: 9, color: "#2a3a4a" }}>&lt;={safeMaxCount}</span>
                             </div>
                         </div>
 

@@ -62,7 +62,7 @@ export default function AboutPage() {
         }
         .about-hero-copy {
           max-width: 760px;
-          color: var(--muted);
+          color: var(--text);
           font-size: 18px;
           line-height: 1.75;
           margin: 0;
@@ -109,7 +109,7 @@ export default function AboutPage() {
               <h1 className="about-hero-title" style={{ marginTop: 18, maxWidth: 780 }}>
                 Design <span className="accent">First.</span>
                 <br />
-                <span style={{ color: "var(--muted)" }}>Engineered Always.</span>
+                <span style={{ color: "var(--bright)" }}>Engineered Always.</span>
               </h1>
               <p className="about-hero-copy" style={{ marginTop: 26 }}>
                 Lucide Tech sits at the intersection of aesthetic clarity and hard engineering.

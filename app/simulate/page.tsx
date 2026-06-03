@@ -116,6 +116,7 @@ export default function SimulatePage() {
     const [scenarioId, setScenarioId] = useState<string>(SCENARIOS[0].id);
     const [customScenario, setCustomScenario] = useState<Scenario | null>(null);
     const [showCustomForm, setShowCustomForm] = useState(false);
+    const [quickLaunchCount, setQuickLaunchCount] = useState<number | undefined>(undefined);
 
     // Filtering
     const [filterSearch, setFilterSearch] = useState("");
@@ -134,6 +135,7 @@ export default function SimulatePage() {
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoadingDb, setIsLoadingDb] = useState(false);
     const lastSavedStepRef = useRef<number>(-1);
+    const quickLaunchAppliedRef = useRef(false);
 
     // ─── Lifecycle: Cleanup on unmount ───
     const persistSimulation = useCallback(async (status: "Pending" | "Completed") => {
@@ -200,6 +202,8 @@ export default function SimulatePage() {
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
         const urlId = searchParams.get('id');
+        const urlScenario = searchParams.get("scenario");
+        const urlCount = Number(searchParams.get("count"));
 
         async function hydrate() {
             if (!simCtx.hydrated) return; // Wait for hydration!
@@ -207,10 +211,25 @@ export default function SimulatePage() {
                 setIsLoadingDb(true);
                 await simCtx.loadSimulationFromDb(urlId);
                 setIsLoadingDb(false);
+            } else if (!urlId && !quickLaunchAppliedRef.current && agents.length === 0) {
+                const requestedScenario = SCENARIOS.find((item) => item.id === urlScenario);
+                if (requestedScenario) {
+                    setScenarioId(requestedScenario.id);
+                    setCustomScenario(null);
+                    simCtx.setScenario(requestedScenario);
+                }
+
+                if (Number.isFinite(urlCount) && urlCount >= 2) {
+                    const safeCount = Math.min(Math.max(Math.round(urlCount), 2), 10000);
+                    setQuickLaunchCount(safeCount);
+                    simCtx.setAgentCount(safeCount);
+                }
+
+                quickLaunchAppliedRef.current = true;
             }
         }
         hydrate();
-    }, [simCtx.hydrated, simCtx.dbSimulationId]);
+    }, [agents.length, simCtx, simCtx.dbSimulationId, simCtx.hydrated]);
 
     // Update phase based on state
     useEffect(() => {
@@ -809,26 +828,22 @@ export default function SimulatePage() {
     }
 
     return (
-        <div className="sim-container results-root" style={{ 
+        <div className="sim-container results-root marketing-theme" style={{ 
             position: "fixed", inset: 0, width: "100%", height: "100%", 
             overflow: "hidden", zIndex: 100, display: "flex", flexDirection: "column",
-            background: "radial-gradient(circle at 50% 50%, rgba(20, 24, 30, 1) 0%, rgba(8, 10, 12, 1) 100%)",
-            animation: "ambient-pulse 12s infinite alternate ease-in-out"
+            background: "var(--bg)",
         }}>
             <style jsx global>{`
-                @keyframes ambient-pulse {
-                    0% { filter: brightness(1); }
-                    100% { filter: brightness(1.2); }
-                }
                 .telemetry-label {
                     position: absolute;
                     font-family: var(--mono);
                     font-size: 8px;
-                    color: rgba(255,255,255,0.06);
+                    color: var(--muted);
                     pointer-events: none;
                     letter-spacing: 0.25em;
                     text-transform: uppercase;
                     z-index: 5;
+                    opacity: 0.5;
                 }
             `}</style>
 
@@ -838,9 +853,9 @@ export default function SimulatePage() {
             <div className="telemetry-label" style={{ bottom: 24, left: 24 }}>COORDS: 40.7128°N | 74.0060°W</div>
             <div className="telemetry-label" style={{ bottom: 24, right: 24 }}>MEM_FLOW: {agents.length || 0}P / {mounted ? new Date().toLocaleTimeString() : "--:--:--"}</div>
 
-            {/* ── PREMIUM MISSION CONTROL BACKGROUND (MATCH RESULTS ROOT) ── */}
-            <div style={{ position: "absolute", top: "0%", left: "50%", transform: "translateX(-50%)", width: "100%", height: "100%", background: "radial-gradient(circle at top left, rgba(0, 208, 178, 0.08), transparent 40%), radial-gradient(circle at top right, rgba(255, 107, 53, 0.06), transparent 35%)", pointerEvents: "none", zIndex: 0 }} />
-            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none", opacity: 0.5 }} />
+            {/* ── PREMIUM MISSION CONTROL BACKGROUND ── */}
+            <div style={{ position: "absolute", top: "0%", left: "50%", transform: "translateX(-50%)", width: "100%", height: "100%", background: "radial-gradient(circle at top left, rgba(0, 82, 255, 0.08), transparent 40%), radial-gradient(circle at top right, rgba(255, 107, 53, 0.06), transparent 35%)", pointerEvents: "none", zIndex: 0 }} />
+            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(0,82,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,82,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none", opacity: 0.5 }} />
             <style jsx global>{`
                 html, body {
                     overflow: hidden !important;
@@ -862,19 +877,19 @@ export default function SimulatePage() {
                 agentCount={agents.length}
             />
 
-            {/* ── Control bar (MATCH RESULTS NAV) ── */}
+            {/* ── Control bar ── */}
             <div className="control-bar" style={{ 
                 display: "flex", alignItems: "center", gap: 12, padding: "0 24px", height: "56px", 
-                borderBottom: "1px solid rgba(255,255,255,0.06)", 
-                background: "rgba(8, 8, 8, 0.8)", backdropFilter: "blur(24px)", 
-                flexShrink: 0, zIndex: 20, boxShadow: "0 4px 30px rgba(0,0,0,0.3)" 
+                borderBottom: "1px solid var(--border)", 
+                background: "rgba(255, 255, 255, 0.45)", backdropFilter: "blur(24px)", 
+                flexShrink: 0, zIndex: 20, boxShadow: "0 4px 30px rgba(0, 82, 255, 0.02)" 
             }}>
                 <Link href="/dashboard" className="btn-ghost-setup" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "6px", marginRight: "12px" }}>
                     <span style={{ fontSize: "14px" }}>←</span> DASHBOARD
                 </Link>
 
                 <div style={{ fontFamily: "var(--mono)", fontSize: 13, color: "var(--bright)", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 700, marginRight: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                    <div className="landing-nav-dot" style={{ width: 8, height: 8, boxShadow: "0 0 10px var(--orange)" }}>◉</div>
+                    <div className="landing-nav-dot" style={{ width: 8, height: 8, boxShadow: "0 0 10px var(--accent)" }}>◉</div>
                     TRINITY_ENGINE
                 </div>
 
@@ -891,7 +906,7 @@ export default function SimulatePage() {
                             <div className="step-progress-bar">
                                 <div className="step-progress-fill" style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }} />
                             </div>
-                            <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--orange)" }}>
+                            <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--accent)" }}>
                                 {progress.done}/{progress.total}
                             </span>
                         </>
@@ -905,7 +920,7 @@ export default function SimulatePage() {
                         <button 
                             onClick={handleViewResults}
                             className="btn-cta" 
-                            style={{ padding: "8px 16px", height: "32px" }}
+                            style={{ padding: "8px 16px", height: "32px", color: "#fff" }}
                         >
                             View Results →
                         </button>
@@ -943,7 +958,7 @@ export default function SimulatePage() {
                                                 // Force a retry of the current step
                                                 runStep(step, states);
                                             }}
-                                            style={{ height: "32px", padding: "0 12px", border: "1px solid var(--support)", color: "var(--support)" }}
+                                            style={{ height: "32px", padding: "0 12px", border: "1px solid var(--accent)", color: "var(--accent)" }}
                                         >
                                             ↻ RETRY_BATCH
                                         </button>
@@ -957,7 +972,7 @@ export default function SimulatePage() {
                                     style={{ 
                                         height: "32px", 
                                         padding: "0 16px", 
-                                        background: "linear-gradient(180deg, var(--support), #13b19a)",
+                                        background: "linear-gradient(135deg, var(--accent) 0%, #2a76ff 100%)",
                                         color: "white",
                                         border: "none",
                                         transition: "all 0.3s ease"
@@ -980,18 +995,18 @@ export default function SimulatePage() {
             </div>
 
             <div className="sim-main-content" style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0, position: "relative", zIndex: 10 }}>
-                {/* ── LEFT SIDEBAR (MATCH RESULTS RAIL) ── */}
+                {/* ── LEFT SIDEBAR ── */}
                 <div className="sidebar-left results-card" style={{ 
                     display: "flex", flexDirection: "column", 
                     width: leftSidebarCollapsed ? "40px" : "320px", 
                     transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
                     margin: "12px 0 12px 12px",
-                    background: "rgba(12, 12, 12, 0.8)",
+                    background: "var(--panel)",
                     backdropFilter: "blur(32px)",
                     overflow: "hidden",
                     position: "relative",
                     borderRadius: leftSidebarCollapsed ? "12px" : "18px",
-                    border: "1px solid rgba(255,255,255,0.07)"
+                    border: "1px solid var(--border)"
                 }}>
                     <button 
                         onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
@@ -1004,7 +1019,7 @@ export default function SimulatePage() {
                         <div className="no-scrollbar" style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", padding: "12px" }}>
                             <div style={{ flexShrink: 0, marginBottom: "16px" }}>
                                 <div className="results-side-label" style={{ fontSize: "9px", marginBottom: "8px", paddingLeft: "4px" }}>STRATEGIC_BRIEF</div>
-                                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: "12px", padding: "4px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                <div style={{ background: "rgba(0, 82, 255, 0.02)", borderRadius: "12px", padding: "4px", border: "1px solid var(--border)" }}>
                                     <ProductBrief scenario={scenario} />
                                 </div>
                             </div>
@@ -1015,7 +1030,7 @@ export default function SimulatePage() {
 
                             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                                 <div className="results-side-label" style={{ fontSize: "9px", marginBottom: "8px", paddingLeft: "4px" }}>PERSONA_DISTRIBUTION</div>
-                                <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto", background: "rgba(255,255,255,0.02)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto", background: "rgba(0, 82, 255, 0.02)", borderRadius: "12px", border: "1px solid var(--border)" }}>
                                     {agents.length > 0 && <PersonaBreakdown agents={agents} states={states} />}
                                 </div>
                             </div>
@@ -1023,26 +1038,26 @@ export default function SimulatePage() {
                     )}
                 </div>
 
-                {/* ── MAIN VIEWPORT (MATCH RESULTS CONTENT) ── */}
+                {/* ── MAIN VIEWPORT ── */}
                 <div className="sim-viewport results-card" style={{ 
                     flex: 1, display: "flex", flexDirection: "column", 
-                    background: "rgba(10, 10, 10, 0.4)", 
+                    background: "var(--panel)", 
                     margin: "12px", 
                     borderRadius: "18px",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    border: "1px solid var(--border)",
                     position: "relative", overflow: "hidden", height: "calc(100% - 24px)" 
                 }}>
                     {isConfigured && (
                         <div className="results-hero-top" style={{ 
                             padding: "16px 20px", 
-                            background: "linear-gradient(to bottom, rgba(255,255,255,0.03), transparent)",
-                            borderBottom: "1px solid rgba(255,255,255,0.06)",
+                            background: "linear-gradient(to bottom, rgba(0, 82, 255, 0.02), transparent)",
+                            borderBottom: "1px solid var(--border)",
                             alignItems: "center"
                         }}>
                              <div className="results-side-label" style={{ marginBottom: 0, color: "var(--bright)", opacity: 0.9 }}>AGENT_FIELD · {filteredAgents.length} MATCHES</div>
                              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                                <button onClick={() => setMainView("network")} className="btn btn-ghost" style={{ border: "none", color: mainView === "network" ? "var(--support)" : "var(--muted)", fontSize: 10, background: mainView === "network" ? "rgba(0,208,132,0.1)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>🕸️ NETWORK</button>
-                                <button onClick={() => setMainView("grid")} className="btn btn-ghost" style={{ border: "none", color: mainView === "grid" ? "var(--support)" : "var(--muted)", fontSize: 10, background: mainView === "grid" ? "rgba(0,208,132,0.1)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>📦 GRID</button>
+                                <button onClick={() => setMainView("network")} className="btn btn-ghost" style={{ border: "none", color: mainView === "network" ? "var(--accent)" : "var(--muted)", fontSize: 10, background: mainView === "network" ? "rgba(0, 82, 255, 0.08)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>🕸️ NETWORK</button>
+                                <button onClick={() => setMainView("grid")} className="btn btn-ghost" style={{ border: "none", color: mainView === "grid" ? "var(--accent)" : "var(--muted)", fontSize: 10, background: mainView === "grid" ? "rgba(0, 82, 255, 0.08)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>📦 GRID</button>
                              </div>
                         </div>
                     )}
@@ -1059,7 +1074,12 @@ export default function SimulatePage() {
 
                     <div className="sim-viewport-inner" style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
                         {!isConfigured ? (
-                            <ConfigScreen onGenerate={handleGenerate} isGenerating={isGenerating} />
+                            <ConfigScreen
+                                onGenerate={handleGenerate}
+                                isGenerating={isGenerating}
+                                initialCount={quickLaunchCount}
+                                maxCount={Math.max(quickLaunchCount ?? 0, 1499)}
+                            />
                         ) : (
                             <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
                                 {mainView === "grid" ? (
@@ -1072,15 +1092,15 @@ export default function SimulatePage() {
                     </div>
                 </div>
 
-                {/* ── RIGHT SIDEBAR (MATCH RESULTS RAIL) ── */}
+                {/* ── RIGHT SIDEBAR ── */}
                 <div className="sidebar-right results-card" style={{ 
                     display: "flex", flexDirection: "column", 
                     width: rightSidebarCollapsed ? "40px" : "380px", 
                     transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
                     margin: "12px 12px 12px 0",
-                    background: "rgba(12, 12, 12, 0.8)",
+                    background: "var(--panel)",
                     backdropFilter: "blur(32px)",
-                    border: "1px solid rgba(255,255,255,0.07)", 
+                    border: "1px solid var(--border)", 
                     borderRadius: rightSidebarCollapsed ? "12px" : "18px",
                     overflow: "hidden",
                     position: "relative"
@@ -1096,14 +1116,14 @@ export default function SimulatePage() {
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                             <div style={{ 
                                 display: "flex", 
-                                background: "rgba(255,255,255,0.02)", 
-                                borderBottom: "1px solid rgba(255,255,255,0.06)", 
+                                background: "rgba(0, 82, 255, 0.01)", 
+                                borderBottom: "1px solid var(--border)", 
                                 height: "40px", 
                                 flexShrink: 0 
                             }}>
-                                <div onClick={() => setActivePanel("chart")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "chart" ? "var(--orange)" : "var(--muted)", borderRight: "1px solid rgba(255,255,255,0.06)", background: activePanel === "chart" ? "rgba(255,107,53,0.05)" : "transparent", transition: "all 0.2s" }}>CASCADES</div>
-                                <div onClick={() => setActivePanel("log")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "log" ? "var(--orange)" : "var(--muted)", borderRight: "1px solid rgba(255,255,255,0.06)", background: activePanel === "log" ? "rgba(255,107,53,0.05)" : "transparent", transition: "all 0.2s" }}>LIVE_LOG</div>
-                                <div onClick={() => setActivePanel("snapshots")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "snapshots" ? "var(--orange)" : "var(--muted)", background: activePanel === "snapshots" ? "rgba(255,107,53,0.05)" : "transparent", transition: "all 0.2s" }}>BRANCHES</div>
+                                <div onClick={() => setActivePanel("chart")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "chart" ? "var(--accent)" : "var(--muted)", borderRight: "1px solid var(--border)", background: activePanel === "chart" ? "rgba(0, 82, 255, 0.08)" : "transparent", transition: "all 0.2s" }}>CASCADES</div>
+                                <div onClick={() => setActivePanel("log")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "log" ? "var(--accent)" : "var(--muted)", borderRight: "1px solid var(--border)", background: activePanel === "log" ? "rgba(0, 82, 255, 0.08)" : "transparent", transition: "all 0.2s" }}>LIVE_LOG</div>
+                                <div onClick={() => setActivePanel("snapshots")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "snapshots" ? "var(--accent)" : "var(--muted)", background: activePanel === "snapshots" ? "rgba(0, 82, 255, 0.08)" : "transparent", transition: "all 0.2s" }}>BRANCHES</div>
                             </div>
                             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                                 {activePanel === "chart" ? (
@@ -1111,14 +1131,14 @@ export default function SimulatePage() {
                                         <div style={{ flex: 1, minHeight: 0 }}>
                                         <AdoptionChart history={history} total={agents.length} />
                                         </div>
-                                        <div className="insight-panel" style={{ padding: "16px", background: "rgba(255,107,53,0.03)", borderTop: "1px solid var(--border)" }}>
+                                        <div className="insight-panel" style={{ padding: "16px", background: "rgba(0, 82, 255, 0.02)", borderTop: "1px solid var(--border)" }}>
                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                                <div className="label" style={{ fontSize: "10px", color: "var(--orange)", fontWeight: 800, fontFamily: "var(--mono)" }}>STEP_{step}_INSIGHT</div>
+                                                <div className="label" style={{ fontSize: "10px", color: "var(--accent)", fontWeight: 800, fontFamily: "var(--mono)" }}>STEP_{step}_INSIGHT</div>
                                                 <button 
                                                     onClick={handleStrategicSweep} 
                                                     disabled={isAnalyzing || step === 0}
                                                     className="btn btn-ghost" 
-                                                    style={{ fontSize: 9, padding: "2px 8px", border: "1px solid rgba(255,107,53,0.3)", color: "var(--orange)" }}
+                                                    style={{ fontSize: 9, padding: "2px 8px", border: "1px solid rgba(0, 82, 255, 0.25)", color: "var(--accent)" }}
                                                 >
                                                     {isAnalyzing ? "ANALYZING..." : "✨ STRATEGIC_SWEEP"}
                                                 </button>
@@ -1131,7 +1151,7 @@ export default function SimulatePage() {
                                 ) : (
                                     <div style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
                                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                            <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--orange)", fontWeight: 700 }}>SIMULATION_SNAPSHOTS</div>
+                                            <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--accent)", fontWeight: 700 }}>BRANCH_SNAPSHOTS</div>
                                             <button 
                                                 onClick={() => {
                                                     const name = prompt("Enter branch name:", `Branch at Step ${step}`);
@@ -1148,7 +1168,7 @@ export default function SimulatePage() {
                                                 <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", textAlign: "center", padding: "40px 0" }}>No branches saved yet.</div>
                                             ) : (
                                                 simCtx.branches.map((snap) => (
-                                                    <div key={snap.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "4px" }}>
+                                                    <div key={snap.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "rgba(0, 82, 255, 0.02)", border: "1px solid var(--border)", borderRadius: "4px" }}>
                                                         <div>
                                                             <div style={{ fontSize: 11, color: "var(--bright)", fontWeight: 600 }}>{snap.name}</div>
                                                             <div style={{ fontSize: 9, color: "var(--muted)" }}>Step {snap.step} - {snap.adoption}% adoption</div>
@@ -1159,7 +1179,7 @@ export default function SimulatePage() {
                                                                 const branchId = snap.simulationId || snap.id;
                                                                 if (branchId) router.push(`/simulate?id=${branchId}`);
                                                             }}
-                                                            className="btn btn-ghost" style={{ fontSize: 9, color: "var(--orange)", border: "1px solid rgba(255,107,53,0.3)", opacity: snap.simulationId ? 1 : 0.5 }}
+                                                            className="btn btn-ghost" style={{ fontSize: 9, color: "var(--accent)", border: "1px solid rgba(0, 82, 255, 0.25)", opacity: snap.simulationId ? 1 : 0.5 }}
                                                         >
                                                             {snap.simulationId ? "OPEN" : "SAVING..."}
                                                         </button>
@@ -1169,29 +1189,29 @@ export default function SimulatePage() {
                                          </div>
                                     </div>
                                 )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
-        </div>
 
             {/* ── AGENT HIGHLIGHT (MATCH RESULTS SIDE CARD / DRAWER) ── */}
             {selectedAgentId !== null && selectedAgent && selectedState && (
                 <div style={{ 
                     position: "fixed", top: "12px", right: "12px", width: "440px", height: "calc(100% - 24px)", 
-                    background: "rgba(9, 11, 14, 0.98)", backdropFilter: "blur(40px)", 
+                    background: "var(--panel)", backdropFilter: "blur(40px)", 
                     WebkitBackdropFilter: "blur(40px)",
-                    border: "1px solid rgba(255,255,255,0.12)", zIndex: 1000, 
-                    boxShadow: "-20px 0 100px rgba(0,0,0,0.9)", 
+                    border: "1px solid var(--border)", zIndex: 1000, 
+                    boxShadow: "-20px 0 100px rgba(0, 82, 255, 0.05)", 
                     display: "flex", flexDirection: "column", 
                     borderRadius: "24px",
                     animation: "slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)" 
                 }}>
                     <div style={{ 
                         padding: "16px 20px", 
-                        borderBottom: "1px solid rgba(255,255,255,0.08)", 
+                        borderBottom: "1px solid var(--border)", 
                         display: "flex", justifyContent: "space-between", alignItems: "center", 
-                        background: "linear-gradient(to right, rgba(0,208,132,0.08), transparent)" 
+                        background: "linear-gradient(to right, rgba(0, 82, 255, 0.05), transparent)" 
                     }}>
                         <div className="results-side-label" style={{ marginBottom: 0, color: "var(--bright)", letterSpacing: "0.2em", display: "flex", alignItems: "center", gap: 10 }}>
                             <span>AGENT_TELEMETRY</span>

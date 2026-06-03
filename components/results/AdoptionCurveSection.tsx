@@ -87,26 +87,26 @@ export default function AdoptionCurveSection({ history, total, mode, onModeChang
                                 <stop offset="100%" stopColor="var(--oppose)" stopOpacity={0.02} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                         <XAxis
                             dataKey="step"
                             tick={{ fill: "var(--muted)", fontSize: 10, fontFamily: "var(--mono)" }}
-                            axisLine={{ stroke: "rgba(255,255,255,0.08)" }}
+                            axisLine={{ stroke: "var(--border)" }}
                         />
                         <YAxis
                             tick={{ fill: "var(--muted)", fontSize: 10, fontFamily: "var(--mono)" }}
-                            axisLine={{ stroke: "rgba(255,255,255,0.08)" }}
+                            axisLine={{ stroke: "var(--border)" }}
                             unit={axisUnit}
                         />
                         <Tooltip
                             contentStyle={{
-                                background: "#121212",
-                                border: "1px solid rgba(255,255,255,0.08)",
+                                background: "var(--panel)",
+                                border: "1px solid var(--border)",
                                 borderRadius: 10,
                                 fontFamily: "var(--mono)",
                                 fontSize: 11,
                                 color: "var(--text)",
-                                boxShadow: "0 12px 24px rgba(0,0,0,0.35)",
+                                boxShadow: "0 12px 24px rgba(0,0,0,0.05)",
                             }}
                         />
                         <Legend

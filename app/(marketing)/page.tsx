@@ -81,6 +81,25 @@ export default function LandingPage() {
         .reveal-delay-2 { transition-delay: 0.2s !important; }
         .reveal-delay-3 { transition-delay: 0.3s !important; }
         .reveal-delay-4 { transition-delay: 0.4s !important; }
+        
+        @keyframes sweep {
+          0% { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+        .shimmer-sweep-text {
+          background: linear-gradient(90deg, #7c808a 0%, #7c808a 38%, var(--accent) 50%, #7c808a 62%, #7c808a 100%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: sweep 6s linear infinite;
+        }
+        @keyframes subtle-pulse {
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.15); }
+        }
+        .pulse-dot {
+          animation: subtle-pulse 2s infinite ease-in-out;
+        }
       `}} />
 
       {/* ── BACKGROUND BLOBS & TEXTURES ── */}
@@ -105,27 +124,32 @@ export default function LandingPage() {
         <div style={{ position: "absolute", top: 0, left: "6vw", width: "1px", height: "100%", background: "rgba(0, 82, 255, 0.025)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", top: 0, right: "6vw", width: "1px", height: "100%", background: "rgba(0, 82, 255, 0.025)", pointerEvents: "none" }} />
 
-        {/* Centered Eyebrow Pill
-        <div className="reveal-on-scroll" style={{ display: "inline-flex", padding: "6px 16px", background: "rgba(0, 82, 255, 0.05)", border: "1px solid rgba(0, 82, 255, 0.15)", borderRadius: "999px", fontFamily: "var(--mono)", fontSize: "10px", color: "#0052ff", fontWeight: 600, marginBottom: "28px", letterSpacing: "0.08em", zIndex: 10 }}>
-          // THE DECISION INTELLIGENCE CORE
-        </div> */}
-
         {/* Giant Centered Headline */}
         <h1 className="reveal-on-scroll reveal-delay-1" style={{
           textAlign: "center",
           fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontSize: "clamp(46px, 6.5vw, 82px)",
+          fontSize: "clamp(42px, 6vw, 76px)",
           fontWeight: 800,
-          lineHeight: 0.95,
+          lineHeight: 1.05,
           letterSpacing: "-0.04em",
           color: "var(--bright)",
           maxWidth: "1050px",
           margin: "0 auto 24px auto",
-          marginTop: "28px",
+          marginTop: "12px",
           zIndex: 10
         }}>
           Simulation-Driven Decisions<br />
-          <span style={{ fontWeight: 300, color: "var(--muted)" }}>Powered by AI Agents</span>
+          <span className="shimmer-sweep-text" style={{ 
+            display: "inline-block",
+            fontSize: "clamp(26px, 4vw, 48px)", 
+            fontWeight: 300, 
+            letterSpacing: "-0.02em",
+            marginTop: "12px",
+            lineHeight: 1.2,
+            paddingBottom: "10px"
+          }}>
+            Powered by AI Agents
+          </span>
         </h1>
 
         {/* Clean Center Description */}

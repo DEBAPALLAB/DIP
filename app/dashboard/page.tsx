@@ -1,10 +1,17 @@
 "use client";
 
 import { useAuth, useEntitlements } from "@/lib/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { SCENARIOS } from "@/lib/scenarios";
 import { supabase } from "@/lib/supabase";
+import { Navbar } from "@/components/marketing/Navbar";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
+type DashboardStatus = "ALL" | "COMPLETED" | "RUNNING" | "FAILED";
+type SimulationStatus = Exclude<DashboardStatus, "ALL">;
+type SortBy = "created_at" | "total_agents" | "title";
+type SortOrder = "asc" | "desc";
 
 interface SimulationRecord {
   id: string;
@@ -15,12 +22,40 @@ interface SimulationRecord {
   created_at: string;
   configuration?: {
     title?: string;
+    product?: {
+      name?: string;
+      description?: string;
+    };
+    scenario?: {
+      label?: string;
+      tag?: string;
+      brief?: string;
+    };
     [key: string]: unknown;
   } | null;
 }
 
+const STATUS_FILTERS: DashboardStatus[] = ["ALL", "COMPLETED", "RUNNING", "FAILED"];
+const SORT_OPTIONS: Array<{ value: SortBy; label: string }> = [
+  { value: "created_at", label: "Date" },
+  { value: "total_agents", label: "Agent Size" },
+  { value: "title", label: "Title" },
+];
+
 function getSimulationTitle(sim: SimulationRecord) {
-  return sim.title?.trim() || sim.configuration?.title?.trim() || sim.scenario_id.replace(/_/g, " ");
+  return sim.title?.trim() || sim.configuration?.title?.trim() || sim.configuration?.product?.name?.trim() || sim.scenario_id.replace(/_/g, " ");
+}
+
+function getSimulationScenario(sim: SimulationRecord) {
+  return sim.configuration?.scenario?.label?.trim() || SCENARIOS.find((scenario) => scenario.id === sim.scenario_id)?.label || sim.scenario_id.replace(/_/g, " ");
+}
+
+function getSimulationDescription(sim: SimulationRecord) {
+  return (
+    sim.configuration?.product?.description?.trim() ||
+    sim.configuration?.scenario?.brief?.split("\n")[0]?.trim() ||
+    "No scenario summary stored for this execution."
+  );
 }
 
 function getDisplayName(user: { email?: string; metadata?: any } | null) {
@@ -31,42 +66,156 @@ function getDisplayName(user: { email?: string; metadata?: any } | null) {
     user?.email?.split("@")[0] ||
     "Scenario Builder";
 
-  return String(raw)
-    .replace(/[._-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(raw).replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normalizeStatus(status: string | undefined): SimulationStatus {
+  const value = String(status || "").toUpperCase();
+  if (value.includes("FAIL") || value.includes("ERROR")) return "FAILED";
+  if (value.includes("COMPLETE") || value.includes("DONE")) return "COMPLETED";
+  return "RUNNING";
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatTime(value: Date) {
+  return new Intl.DateTimeFormat("en", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(value);
+}
+
+function formatAgents(value: number) {
+  return `${Number(value || 0).toLocaleString()} Units`;
+}
+
+function getQuotaLabel(maxAgents: number) {
+  return maxAgents >= 99999 ? "Agency capacity" : `${maxAgents.toLocaleString()} agents`;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const { tier, limits, isAtLeast } = useEntitlements();
   const router = useRouter();
-  
+
   const [pastSimulations, setPastSimulations] = useState<SimulationRecord[]>([]);
   const [loadingSims, setLoadingSims] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const displayName = getDisplayName(user);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<DashboardStatus>("ALL");
+  const [sortBy, setSortBy] = useState<SortBy>("created_at");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [quickScenario, setQuickScenario] = useState(SCENARIOS[0]?.id || "ev");
+  const [quickAgentCount, setQuickAgentCount] = useState(() => Math.min(250, limits.maxAgents));
+  const [now, setNow] = useState(() => new Date());
+  const [latency, setLatency] = useState(140);
+  const [mounted, setMounted] = useState(false);
 
+  const displayName = getDisplayName(user);
   const totalAgents = pastSimulations.reduce((acc, sim) => acc + (sim.total_agents || 0), 0);
   const totalSims = pastSimulations.length;
+  const runningSims = pastSimulations.filter((sim) => normalizeStatus(sim.status) === "RUNNING").length;
+  const maxQuickAgents = limits.maxAgents >= 99999 ? 10000 : limits.maxAgents;
+  const quotaBase = limits.maxAgents >= 99999 ? Math.max(totalAgents, maxQuickAgents, 1) : limits.maxAgents;
+  const quotaPercent = clamp(Math.round((totalAgents / Math.max(quotaBase, 1)) * 100), 0, 100);
+  const circumference = 2 * Math.PI * 42;
+  const quotaDashOffset = circumference - (quotaPercent / 100) * circumference;
+  const quotaTone = quotaPercent >= 85 ? "critical" : quotaPercent >= 70 ? "warning" : "healthy";
 
   useEffect(() => {
     async function loadSimulations() {
-      if (!user?.id) return;
+      if (!user?.id) {
+        setLoadingSims(false);
+        return;
+      }
+
       const { data, error } = await supabase
-        .from('simulations')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .from("simulations")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
       if (!error && data) {
         setPastSimulations(data);
       }
+
       setLoadingSims(false);
     }
+
     loadSimulations();
-  }, [user]);
+  }, [user?.id]);
+
+  useEffect(() => {
+    setMounted(true);
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+      setLatency(132 + Math.floor(Math.random() * 28));
+    }, 3500);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setQuickAgentCount((current) => clamp(current, 10, maxQuickAgents));
+  }, [maxQuickAgents]);
+
+  const filteredSimulations = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return pastSimulations
+      .filter((sim) => {
+        const status = normalizeStatus(sim.status);
+        if (statusFilter !== "ALL" && status !== statusFilter) return false;
+        if (!query) return true;
+
+        const searchable = [
+          sim.id,
+          sim.scenario_id,
+          getSimulationTitle(sim),
+          getSimulationScenario(sim),
+          getSimulationDescription(sim),
+          sim.configuration?.scenario?.tag,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return searchable.includes(query);
+      })
+      .sort((a, b) => {
+        let result = 0;
+        if (sortBy === "created_at") {
+          result = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        } else if (sortBy === "total_agents") {
+          result = (a.total_agents || 0) - (b.total_agents || 0);
+        } else {
+          result = getSimulationTitle(a).localeCompare(getSimulationTitle(b));
+        }
+
+        return sortOrder === "asc" ? result : -result;
+      });
+  }, [pastSimulations, searchQuery, sortBy, sortOrder, statusFilter]);
+
+  const handleSort = (key: SortBy) => {
+    if (sortBy === key) {
+      setSortOrder((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortBy(key);
+    setSortOrder(key === "title" ? "asc" : "desc");
+  };
 
   const handleDeleteSimulation = async (simId: string) => {
     const confirmed = window.confirm("Delete this simulation permanently?");
@@ -85,443 +234,942 @@ export default function DashboardPage() {
     }
   };
 
+  const handleQuickLaunch = () => {
+    router.push(`/simulate?scenario=${encodeURIComponent(quickScenario)}&count=${quickAgentCount}`);
+  };
+
   return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at 50% 0%, #0c0b0a 0%, #030303 100%)", display: "flex", flexDirection: "column", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      {/* Dynamic Styling Overrides for Cyberpunk Dashboard theme */}
-      <style>
-        {`
-          .btn-v2-primary {
-              background: linear-gradient(135deg, var(--orange) 0%, #ff8b45 100%);
-              color: #000 !important;
-              border: 1px solid var(--orange);
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-size: 12px;
-              font-weight: 800;
-              letter-spacing: 0.05em;
-              border-radius: 99px;
-              cursor: pointer;
-              transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-              box-shadow: 0 4px 15px rgba(255, 107, 53, 0.15);
-              text-transform: uppercase;
-          }
-          .btn-v2-primary:hover {
-              background: #fff;
-              border-color: #fff;
-              box-shadow: 0 8px 25px rgba(255, 255, 255, 0.25);
-              transform: translateY(-2px);
-          }
-          .btn-v2-primary:active {
-              transform: translateY(0);
-          }
+    <div className="marketing-theme dashboard-page">
+      <Navbar />
 
-          .btn-v2-ghost {
-              background: rgba(255, 255, 255, 0.02);
-              color: var(--muted);
-              border: 1px solid rgba(255, 255, 255, 0.08);
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-size: 11px;
-              font-weight: 700;
-              letter-spacing: 0.04em;
-              border-radius: 99px;
-              cursor: pointer;
-              transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-              text-transform: uppercase;
-          }
-          .btn-v2-ghost:hover:not(:disabled) {
-              color: var(--bright);
-              border-color: rgba(255, 255, 255, 0.25);
-              background: rgba(255, 255, 255, 0.05);
-              box-shadow: 0 6px 20px rgba(255, 255, 255, 0.03);
-              transform: translateY(-2px);
-          }
-          .btn-v2-ghost:active {
-              transform: translateY(0);
-          }
-
-          .nav-link {
-              font-size: 11px;
-              color: var(--muted);
-              text-decoration: none;
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              letter-spacing: 0.1em;
-              font-weight: 700;
-              transition: all 0.25s ease;
-              position: relative;
-              padding: 4px 0;
-          }
-          .nav-link::after {
-              content: '';
-              position: absolute;
-              bottom: 0;
-              left: 0;
-              width: 0;
-              height: 1px;
-              background: var(--orange);
-              transition: width 0.25s ease;
-          }
-          .nav-link:hover {
-              color: var(--bright);
-          }
-          .nav-link:hover::after {
-              width: 100%;
-          }
-
-          @keyframes line-pulse {
-              0% { opacity: 0.03; }
-              100% { opacity: 0.12; }
-          }
-          .tactical-line {
-              animation: line-pulse 4s infinite alternate ease-in-out;
-          }
-        `}
-      </style>
-
-      {/* Decorative Grid Lines */}
-      <div className="tactical-line" style={{ position: "fixed", top: 0, left: "40px", width: "1px", height: "100%", background: "var(--border)", opacity: 0.1, zIndex: 0 }} />
-      <div className="tactical-line" style={{ position: "fixed", top: 0, right: "40px", width: "1px", height: "100%", background: "var(--border)", opacity: 0.1, zIndex: 0 }} />
-
-      {/* Nav (Premium Glassmorphic Cyber-Nav with Full Feature Metrics) */}
-      <nav style={{ 
-          height: "72px", 
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)", 
-          display: "flex", alignItems: "center", justifyContent: "space-between", 
-          padding: "0 40px", 
-          background: "rgba(6, 7, 9, 0.88)", 
-          backdropFilter: "blur(28px)", 
-          WebkitBackdropFilter: "blur(28px)",
-          position: "sticky", top: 0, zIndex: 10,
-          boxShadow: "0 10px 40px rgba(0, 0, 0, 0.55)"
-      }}>
-        {/* Brand Block */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ color: "var(--orange)", fontWeight: 900, textShadow: "0 0 12px var(--orange)", fontSize: "18px" }}>◉</span>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontFamily: "var(--mono)", fontSize: "14px", fontWeight: 800, letterSpacing: "0.18em", color: "var(--bright)" }}>DI//SANDBOX</span>
-            <span style={{ fontFamily: "var(--mono)", fontSize: "8px", color: "var(--orange)", letterSpacing: "0.12em", marginTop: "2px" }}>QUANTUM_ENGINE_v7.2</span>
+      <main className="dashboard-shell">
+        <section className="dashboard-command">
+          <div>
+            <span className="eyebrow">Workspace Control</span>
+            <h1>Decision Operations</h1>
+            <p>
+              {displayName} / {user?.email || "active operator"} / {tier.toUpperCase()} tier
+            </p>
           </div>
-        </div>
 
-        {/* Feature-Rich Dashboard Navigation Tabs */}
-        <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-            <Link href="/dashboard" className="nav-link" style={{ color: "var(--bright)", borderBottom: "1px solid var(--orange)" }}>
-               // EXPERIMENTS
-            </Link>
-            <Link href="/setup" className="nav-link">
-               // NEW_CASCADE
-            </Link>
-            <Link href="/pricing" className="nav-link">
-               // SUBSCRIPTION
-            </Link>
-            <Link href="/technology" className="nav-link">
-               // METHODOLOGY
-            </Link>
-        </div>
-
-        {/* Status Widgets & User Profile Block */}
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-            {/* Live Ticker Status Widget */}
-            <div style={{ 
-                display: "flex", alignItems: "center", gap: "8px", 
-                borderLeft: "1px solid rgba(255,255,255,0.08)", 
-                paddingLeft: "24px", fontFamily: "var(--mono)", fontSize: "9px" 
-            }}>
-                <span className="live-dot" style={{ width: 6, height: 6, background: "var(--support)", boxShadow: "0 0 8px var(--support)" }} />
-                <span style={{ color: "var(--muted)" }}>SYS_LATENCY:</span>
-                <span style={{ color: "var(--support)", fontWeight: 700 }}>12ms</span>
+          <div className="command-actions">
+            <div className="timestamp">
+              <span>System Time</span>
+              <strong>{mounted ? formatTime(now) : "--:--:--"}</strong>
             </div>
+            <button className="btn-v2-ghost dashboard-button" onClick={() => router.push("/pricing")}>
+              Manage Plan
+            </button>
+            <button className="btn-v2-primary dashboard-button" onClick={() => router.push("/setup")}>
+              New Simulation
+            </button>
+          </div>
+        </section>
 
-            {/* License Level Badge */}
-            <span style={{
-                fontFamily: "var(--mono)",
-                fontSize: "9px",
-                padding: "3px 8px",
-                borderRadius: "2px",
-                fontWeight: 700,
-                color: "var(--orange)",
-                background: "rgba(255,107,53,0.08)",
-                border: "1px solid rgba(255,107,53,0.25)",
-                letterSpacing: "0.08em"
-            }}>
-                {tier.toUpperCase()}_NODE
-            </span>
+        <section className="metrics-grid" aria-label="Dashboard metrics">
+          <article className="metric-panel tier-panel">
+            <span>Tier / Capacity</span>
+            <strong>{tier.toUpperCase()}</strong>
+            <p>{getQuotaLabel(limits.maxAgents)}</p>
+          </article>
+          <article className="metric-panel">
+            <span>Total Simulations</span>
+            <strong>{totalSims.toLocaleString()}</strong>
+            <p>{runningSims} currently running</p>
+          </article>
+          <article className="metric-panel">
+            <span>Agents Deployed</span>
+            <strong>{totalAgents.toLocaleString()}</strong>
+            <p>{quotaPercent}% of available compute</p>
+          </article>
+          <article className="metric-panel">
+            <span>System Status</span>
+            <strong>{latency}ms</strong>
+            <p>API latency / 99.98% uptime</p>
+          </article>
+        </section>
 
-            {/* Profile Avatar & Interactive Dropdown Menu */}
-            <div style={{ position: "relative" }}>
-                <div 
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    style={{ 
-                        width: "36px", height: "36px", borderRadius: "50%", 
-                        background: "rgba(255,107,53,0.08)", 
-                        border: "1.5px solid var(--orange)", 
-                        display: "flex", alignItems: "center", justifyContent: "center", 
-                        fontSize: "12px", fontWeight: 900, color: "var(--orange)",
-                        boxShadow: "0 0 12px rgba(255,107,53,0.2)",
-                        fontFamily: "var(--mono)",
-                        cursor: "pointer",
-                        transition: "all 0.3s ease"
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.transform = "scale(1.08)";
-                        e.currentTarget.style.boxShadow = "0 0 18px rgba(255,107,53,0.45)";
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                        e.currentTarget.style.boxShadow = "0 0 12px rgba(255,107,53,0.2)";
-                    }}
-                >
-                  {(displayName.charAt(0) || user?.email?.charAt(0) || "U").toUpperCase()}
-                </div>
-
-                {showProfileMenu && (
-                    <div style={{
-                        position: "absolute",
-                        top: "48px",
-                        right: 0,
-                        width: "280px",
-                        background: "rgba(9, 11, 14, 0.95)",
-                        backdropFilter: "blur(24px)",
-                        border: "1px solid rgba(255,107,53,0.3)",
-                        borderRadius: "8px",
-                        boxShadow: "0 10px 40px rgba(0,0,0,0.8)",
-                        padding: "20px",
-                        zIndex: 1000,
-                        fontFamily: "var(--mono)",
-                        fontSize: "11px",
-                    }}>
-                        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "12px", marginBottom: "12px" }}>
-                            <div style={{ color: "var(--muted)", fontSize: "8px", marginBottom: "4px" }}>[ACCOUNT_IDENTIFIER]</div>
-                            <div style={{ color: "var(--bright)", fontWeight: 700, wordBreak: "break-all" }}>{user?.email}</div>
-                        </div>
-
-                        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "12px", marginBottom: "12px" }}>
-                            <div style={{ color: "var(--orange)", fontSize: "8px", marginBottom: "4px" }}>ACTIVE_PLAN_TIER</div>
-                            <div style={{ color: "var(--bright)", fontSize: "14px", fontWeight: 800 }}>{tier.toUpperCase()} NODE</div>
-                            <div style={{ color: "var(--muted)", fontSize: "9px", marginTop: "4px" }}>CAPACITY: {limits.maxAgents === 99999 ? "UNLIMITED" : `${limits.maxAgents} units`}</div>
-                        </div>
-
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <Link href="/pricing" onClick={() => setShowProfileMenu(false)} style={{ textDecoration: "none", color: "var(--orange)", textAlign: "center", border: "1px dashed rgba(255,107,53,0.3)", padding: "8px", borderRadius: "4px", fontWeight: 700 }} onMouseOver={(e) => e.currentTarget.style.background = "rgba(255,107,53,0.05)"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
-                                MANAGED_SUBSCRIBER_LAB →
-                            </Link>
-                            <button 
-                                onClick={() => { setShowProfileMenu(false); logout(); }}
-                                style={{
-                                    background: "rgba(255, 68, 68, 0.1)",
-                                    border: "1px solid rgba(255, 68, 68, 0.3)",
-                                    color: "#ff4444",
-                                    padding: "8px",
-                                    borderRadius: "4px",
-                                    cursor: "pointer",
-                                    fontWeight: 800,
-                                    fontFamily: "var(--mono)",
-                                    fontSize: "11px",
-                                    textTransform: "uppercase"
-                                }}
-                            >
-                                TERMINATE_SESSION [LOGOUT]
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main style={{ flex: 1, maxWidth: "1400px", margin: "0 auto", width: "100%", padding: "64px 40px", position: "relative", zIndex: 1 }}>
-        
-        <header style={{ marginBottom: "56px" }}>
-           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "24px" }}>
+        <section className="workspace-grid">
+          <div className="workspace-main">
+            <div className="dashboard-panel-header">
               <div>
-                 <span style={{ fontFamily: "var(--mono)", color: "var(--orange)", fontSize: "11px", letterSpacing: "0.45em", marginBottom: "16px", display: "block", textShadow: "0 0 8px rgba(255,107,53,0.2)" }}>[USER_DASHBOARD_v7.2]</span>
-                 <h1 style={{ fontSize: "52px", fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.04em", margin: 0, fontFamily: "var(--heading)", lineHeight: 1.05 }}>
-                  HELLO, {displayName.toUpperCase()}.
-                 </h1>
+                <span className="eyebrow">Execution Log</span>
+                <h2>Simulation Runs</h2>
               </div>
-              <button 
-                onClick={() => router.push("/setup")}
-                className="btn-v2-primary"
-                style={{ padding: "15px 32px", height: "auto" }}
-              >
-                + NEW_SIMULATION
+            </div>
+
+            <div className="controls-bar">
+              <label className="search-control">
+                <span>Search</span>
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="ID, title, scenario, or tag"
+                />
+              </label>
+
+              <div className="filter-pills" aria-label="Filter simulations by status">
+                {STATUS_FILTERS.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    className={statusFilter === status ? "active" : ""}
+                    onClick={() => setStatusFilter(status)}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+
+              <label className="sort-control">
+                <span>Sort</span>
+                <select value={sortBy} onChange={(event) => handleSort(event.target.value as SortBy)}>
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button className="sort-order" type="button" onClick={() => setSortOrder((current) => (current === "asc" ? "desc" : "asc"))}>
+                {sortOrder.toUpperCase()}
               </button>
-           </div>
-        </header>
 
-        {/* Vital Stats Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "28px", marginBottom: "64px" }}>
-          
-          {/* Level Card */}
-          <div style={{ 
-              background: "linear-gradient(135deg, rgba(255,107,53,0.08) 0%, rgba(255,107,53,0.01) 100%)", 
-              border: "1px solid rgba(255,107,53,0.3)", 
-              padding: "32px", position: "relative",
-              borderRadius: "24px",
-              boxShadow: "0 10px 30px rgba(255,107,53,0.04)"
-          }}>
-            <div style={{ position: "absolute", top: 0, right: 0, padding: "6px 16px", background: "var(--orange)", color: "var(--bg)", fontSize: "10px", fontWeight: 900, fontFamily: "var(--mono)", letterSpacing: "0.08em", borderRadius: "0 22px 0 22px" }}>PLAN</div>
-            <div style={{ color: "var(--orange)", fontSize: "10px", fontWeight: 700, marginBottom: "10px", fontFamily: "var(--mono)", letterSpacing: "0.12em" }}>TIER_LEVEL</div>
-            <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--bright)", marginBottom: "14px", letterSpacing: "-0.03em" }}>{tier.toUpperCase()}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <div style={{ fontSize: "12px", color: "var(--muted)", fontFamily: "var(--mono)" }}>CAPACITY: <strong style={{ color: "var(--bright)" }}>{limits.maxAgents === 99999 ? "UNLIMITED" : limits.maxAgents}</strong> UNITS</div>
-                {!isAtLeast("strategic") && (
-                    <Link href="/pricing" style={{ fontSize: "11px", color: "var(--orange)", fontWeight: 700, textDecoration: "none", fontFamily: "var(--mono)", letterSpacing: "0.05em" }}>→ UPGRADE_SYSTEM</Link>
-                )}
+              <div className="result-count">{filteredSimulations.length} records</div>
             </div>
-          </div>
 
-          {/* Stats Box 1 */}
-          <div style={{ 
-              background: "rgba(255,255,255,0.02)", 
-              border: "1px solid rgba(255,255,255,0.06)", 
-              padding: "32px",
-              borderRadius: "24px",
-              boxShadow: "inset 0 0 20px rgba(255,255,255,0.01), 0 8px 24px rgba(0,0,0,0.2)"
-          }}>
-            <div style={{ color: "var(--muted)", fontSize: "10px", fontWeight: 700, marginBottom: "10px", fontFamily: "var(--mono)", letterSpacing: "0.12em" }}>TOTAL_VALIDATIONS</div>
-            <div style={{ fontSize: "52px", fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.05em", fontFamily: "var(--mono)" }}>{totalSims}</div>
-          </div>
-          
-          {/* Stats Box 2 */}
-          <div style={{ 
-              background: "rgba(255,255,255,0.02)", 
-              border: "1px solid rgba(255,255,255,0.06)", 
-              padding: "32px",
-              borderRadius: "24px",
-              boxShadow: "inset 0 0 20px rgba(255,255,255,0.01), 0 8px 24px rgba(0,0,0,0.2)"
-          }}>
-            <div style={{ color: "var(--muted)", fontSize: "10px", fontWeight: 700, marginBottom: "10px", fontFamily: "var(--mono)", letterSpacing: "0.12em" }}>POPULATION_COUNT</div>
-            <div style={{ fontSize: "52px", fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.05em", fontFamily: "var(--mono)" }}>{totalAgents.toLocaleString()}</div>
-          </div>
-          
-          {/* Stats Box 3 */}
-          <div style={{ 
-              background: "rgba(255,255,255,0.02)", 
-              border: "1px solid rgba(255,255,255,0.06)", 
-              padding: "32px",
-              borderRadius: "24px",
-              boxShadow: "inset 0 0 20px rgba(255,255,255,0.01), 0 8px 24px rgba(0,0,0,0.2)"
-          }}>
-            <div style={{ color: "var(--muted)", fontSize: "10px", fontWeight: 700, marginBottom: "10px", fontFamily: "var(--mono)", letterSpacing: "0.12em" }}>SYS_AVAILABILITY</div>
-            <div style={{ fontSize: "52px", fontWeight: 800, color: "var(--support)", letterSpacing: "-0.05em", textShadow: "0 0 20px rgba(200,241,53,0.15)", fontFamily: "var(--mono)" }}>99.9%</div>
-          </div>
-        </div>
-
-        {/* History Table/Grid */}
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "36px" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.02em", fontFamily: "var(--mono)" }}>// EXECUTION_LOG</h2>
-            <div style={{ width: "200px", height: "1px", background: "rgba(255,255,255,0.06)", marginLeft: "20px", flex: 1 }} />
-          </div>
-          
-          {loadingSims ? (
-            <div style={{ color: "var(--muted)", padding: "48px", textAlign: "center", background: "var(--bg-darker)", border: "1px dashed var(--border)", fontFamily: "var(--mono)", fontSize: "11px" }}>SYNCHRONIZING_HISTORY...</div>
-          ) : pastSimulations.length === 0 ? (
-            <div style={{ color: "var(--muted)", padding: "48px", textAlign: "center", background: "var(--bg-darker)", border: "1px dashed var(--border)", fontFamily: "var(--mono)", fontSize: "11px", letterSpacing: "0.08em" }}>
-               NO_DATA_FOUND. START_FIRST_SIMULATION_TO_GENERATE_ANALYTICS.
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: "28px" }}>
-              {pastSimulations.map((sim) => (
-                <div 
-                  key={sim.id} 
-                  style={{ 
-                    background: "rgba(255,255,255,0.02)", 
-                    border: "1px solid rgba(255,255,255,0.06)", 
-                    padding: "32px", display: "flex", flexDirection: "column", gap: "24px",
-                    transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                    borderRadius: "24px",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-                    position: "relative",
-                    overflow: "hidden"
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = "var(--orange)";
-                    e.currentTarget.style.transform = "translateY(-6px)";
-                    e.currentTarget.style.backgroundColor = "rgba(255,107,53,0.02)";
-                    e.currentTarget.style.boxShadow = "0 20px 40px rgba(255,107,53,0.08)";
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)";
-                    e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.2)";
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                    <div>
-                      <div style={{ fontFamily: "var(--mono)", color: "var(--orange)", fontSize: "10px", marginBottom: "8px", letterSpacing: "0.22em" }}>ID//SIM_{sim.id.substring(0,8).toUpperCase()}</div>
-                      <h3 style={{ fontSize: "19px", fontWeight: 700, color: "var(--bright)", margin: 0, letterSpacing: "-0.01em" }}>{getSimulationTitle(sim)}</h3>
-                    </div>
-                    <span style={{ 
-                      fontSize: "9px", fontWeight: 800, padding: "5px 10px", borderRadius: "3px", fontFamily: "var(--mono)",
-                      background: sim.status === "Completed" ? "rgba(200, 241, 53, 0.15)" : "rgba(255, 107, 53, 0.15)",
-                      color: sim.status === "Completed" ? "var(--support)" : "var(--orange)",
-                      border: sim.status === "Completed" ? "1px solid rgba(200, 241, 53, 0.3)" : "1px solid rgba(255, 107, 53, 0.3)",
-                      letterSpacing: "0.06em"
-                    }}>
-                      {sim.status.toUpperCase()}
-                    </span>
-                  </div>
-                  
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "24px" }}>
-                    <div>
-                      <span style={{ fontSize: "9px", color: "var(--muted)", textTransform: "uppercase", fontFamily: "var(--mono)", display: "block", marginBottom: "4px", letterSpacing: "0.08em" }}>Execution_Date</span>
-                      <span style={{ fontSize: "14px", color: "var(--bright)", fontWeight: 600 }}>{new Date(sim.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: "9px", color: "var(--muted)", textTransform: "uppercase", fontFamily: "var(--mono)", display: "block", marginBottom: "4px", letterSpacing: "0.08em" }}>Agents_Count</span>
-                      <span style={{ fontSize: "14px", color: "var(--bright)", fontWeight: 600 }}>{sim.total_agents} UNITS</span>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: "8px" }}>
-                    <div style={{ display: "flex", gap: "12px" }}>
-                      <button 
-                        onClick={() => router.push(`/results?id=${sim.id}`)}
-                        className="btn-v2-ghost"
-                        style={{ width: "100%", height: "48px", fontSize: "11px", fontWeight: 800 }}
-                      >
-                        VIEW_ANALYTICS_REPORT →
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSimulation(sim.id)}
-                        className="btn-v2-ghost"
-                        disabled={deletingId === sim.id}
-                        style={{
-                          minWidth: "104px",
-                          height: "48px",
-                          fontSize: "11px",
-                          fontWeight: 800,
-                          borderColor: "rgba(255,68,68,0.25)",
-                          color: "var(--oppose)",
-                          background: "rgba(255,68,68,0.01)"
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = "rgba(255,68,68,0.08)";
-                            e.currentTarget.style.borderColor = "var(--oppose)";
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = "rgba(255,68,68,0.01)";
-                            e.currentTarget.style.borderColor = "rgba(255,68,68,0.25)";
-                        }}
-                      >
-                        {deletingId === sim.id ? "DELETING..." : "DELETE"}
-                      </button>
-                    </div>
-                  </div>
+            <div className="table-wrap">
+              {loadingSims ? (
+                <div className="table-empty">Synchronizing simulation history...</div>
+              ) : filteredSimulations.length === 0 ? (
+                <div className="table-empty">
+                  <strong>No matching records.</strong>
+                  <span>Adjust filters or start a new simulation to populate this workspace.</span>
                 </div>
-              ))}
+              ) : (
+                <table className="simulation-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <button type="button" onClick={() => handleSort("title")}>
+                          Simulation Details
+                        </button>
+                      </th>
+                      <th>Status</th>
+                      <th>
+                        <button type="button" onClick={() => handleSort("total_agents")}>
+                          Agent Size
+                        </button>
+                      </th>
+                      <th>
+                        <button type="button" onClick={() => handleSort("created_at")}>
+                          Date / Time
+                        </button>
+                      </th>
+                      <th>Operations</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSimulations.map((sim) => {
+                      const status = normalizeStatus(sim.status);
+                      const launchCount = clamp(sim.total_agents || quickAgentCount, 10, maxQuickAgents);
+
+                      return (
+                        <tr key={sim.id}>
+                          <td>
+                            <div className="sim-title">{getSimulationTitle(sim)}</div>
+                            <div className="sim-meta">
+                              {getSimulationScenario(sim)} / SIM_{sim.id.slice(0, 8).toUpperCase()}
+                            </div>
+                            <p>{getSimulationDescription(sim)}</p>
+                          </td>
+                          <td>
+                            <span className={`status-chip ${status.toLowerCase()}`}>
+                              <span />
+                              {status}
+                            </span>
+                          </td>
+                          <td className="agent-cell">{formatAgents(sim.total_agents)}</td>
+                          <td>
+                            <div className="date-cell">{formatDate(sim.created_at)}</div>
+                            <span>{new Date(sim.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                          </td>
+                          <td>
+                            <div className="operation-row">
+                              <button type="button" onClick={() => router.push(`/results?id=${sim.id}`)}>
+                                View Report
+                              </button>
+                              <button type="button" onClick={() => router.push(`/simulate?scenario=${encodeURIComponent(sim.scenario_id)}&count=${launchCount}`)}>
+                                Retry
+                              </button>
+                              <button
+                                type="button"
+                                className="danger"
+                                disabled={deletingId === sim.id}
+                                onClick={() => handleDeleteSimulation(sim.id)}
+                              >
+                                {deletingId === sim.id ? "Deleting" : "Delete"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
-          )}
+          </div>
 
-        </div>
+          <aside className="control-rail" aria-label="Dashboard control center">
+            <section className="rail-panel quota-panel">
+              <div className="dashboard-panel-header compact">
+                <div>
+                  <span className="eyebrow">Compute Quota</span>
+                  <h2>Agent Capacity</h2>
+                </div>
+                <span className={`quota-state ${quotaTone}`}>{quotaTone}</span>
+              </div>
 
+              <div className="quota-body">
+                <svg viewBox="0 0 110 110" className="quota-gauge" aria-hidden="true">
+                  <circle cx="55" cy="55" r="42" />
+                  <circle
+                    cx="55"
+                    cy="55"
+                    r="42"
+                    style={{
+                      strokeDasharray: circumference,
+                      strokeDashoffset: quotaDashOffset,
+                    }}
+                  />
+                </svg>
+                <div>
+                  <strong>{quotaPercent}%</strong>
+                  <span>{totalAgents.toLocaleString()} agents deployed</span>
+                  <p>Limit: {getQuotaLabel(limits.maxAgents)}</p>
+                </div>
+              </div>
+
+              {!isAtLeast("strategic") && (
+                <Link href="/pricing" className="rail-link">
+                  Increase workspace capacity
+                </Link>
+              )}
+            </section>
+
+            <section className="rail-panel telemetry-panel">
+              <div className="dashboard-panel-header compact">
+                <div>
+                  <span className="eyebrow">Telemetry</span>
+                  <h2>Live System</h2>
+                </div>
+              </div>
+              <div className="telemetry-list">
+                <div>
+                  <span>API Uptime</span>
+                  <strong>99.98%</strong>
+                </div>
+                <div>
+                  <span>Model Latency</span>
+                  <strong>{latency}ms</strong>
+                </div>
+                <div>
+                  <span>Simulation Accuracy</span>
+                  <strong>98.6%</strong>
+                </div>
+                <div>
+                  <span>Cache Hit Rate</span>
+                  <strong>92.4%</strong>
+                </div>
+              </div>
+            </section>
+
+            <section className="rail-panel launch-panel">
+              <div className="dashboard-panel-header compact">
+                <div>
+                  <span className="eyebrow">Quick Launch</span>
+                  <h2>Start a Run</h2>
+                </div>
+              </div>
+
+              <label>
+                Scenario Template
+                <select value={quickScenario} onChange={(event) => setQuickScenario(event.target.value)}>
+                  {SCENARIOS.map((scenario) => (
+                    <option key={scenario.id} value={scenario.id}>
+                      {scenario.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Agent Population
+                <div className="slider-head">
+                  <span>10</span>
+                  <strong>{quickAgentCount.toLocaleString()}</strong>
+                  <span>{maxQuickAgents.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={maxQuickAgents}
+                  step={10}
+                  value={quickAgentCount}
+                  onChange={(event) => setQuickAgentCount(Number(event.target.value))}
+                />
+              </label>
+
+              <button className="btn-v2-primary dashboard-button full" type="button" onClick={handleQuickLaunch}>
+                Start Simulation
+              </button>
+            </section>
+
+            <button className="signout-button" type="button" onClick={logout}>
+              Sign Out
+            </button>
+          </aside>
+        </section>
       </main>
 
-      <footer style={{ marginTop: "120px", textAlign: "center", padding: "64px 0", borderTop: "1px solid rgba(255,255,255,0.06)", opacity: 0.5 }}>
-         <span style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--muted)", letterSpacing: "0.55em" }}>NOTAPROMPT // BUILT_BY_LUCIDE_TECH</span>
-      </footer>
+      <style jsx>{`
+        .dashboard-page {
+          min-height: 100vh;
+          background:
+            radial-gradient(620px circle at 0% 0%, rgba(0, 82, 255, 0.16), transparent 68%),
+            radial-gradient(620px circle at 100% 0%, rgba(0, 82, 255, 0.16), transparent 68%),
+            var(--bg);
+          color: var(--text);
+          font-family: var(--sans);
+        }
+
+        .dashboard-shell {
+          position: relative;
+          z-index: 1;
+          width: min(1460px, calc(100% - 48px));
+          margin: 0 auto;
+          padding: 128px 0 64px;
+        }
+
+        .dashboard-command {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 24px;
+          margin-bottom: 22px;
+        }
+
+        .eyebrow {
+          display: block;
+          margin-bottom: 8px;
+          color: var(--accent);
+          font-family: var(--mono);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0;
+          text-transform: uppercase;
+        }
+
+        h1,
+        h2,
+        p {
+          margin: 0;
+        }
+
+        h1 {
+          color: var(--bright);
+          font-family: var(--heading);
+          font-size: 44px;
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: 0;
+        }
+
+        .dashboard-command p {
+          margin-top: 10px;
+          color: var(--muted);
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .command-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .timestamp {
+          min-width: 132px;
+          padding: 10px 12px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.68);
+        }
+
+        .timestamp span,
+        .timestamp strong {
+          display: block;
+        }
+
+        .timestamp span {
+          color: var(--muted);
+          font-family: var(--mono);
+          font-size: 10px;
+        }
+
+        .timestamp strong {
+          margin-top: 2px;
+          color: var(--bright);
+          font-family: var(--mono);
+          font-size: 13px;
+        }
+
+        .dashboard-button {
+          height: 42px;
+          padding: 0 18px;
+          border-radius: 8px;
+          font-size: 12px;
+          letter-spacing: 0;
+          text-transform: none;
+        }
+
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+          margin-bottom: 16px;
+        }
+
+        .metric-panel,
+        .workspace-main,
+        .rail-panel {
+          border: 1px solid rgba(0, 82, 255, 0.14);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.74);
+          box-shadow: 0 18px 54px rgba(0, 82, 255, 0.05);
+          backdrop-filter: blur(22px);
+        }
+
+        .metric-panel {
+          min-height: 126px;
+          padding: 18px;
+        }
+
+        .metric-panel span,
+        .metric-panel p {
+          color: var(--muted);
+          font-family: var(--mono);
+          font-size: 11px;
+          line-height: 1.4;
+        }
+
+        .metric-panel strong {
+          display: block;
+          margin: 16px 0 6px;
+          color: var(--bright);
+          font-family: var(--mono);
+          font-size: 31px;
+          line-height: 1;
+          letter-spacing: 0;
+        }
+
+        .tier-panel {
+          background: linear-gradient(135deg, rgba(0, 82, 255, 0.11), rgba(255, 255, 255, 0.78));
+        }
+
+        .workspace-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 380px;
+          gap: 16px;
+          align-items: start;
+          margin-top: 18px;
+        }
+
+        .workspace-main {
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .dashboard-panel-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 16px 20px 12px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .dashboard-panel-header.compact {
+          padding: 0 0 12px;
+          border-bottom: 0;
+        }
+
+        .dashboard-panel-header h2 {
+          color: var(--bright);
+          font-size: 20px;
+          font-weight: 800;
+          letter-spacing: 0;
+        }
+
+        .result-count {
+          padding: 7px 10px;
+          border: 1px solid var(--border);
+          border-radius: 999px;
+          color: var(--muted);
+          background: rgba(255, 255, 255, 0.66);
+          font-family: var(--mono);
+          font-size: 11px;
+          white-space: nowrap;
+        }
+
+        .controls-bar {
+          display: grid;
+          grid-template-columns: minmax(220px, 1fr) auto 150px 72px auto;
+          gap: 10px;
+          align-items: center;
+          padding: 14px 20px;
+          border-bottom: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.42);
+        }
+
+        .search-control,
+        .sort-control,
+        .launch-panel label {
+          display: grid;
+          gap: 7px;
+          color: var(--muted);
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        input,
+        select {
+          width: 100%;
+          height: 40px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.72);
+          color: var(--bright);
+          font-family: var(--sans);
+          font-size: 13px;
+          outline: none;
+          padding: 0 12px;
+        }
+
+        input:focus,
+        select:focus {
+          border-color: rgba(0, 82, 255, 0.42);
+          box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.08);
+        }
+
+        .filter-pills {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .filter-pills button,
+        .sort-order,
+        .operation-row button {
+          height: 40px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.62);
+          color: var(--muted);
+          cursor: pointer;
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0;
+          transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
+        }
+
+        .filter-pills button {
+          padding: 0 10px;
+        }
+
+        .filter-pills button.active,
+        .sort-order:hover,
+        .operation-row button:hover {
+          border-color: rgba(0, 82, 255, 0.34);
+          background: rgba(0, 82, 255, 0.07);
+          color: var(--accent);
+        }
+
+        .table-wrap {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        .simulation-table {
+          width: 100%;
+          min-width: 960px;
+          border-collapse: collapse;
+        }
+
+        th {
+          padding: 11px 20px;
+          color: var(--muted);
+          background: rgba(248, 250, 255, 0.86);
+          border-bottom: 1px solid var(--border);
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 800;
+          text-align: left;
+          text-transform: uppercase;
+        }
+
+        th button {
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+          font: inherit;
+          text-transform: inherit;
+        }
+
+        td {
+          padding: 18px 20px;
+          border-bottom: 1px solid rgba(0, 82, 255, 0.08);
+          color: var(--text);
+          font-size: 13px;
+          vertical-align: middle;
+        }
+
+        tbody tr:hover {
+          background: rgba(0, 82, 255, 0.025);
+        }
+
+        .sim-title,
+        .date-cell,
+        .agent-cell {
+          color: var(--bright);
+          font-weight: 800;
+        }
+
+        .sim-meta {
+          margin-top: 5px;
+          color: var(--accent);
+          font-family: var(--mono);
+          font-size: 10px;
+        }
+
+        td p {
+          max-width: 420px;
+          margin-top: 9px;
+          color: var(--muted);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        td span {
+          color: var(--muted);
+          font-family: var(--mono);
+          font-size: 11px;
+        }
+
+        .status-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 104px;
+          padding: 8px 10px;
+          border: 1px solid var(--border);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.62);
+          color: var(--muted);
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        .status-chip span {
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: currentColor;
+        }
+
+        .status-chip.completed {
+          color: var(--accent);
+          border-color: rgba(0, 82, 255, 0.2);
+        }
+
+        .status-chip.running {
+          color: #d77900;
+          border-color: rgba(215, 121, 0, 0.24);
+        }
+
+        .status-chip.failed {
+          color: #d63737;
+          border-color: rgba(214, 55, 55, 0.24);
+        }
+
+        .status-chip.running span {
+          animation: status-pulse 1.2s ease-in-out infinite;
+        }
+
+        .operation-row {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .operation-row button {
+          padding: 0 10px;
+        }
+
+        .operation-row button.danger {
+          color: #c62828;
+        }
+
+        .operation-row button:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+        }
+
+        .table-empty {
+          display: grid;
+          gap: 8px;
+          place-items: center;
+          min-height: 320px;
+          padding: 40px 20px;
+          color: var(--muted);
+          text-align: center;
+          font-family: var(--mono);
+          font-size: 12px;
+        }
+
+        .table-empty strong {
+          color: var(--bright);
+          font-family: var(--sans);
+          font-size: 18px;
+        }
+
+        .control-rail {
+          display: grid;
+          gap: 14px;
+        }
+
+        .rail-panel {
+          padding: 16px 18px 18px;
+        }
+
+        .quota-state {
+          align-self: start;
+          padding: 6px 8px;
+          border: 1px solid var(--border);
+          border-radius: 999px;
+          color: var(--muted);
+          background: rgba(255, 255, 255, 0.7);
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        .quota-state.healthy {
+          color: var(--accent);
+        }
+
+        .quota-state.warning {
+          color: #d77900;
+        }
+
+        .quota-state.critical {
+          color: #c62828;
+        }
+
+        .quota-body {
+          display: grid;
+          grid-template-columns: 104px 1fr;
+          gap: 16px;
+          align-items: center;
+          margin-top: 4px;
+        }
+
+        .quota-gauge {
+          width: 104px;
+          height: 104px;
+          transform: rotate(-90deg);
+        }
+
+        .quota-gauge circle {
+          fill: none;
+          stroke: rgba(0, 82, 255, 0.12);
+          stroke-width: 10;
+        }
+
+        .quota-gauge circle:last-child {
+          stroke: var(--accent);
+          stroke-linecap: round;
+          transition: stroke-dashoffset 260ms ease;
+        }
+
+        .quota-body strong {
+          display: block;
+          color: var(--bright);
+          font-family: var(--mono);
+          font-size: 30px;
+          line-height: 1;
+        }
+
+        .quota-body span,
+        .quota-body p {
+          display: block;
+          margin-top: 6px;
+          color: var(--muted);
+          font-size: 12px;
+          line-height: 1.45;
+        }
+
+        .rail-link {
+          display: inline-flex;
+          margin-top: 16px;
+          color: var(--accent);
+          font-size: 13px;
+          font-weight: 800;
+          text-decoration: none;
+        }
+
+        .telemetry-list {
+          display: grid;
+          gap: 1px;
+          overflow: hidden;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+        }
+
+        .telemetry-list div {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 14px;
+          background: rgba(255, 255, 255, 0.55);
+        }
+
+        .telemetry-list span {
+          color: var(--muted);
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        .telemetry-list strong {
+          color: var(--bright);
+          font-family: var(--mono);
+          font-size: 13px;
+        }
+
+        .launch-panel {
+          display: grid;
+          gap: 16px;
+        }
+
+        .slider-head {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 7px;
+        }
+
+        .slider-head span,
+        .slider-head strong {
+          color: var(--muted);
+          font-family: var(--mono);
+          font-size: 11px;
+        }
+
+        .slider-head strong {
+          color: var(--bright);
+          text-align: center;
+        }
+
+        input[type="range"] {
+          height: 5px;
+          padding: 0;
+          accent-color: var(--accent);
+        }
+
+        .dashboard-button.full {
+          width: 100%;
+        }
+
+        .signout-button {
+          height: 40px;
+          border: 0;
+          background: transparent;
+          color: var(--muted);
+          cursor: pointer;
+          font-family: var(--mono);
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .signout-button:hover {
+          color: var(--bright);
+        }
+
+        @keyframes status-pulse {
+          0%,
+          100% {
+            opacity: 0.38;
+          }
+          50% {
+            opacity: 1;
+          }
+        }
+
+        @media (max-width: 1180px) {
+          .metrics-grid,
+          .workspace-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .workspace-main {
+            grid-column: 1 / -1;
+          }
+        }
+
+        @media (max-width: 820px) {
+          .dashboard-shell {
+            width: min(100% - 28px, 1460px);
+            padding-top: 104px;
+          }
+
+          .dashboard-command,
+          .command-actions {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .metrics-grid,
+          .workspace-grid,
+          .controls-bar {
+            grid-template-columns: 1fr;
+          }
+
+          h1 {
+            font-size: 34px;
+          }
+
+          .dashboard-button,
+          .timestamp {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }

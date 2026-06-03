@@ -1,7 +1,7 @@
-// FORCE_RECOMPILE: 2026-05-14T16:54:52Z
 import type { Metadata } from "next";
 import "./globals.css";
 import { ClientProviders } from "./providers";
+import StyledJsxRegistry from "./registry";
 
 export const metadata: Metadata = {
   title: "Decision Intelligence Platform",
@@ -28,9 +28,11 @@ export default function RootLayout({
         padding: 0,
         overflowX: "hidden"
       }}>
-        <ClientProviders>
-            {children}
-        </ClientProviders>
+        <StyledJsxRegistry>
+          <ClientProviders>
+              {children}
+          </ClientProviders>
+        </StyledJsxRegistry>
       </body>
     </html>
   );

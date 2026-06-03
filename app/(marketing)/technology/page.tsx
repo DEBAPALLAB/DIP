@@ -62,7 +62,8 @@ function DemoNetworkGraph() {
         width: "100%",
         height: "100%",
         minHeight: "400px",
-        background: "rgba(0,0,0,0.12)",
+        background: "var(--panel)",
+        backdropFilter: "blur(12px)",
         border: "1px solid var(--border)",
         borderRadius: "12px",
         position: "relative",
@@ -78,7 +79,7 @@ function DemoNetworkGraph() {
               y1={link.source.y}
               x2={link.target.x}
               y2={link.target.y}
-              stroke="rgba(255,255,255,0.07)"
+              stroke="rgba(0, 82, 255, 0.08)"
               strokeWidth={0.8}
             />
           ))}
@@ -103,8 +104,10 @@ function DemoNetworkGraph() {
           right: 12,
           fontFamily: "var(--mono)",
           fontSize: "8px",
-          color: "var(--muted)",
-          background: "rgba(0,0,0,0.6)",
+          color: "#ffffff",
+          background: "rgba(10, 11, 14, 0.8)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,255,255,0.08)",
           padding: "4px 8px",
           borderRadius: 4,
           letterSpacing: "0.1em",
@@ -177,7 +180,8 @@ function WorkflowExplorer() {
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gap: "40px",
-        background: "rgba(255,255,255,0.015)",
+        background: "var(--panel)",
+        backdropFilter: "blur(12px)",
         padding: "40px",
         border: "1px solid var(--border)",
         borderRadius: "12px",
@@ -192,13 +196,13 @@ function WorkflowExplorer() {
             onClick={() => setActiveStep(idx)}
             style={{
               padding: "22px 24px",
-              border: `1px solid ${activeStep === idx ? "var(--orange)" : "var(--border)"}`,
+              border: `1px solid ${activeStep === idx ? "var(--accent)" : "var(--border)"}`,
               borderRadius: "8px",
               cursor: "pointer",
               transition: "all 0.2s ease",
               background:
                 activeStep === idx
-                  ? "rgba(255, 107, 53, 0.04)"
+                  ? "rgba(0, 82, 255, 0.05)"
                   : "transparent",
             }}
           >
@@ -207,7 +211,7 @@ function WorkflowExplorer() {
                 fontFamily: "var(--mono)",
                 fontSize: "9px",
                 color:
-                  activeStep === idx ? "var(--orange)" : "var(--muted)",
+                  activeStep === idx ? "var(--accent)" : "var(--muted)",
                 letterSpacing: "0.15em",
                 display: "block",
                 marginBottom: "8px",
@@ -267,13 +271,13 @@ function WorkflowExplorer() {
             right: 0,
             height: 1,
             background:
-              "linear-gradient(to right, transparent, var(--orange), transparent)",
+              "linear-gradient(to right, transparent, var(--accent), transparent)",
             animation: "scanning 2.4s linear infinite",
           }}
         />
         <span
           style={{
-            color: "var(--orange)",
+            color: "var(--accent)",
             opacity: 0.5,
             marginBottom: "8px",
             fontSize: "9px",
@@ -291,7 +295,7 @@ function WorkflowExplorer() {
                 : line.includes("DETECTED")
                 ? "var(--oppose)"
                 : "var(--text)",
-              borderLeft: "2px solid rgba(255,107,53,0.3)",
+              borderLeft: "2px solid rgba(0, 82, 255, 0.3)",
               paddingLeft: "12px",
               lineHeight: 1.5,
             }}
@@ -328,6 +332,72 @@ function WorkflowExplorer() {
           100% { transform: translateY(500px); opacity: 0; }
         }
       `}</style>
+      <section className="tech-hero-shell">
+        <Squares
+          direction="diagonal"
+          speed={0.25}
+          squareSize={40}
+          borderColor="rgba(0, 82, 255, 0.03)"
+          hoverFillColor="rgba(0, 82, 255, 0.06)"
+        />
+        <div style={{ position: "absolute", top: "8%", right: "-12%", width: "32vw", height: "32vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.03) 40%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "42%", left: "-12%", width: "30vw", height: "30vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(255, 107, 53, 0.05) 0%, rgba(255, 107, 53, 0.02) 42%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1400, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(320px, 0.85fr)", gap: "56px", alignItems: "center" }}>
+            <div>
+              <span className="mkt-eyebrow">[THE_STACK]</span>
+              <h1 className="tech-hero-title" style={{ marginTop: 18, maxWidth: 760 }}>
+                The Trinity
+                <br />
+                <span className="accent">Engine.</span>
+              </h1>
+              <p className="tech-hero-copy" style={{ marginTop: 26 }}>
+                The platform combines behavioral data, autonomous agent reasoning,
+                and network topology to show how local behavior becomes a measurable cascade.
+              </p>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 34 }}>
+                <Link href="/setup" className="btn-hero-primary">RUN A SIMULATION →</Link>
+                <Link href="/features" className="btn-hero-ghost">VIEW CAPABILITIES</Link>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginTop: 34 }}>
+                {[
+                  { label: "DATA LAYER", value: "GSS 2024", note: "Real respondent vectors" },
+                  { label: "REASONING", value: "LLM Agents", note: "Profile-driven decisions" },
+                  { label: "TOPOLOGY", value: "Small-world", note: "Cascades and bottlenecks" },
+                ].map((item) => (
+                  <div key={item.label} className="tech-mini-stat">
+                    <span className="mkt-eyebrow" style={{ marginBottom: 10 }}>{item.label}</span>
+                    <div style={{ fontFamily: "var(--heading)", fontSize: "clamp(24px, 2vw, 34px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--bright)", lineHeight: 1 }}>{item.value}</div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--accent)", marginTop: 8, textTransform: "uppercase" }}>{item.note}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="tech-panel" style={{ padding: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", padding: "8px 14px", borderRadius: 999, border: "1px solid rgba(0, 82, 255, 0.12)", background: "rgba(0, 82, 255, 0.04)", color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em" }}>// LIVE_STACK</span>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", letterSpacing: "0.16em" }}>MODEL_STATUS // READY</span>
+              </div>
+              <div style={{ display: "grid", gap: 12 }}>
+                {[
+                  ["BEHAVIORAL DATA", "1,499 verified respondents"],
+                  ["AGENT ARCHITECTURE", "Autonomous LLM-backed reasoning"],
+                  ["NETWORK TOPOLOGY", "Watts-Strogatz social graphs"],
+                  ["INSIGHT OUTPUT", "Exportable strategic telemetry"],
+                ].map(([title, desc], idx) => (
+                  <div key={title} style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "14px 16px", borderRadius: 16, border: "1px solid rgba(0, 82, 255, 0.08)", background: idx === 1 ? "rgba(0, 82, 255, 0.05)" : "rgba(255,255,255,0.45)" }}>
+                    <div>
+                      <div style={{ fontFamily: "var(--heading)", fontSize: 16, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.03em" }}>{title}</div>
+                      <div style={{ marginTop: 4, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
+                    </div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.16em", color: "var(--accent)", paddingTop: 2 }}>0{idx + 1}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -350,7 +420,63 @@ export default function TechnologyPage() {
   }, []);
 
   return (
-    <div style={{ background: "var(--bg)", color: "var(--text)" }}>
+    <div className="tech-page" style={{ background: "var(--bg)", color: "var(--text)", overflowX: "hidden" }}>
+      <style jsx>{`
+        .tech-page > section:nth-of-type(2) { display: none; }
+        .tech-hero-shell {
+          position: relative;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          padding: 140px 4vw 96px;
+          overflow: hidden;
+        }
+        .tech-hero-title {
+          font-family: var(--heading);
+          font-size: clamp(56px, 7vw, 94px);
+          font-weight: 800;
+          line-height: 0.94;
+          letter-spacing: -0.05em;
+          color: var(--bright);
+          margin: 0;
+        }
+        .tech-hero-title .accent {
+          background: linear-gradient(135deg, var(--accent) 0%, #2a76ff 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+        .tech-hero-copy {
+          max-width: 640px;
+          color: var(--muted);
+          font-size: 18px;
+          line-height: 1.7;
+          margin: 0;
+        }
+        .tech-panel {
+          border: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.58);
+          backdrop-filter: blur(18px);
+          border-radius: 24px;
+          box-shadow: 0 28px 70px rgba(0, 82, 255, 0.06);
+        }
+        .tech-mini-stat {
+          border: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.58);
+          backdrop-filter: blur(18px);
+          border-radius: 18px;
+          padding: 18px 20px;
+        }
+        @media (max-width: 900px) {
+          .tech-hero-shell {
+            min-height: auto;
+            padding: 120px 4vw 72px;
+          }
+          .tech-hero-title {
+            font-size: clamp(42px, 12vw, 64px);
+          }
+        }
+      `}</style>
       {/* ── Hero ── */}
       <section
         style={{
@@ -417,8 +543,8 @@ export default function TechnologyPage() {
                   padding: "32px",
                   border: "1px solid var(--border)",
                   borderRadius: "10px",
-                  background:
-                    "linear-gradient(160deg, rgba(255,255,255,0.025), transparent)",
+                  background: "var(--panel)",
+                  backdropFilter: "blur(12px)",
                   transition: "all 0.3s ease",
                 }}
               >
@@ -426,7 +552,7 @@ export default function TechnologyPage() {
                   style={{
                     fontFamily: "var(--mono)",
                     fontSize: "10px",
-                    color: "var(--orange)",
+                    color: "var(--accent)",
                     letterSpacing: "0.15em",
                     display: "block",
                     marginBottom: "16px",
@@ -461,11 +587,11 @@ export default function TechnologyPage() {
             {/* Live stats card */}
             <div
               className="glass"
-              style={{ padding: "32px", borderRadius: "10px" }}
+              style={{ padding: "32px", borderRadius: "10px", background: "var(--panel)", border: "1px solid var(--border)", backdropFilter: "blur(12px)" }}
             >
               <span
                 style={{
-                  color: "var(--orange)",
+                  color: "var(--accent)",
                   display: "block",
                   marginBottom: "20px",
                   fontFamily: "var(--mono)",
@@ -571,7 +697,7 @@ export default function TechnologyPage() {
                 <div key={i} style={{ display: "flex", gap: 16 }}>
                   <span
                     style={{
-                      color: "var(--orange)",
+                      color: "var(--accent)",
                       fontWeight: 700,
                       flexShrink: 0,
                       fontFamily: "var(--mono)",

@@ -219,7 +219,150 @@ export default function PricingPage() {
   };
 
   return (
-    <div style={{ background: "var(--bg)", color: "var(--text)", paddingBottom: 120, position: "relative" }}>
+    <div className="pricing-page" style={{ background: "var(--bg)", color: "var(--text)", paddingBottom: 120, position: "relative", overflowX: "hidden" }}>
+      <style jsx>{`
+        .pricing-page > section:nth-of-type(2) {
+          display: none;
+        }
+        .pricing-hero-shell {
+          position: relative;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          padding: 140px 4vw 96px;
+          overflow: hidden;
+        }
+        .pricing-hero-title {
+          font-family: var(--heading);
+          font-size: clamp(56px, 7vw, 94px);
+          font-weight: 800;
+          line-height: 0.94;
+          letter-spacing: -0.05em;
+          color: var(--bright);
+          margin: 0;
+        }
+        .pricing-hero-title .accent {
+          background: linear-gradient(135deg, var(--accent) 0%, #2a76ff 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+        .pricing-hero-copy {
+          max-width: 650px;
+          color: var(--muted);
+          font-size: 18px;
+          line-height: 1.7;
+          margin: 0;
+        }
+        .pricing-panel {
+          border: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.58);
+          backdrop-filter: blur(18px);
+          border-radius: 24px;
+          box-shadow: 0 28px 70px rgba(0, 82, 255, 0.06);
+        }
+        .pricing-mini-stat {
+          border: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.58);
+          backdrop-filter: blur(18px);
+          border-radius: 18px;
+          padding: 18px 20px;
+        }
+        @media (max-width: 900px) {
+          .pricing-hero-shell {
+            min-height: auto;
+            padding: 120px 4vw 72px;
+          }
+          .pricing-hero-title {
+            font-size: clamp(42px, 12vw, 64px);
+          }
+        }
+      `}</style>
+      <section className="pricing-hero-shell">
+        <div style={{ position: "absolute", top: "8%", right: "-12%", width: "32vw", height: "32vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.03) 40%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "42%", left: "-12%", width: "30vw", height: "30vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(255, 107, 53, 0.05) 0%, rgba(255, 107, 53, 0.02) 42%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1400, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, 0.9fr)", gap: "56px", alignItems: "center" }}>
+            <div>
+              <span className="mkt-eyebrow">[COMMERCIAL_MODELS_v3.0]</span>
+              <h1 className="pricing-hero-title" style={{ marginTop: 18, maxWidth: 760 }}>
+                Priced for
+                <br />
+                <span className="accent">Strategy.</span>
+              </h1>
+              <p className="pricing-hero-copy" style={{ marginTop: 26 }}>
+                Move from static focus groups to dynamic population simulations.
+                Select the plan that matches your strategic scale.
+              </p>
+
+              <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.55)", padding: 4, borderRadius: 999, border: "1px solid var(--border)", marginTop: 34, gap: 4 }}>
+                {["MONTHLY", "ANNUAL (SAVE 20%)"].map((label, i) => {
+                  const active = i === 1 ? isAnnual : !isAnnual;
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => setIsAnnual(i === 1)}
+                      style={{
+                        padding: "10px 24px",
+                        background: active ? "var(--panel)" : "transparent",
+                        color: active ? "var(--bright)" : "var(--muted)",
+                        boxShadow: active ? "0 2px 8px rgba(0, 82, 255, 0.08)" : "none",
+                        border: active ? "1px solid var(--border)" : "1px solid transparent",
+                        fontFamily: "var(--mono)",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        borderRadius: "4px",
+                        transition: "all 0.2s ease",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginTop: 34 }}>
+                {[
+                  { label: "STARTER", value: "Explorer", note: "Free sandbox" },
+                  { label: "BEST VALUE", value: "Strategic", note: "Popular scaling tier" },
+                  { label: "ORG SCALE", value: "Enterprise", note: "Custom support and SLA" },
+                ].map((item) => (
+                  <div key={item.label} className="pricing-mini-stat">
+                    <span className="mkt-eyebrow" style={{ marginBottom: 10 }}>{item.label}</span>
+                    <div style={{ fontFamily: "var(--heading)", fontSize: "clamp(24px, 2vw, 34px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--bright)", lineHeight: 1 }}>{item.value}</div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--accent)", marginTop: 8, textTransform: "uppercase" }}>{item.note}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pricing-panel" style={{ padding: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", padding: "8px 14px", borderRadius: 999, border: "1px solid rgba(0, 82, 255, 0.12)", background: "rgba(0, 82, 255, 0.04)", color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em" }}>// PRICING_GRID</span>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", letterSpacing: "0.16em" }}>BILLING_VIEW // LIVE</span>
+              </div>
+              <div style={{ display: "grid", gap: 12 }}>
+                {[
+                  ["EXPLORER", "Up to 100 agents, free to start"],
+                  ["RESEARCH", "500 agents and advanced tuning"],
+                  ["STRATEGIC", "5,000 agents with API access"],
+                  ["ENTERPRISE", "Dedicated compute and advisory"],
+                ].map(([title, desc], idx) => (
+                  <div key={title} style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "14px 16px", borderRadius: 16, border: "1px solid rgba(0, 82, 255, 0.08)", background: idx === 2 ? "rgba(0, 82, 255, 0.05)" : "rgba(255,255,255,0.45)" }}>
+                    <div>
+                      <div style={{ fontFamily: "var(--heading)", fontSize: 16, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.03em" }}>{title}</div>
+                      <div style={{ marginTop: 4, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
+                    </div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.16em", color: "var(--accent)", paddingTop: 2 }}>0{idx + 1}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       {/* ── Hero ── */}
       <section
         style={{
@@ -227,7 +370,7 @@ export default function PricingPage() {
           padding: "160px 4vw 80px",
           position: "relative",
           background:
-            "radial-gradient(ellipse at 50% 0%, rgba(255,107,53,0.08) 0%, transparent 50%)",
+            "radial-gradient(ellipse at 50% 0%, rgba(0, 82, 255, 0.08) 0%, transparent 50%)",
         }}
       >
         <div
@@ -238,7 +381,7 @@ export default function PricingPage() {
             right: 0,
             height: 1,
             background:
-              "linear-gradient(90deg, transparent, rgba(255,107,53,0.4), transparent)",
+              "linear-gradient(90deg, transparent, rgba(0, 82, 255, 0.3), transparent)",
           }}
         />
         <span className="mkt-eyebrow">[COMMERCIAL_MODELS_v3.0]</span>
@@ -274,8 +417,9 @@ export default function PricingPage() {
                 onClick={() => setIsAnnual(i === 1)}
                 style={{
                   padding: "10px 24px",
-                  background: active ? "var(--dim)" : "transparent",
+                  background: active ? "var(--panel)" : "transparent",
                   color: active ? "var(--bright)" : "var(--muted)",
+                  boxShadow: active ? "0 2px 8px rgba(0, 82, 255, 0.08)" : "none",
                   border: active ? "1px solid var(--border)" : "1px solid transparent",
                   fontFamily: "var(--mono)",
                   fontSize: "11px",
@@ -409,7 +553,7 @@ export default function PricingPage() {
         <div style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.85)",
+          background: "rgba(0,0,0,0.45)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
           display: "flex",
@@ -419,26 +563,25 @@ export default function PricingPage() {
           padding: "20px"
         }}>
           <div style={{
-            background: "#090b0e",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
+            background: "var(--bg-darker)",
+            border: "1px solid var(--border-bright)",
             borderRadius: "16px",
             width: "100%",
             maxWidth: "460px",
-            boxShadow: "0 25px 60px rgba(0,0,0,0.8)",
+            boxShadow: "0 25px 60px rgba(0,0,0,0.15)",
             overflow: "hidden",
             fontFamily: "var(--mono)",
             fontSize: "11px",
             color: "var(--text)",
-            animation: "ambient-pulse 10s infinite alternate"
           }}>
             {/* Header */}
             <div style={{
               padding: "18px 24px",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              borderBottom: "1px solid var(--border)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              background: "linear-gradient(to right, rgba(255,107,53,0.08), transparent)"
+              background: "linear-gradient(to right, rgba(0, 82, 255, 0.08), transparent)"
             }}>
               <span style={{ color: "var(--bright)", fontWeight: 800, fontSize: "12px", letterSpacing: "0.15em" }}>SECURE_CHECKOUT</span>
               <button 
@@ -454,7 +597,7 @@ export default function PricingPage() {
               {checkoutStatus === "idle" && (
                 <>
                   {/* Summary */}
-                  <div style={{ background: "rgba(255,255,255,0.015)", border: "1px dashed rgba(255,255,255,0.06)", borderRadius: "6px", padding: "14px 18px", marginBottom: "20px" }}>
+                  <div style={{ background: "var(--panel)", border: "1px dashed var(--border-bright)", borderRadius: "6px", padding: "14px 18px", marginBottom: "20px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                       <span style={{ color: "var(--muted)" }}>PACKAGE:</span>
                       <span style={{ color: "var(--bright)", fontWeight: 700 }}>{checkoutTier.name.toUpperCase()} NODE</span>
@@ -463,9 +606,9 @@ export default function PricingPage() {
                       <span style={{ color: "var(--muted)" }}>FREQUENCY:</span>
                       <span style={{ color: "var(--bright)" }}>{isAnnual ? "ANNUAL (SAVE 20%)" : "MONTHLY"}</span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "8px", marginTop: "8px" }}>
-                      <span style={{ color: "var(--orange)", fontWeight: 700 }}>TOTAL_DUE:</span>
-                      <span style={{ color: "var(--support)", fontWeight: 800, fontSize: "13px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: "8px", marginTop: "8px" }}>
+                      <span style={{ color: "var(--accent)", fontWeight: 700 }}>TOTAL_DUE:</span>
+                      <span style={{ color: "var(--accent)", fontWeight: 800, fontSize: "13px" }}>
                         ${isAnnual ? checkoutTier.price.annual : checkoutTier.price.monthly}/mo
                       </span>
                     </div>
@@ -481,7 +624,7 @@ export default function PricingPage() {
                         value={cardName}
                         onChange={(e) => setCardName(e.target.value)}
                         placeholder="ENTER FULL NAME"
-                        style={{ width: "100%", padding: "10px 14px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
+                        style={{ width: "100%", padding: "10px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
                       />
                     </div>
 
@@ -493,7 +636,7 @@ export default function PricingPage() {
                         value={cardNumber}
                         onChange={(e) => setCardNumber(e.target.value)}
                         placeholder="4242 4242 4242 4242"
-                        style={{ width: "100%", padding: "10px 14px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
+                        style={{ width: "100%", padding: "10px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
                       />
                     </div>
 
@@ -501,12 +644,12 @@ export default function PricingPage() {
                       <div>
                         <label style={{ color: "var(--muted)", display: "block", marginBottom: "6px" }}>EXP_DATE</label>
                         <input 
-                          type="text" 
+                           type="text" 
                           required
                           value={cardExpiry}
                           onChange={(e) => setCardExpiry(e.target.value)}
                           placeholder="MM/YY"
-                          style={{ width: "100%", padding: "10px 14px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
+                          style={{ width: "100%", padding: "10px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
                         />
                       </div>
                       <div>
@@ -518,7 +661,7 @@ export default function PricingPage() {
                           value={cardCvc}
                           onChange={(e) => setCardCvc(e.target.value)}
                           placeholder="000"
-                          style={{ width: "100%", padding: "10px 14px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
+                          style={{ width: "100%", padding: "10px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
                         />
                       </div>
                     </div>
@@ -530,9 +673,9 @@ export default function PricingPage() {
                     style={{
                       width: "100%",
                       padding: "14px",
-                      background: "linear-gradient(135deg, var(--orange) 0%, #ff8b45 100%)",
-                      color: "#000",
-                      border: "1px solid var(--orange)",
+                      background: "var(--accent)",
+                      color: "#fff",
+                      border: "1px solid var(--accent)",
                       borderRadius: "4px",
                       fontWeight: 800,
                       cursor: "pointer",
@@ -641,9 +784,10 @@ export default function PricingPage() {
         <div style={{
           maxWidth: 1400,
           margin: "0 auto",
-          background: "linear-gradient(135deg, rgba(9, 11, 14, 0.9) 0%, rgba(13, 17, 23, 0.9) 100%)",
-          border: "1px solid rgba(255, 107, 53, 0.2)",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.5), inset 0 0 40px rgba(255,107,53,0.02)",
+          background: "var(--panel)",
+          backdropFilter: "blur(24px)",
+          border: "1px solid rgba(0, 82, 255, 0.15)",
+          boxShadow: "0 20px 50px rgba(0, 82, 255, 0.04)",
           borderRadius: "16px",
           padding: "60px 40px",
           position: "relative",
@@ -653,7 +797,7 @@ export default function PricingPage() {
           <div style={{
             position: "absolute",
             inset: 0,
-            backgroundImage: "linear-gradient(rgba(255,107,53,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,107,53,0.02) 1px, transparent 1px)",
+            backgroundImage: "linear-gradient(rgba(0, 82, 255, 0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 82, 255, 0.015) 1px, transparent 1px)",
             backgroundSize: "20px 20px",
             pointerEvents: "none"
           }} />
@@ -672,7 +816,7 @@ export default function PricingPage() {
               }}>
                 Accelerate Your Research.
                 <br />
-                <span style={{ color: "var(--orange)" }}>Get Free Pro Level.</span>
+                <span style={{ color: "var(--accent)" }}>Get Free Pro Level.</span>
               </h2>
               <p style={{
                 color: "var(--muted)",
@@ -684,20 +828,20 @@ export default function PricingPage() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "11px", fontFamily: "var(--mono)" }}>
-                  <span style={{ color: "var(--support)" }}>[✔]</span> Free unlock of Research Tier constraints
+                  <span style={{ color: "var(--accent)" }}>[✔]</span> Free unlock of Research Tier constraints
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "11px", fontFamily: "var(--mono)" }}>
-                  <span style={{ color: "var(--support)" }}>[✔]</span> Up to 500 agents / simulation capacity
+                  <span style={{ color: "var(--accent)" }}>[✔]</span> Up to 500 agents / simulation capacity
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "11px", fontFamily: "var(--mono)" }}>
-                  <span style={{ color: "var(--support)" }}>[✔]</span> Direct feedback loops with core engineering
+                  <span style={{ color: "var(--accent)" }}>[✔]</span> Direct feedback loops with core engineering
                 </div>
               </div>
             </div>
 
             <div style={{
-              background: "rgba(255,255,255,0.015)",
-              border: "1px solid rgba(255, 255, 255, 0.05)",
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
               borderRadius: "12px",
               padding: "32px",
               fontFamily: "var(--mono)",
@@ -714,7 +858,7 @@ export default function PricingPage() {
                         value={betaName}
                         onChange={(e) => setBetaName(e.target.value)}
                         placeholder="IDENTIFIER"
-                        style={{ width: "100%", padding: "10px 14px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
+                        style={{ width: "100%", padding: "10px 14px", background: "var(--bg-darker)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
                       />
                     </div>
                     <div>
@@ -725,7 +869,7 @@ export default function PricingPage() {
                         value={betaEmail}
                         onChange={(e) => setBetaEmail(e.target.value)}
                         placeholder="COMMUNICATOR_URI"
-                        style={{ width: "100%", padding: "10px 14px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
+                        style={{ width: "100%", padding: "10px 14px", background: "var(--bg-darker)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
                       />
                     </div>
                   </div>
@@ -735,7 +879,7 @@ export default function PricingPage() {
                     <select 
                       value={betaUseCases}
                       onChange={(e) => setBetaUseCases(e.target.value)}
-                      style={{ width: "100%", padding: "10px 14px", background: "#090b0e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
+                      style={{ width: "100%", padding: "10px 14px", background: "var(--bg-darker)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none" }}
                     >
                       <option value="academic_research">Academic / Economic Research</option>
                       <option value="public_policy">Public Policy & Social Science</option>
@@ -753,7 +897,7 @@ export default function PricingPage() {
                       value={betaFocus}
                       onChange={(e) => setBetaFocus(e.target.value)}
                       placeholder="Briefly describe the social contagion or agent-based scenario you plan to research..."
-                      style={{ width: "100%", padding: "10px 14px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none", resize: "none" }}
+                      style={{ width: "100%", padding: "10px 14px", background: "var(--bg-darker)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--bright)", fontFamily: "var(--mono)", outline: "none", resize: "none" }}
                     />
                   </div>
 
@@ -762,9 +906,9 @@ export default function PricingPage() {
                     style={{
                       width: "100%",
                       padding: "14px",
-                      background: "rgba(255, 107, 53, 0.1)",
-                      color: "var(--orange)",
-                      border: "1px solid rgba(255, 107, 53, 0.4)",
+                      background: "rgba(0, 82, 255, 0.05)",
+                      color: "var(--accent)",
+                      border: "1px solid rgba(0, 82, 255, 0.25)",
                       borderRadius: "4px",
                       fontWeight: 800,
                       cursor: "pointer",
@@ -889,4 +1033,3 @@ function displayName(user: any) {
     .trim()
     .toUpperCase();
 }
-

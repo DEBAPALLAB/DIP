@@ -13,9 +13,9 @@ interface SquaresProps {
 const Squares: React.FC<SquaresProps> = ({
   direction = 'right',
   speed = 1,
-  borderColor = '#333',
+  borderColor,
   squareSize = 40,
-  hoverFillColor = '#222',
+  hoverFillColor,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(null);
@@ -42,7 +42,15 @@ const Squares: React.FC<SquaresProps> = ({
 
     const drawGrid = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = borderColor;
+      
+      const bgColor = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#0d0c0b';
+      const isLightTheme = bgColor !== '#0d0c0b' && bgColor !== '#050507' && !bgColor.startsWith('rgba(0,0,0');
+      
+      const finalBorderColor = borderColor || (isLightTheme ? 'rgba(0, 82, 255, 0.035)' : 'rgba(255, 255, 255, 0.05)');
+      const finalHoverFillColor = hoverFillColor || (isLightTheme ? 'rgba(0, 82, 255, 0.06)' : 'rgba(255, 255, 255, 0.08)');
+      const maskColorRgb = isLightTheme ? '250, 249, 246' : '8, 12, 16';
+
+      ctx.strokeStyle = finalBorderColor;
       ctx.lineWidth = 0.5;
 
       for (let x = 0; x < numSquaresX.current; x++) {
@@ -53,7 +61,7 @@ const Squares: React.FC<SquaresProps> = ({
           ctx.strokeRect(posX, posY, squareSize, squareSize);
 
           if (hoveredSquare && x === hoveredSquare.x && y === hoveredSquare.y) {
-            ctx.fillStyle = hoverFillColor;
+            ctx.fillStyle = finalHoverFillColor;
             ctx.fillRect(posX, posY, squareSize, squareSize);
           }
         }
@@ -65,8 +73,8 @@ const Squares: React.FC<SquaresProps> = ({
         canvas.width / 2, canvas.height / 2, 0,
         canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) / 1.5
       );
-      gradient.addColorStop(0, 'rgba(8, 12, 16, 0)');
-      gradient.addColorStop(1, 'rgba(8, 12, 16, 0.8)');
+      gradient.addColorStop(0, `rgba(${maskColorRgb}, 0)`);
+      gradient.addColorStop(1, `rgba(${maskColorRgb}, 0.85)`);
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.restore();

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Squares from "@/components/marketing/InteractiveBackground";
 
 const MILESTONES = [
   { year: "2024 Q1", title: "Research Begins", desc: "Behavioral data pipeline built on top of GSS 2024 dataset. First agent prototypes created." },
@@ -30,7 +31,130 @@ const VALUES = [
 
 export default function AboutPage() {
   return (
-    <div style={{ background: "var(--bg)", color: "var(--text)" }}>
+    <div className="about-page" style={{ background: "var(--bg)", color: "var(--text)", overflowX: "hidden" }}>
+      <style jsx>{`
+        .about-page > section:nth-of-type(2) {
+          display: none;
+        }
+        .about-hero-shell {
+          position: relative;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          padding: 140px 4vw 96px;
+          overflow: hidden;
+          text-align: left;
+        }
+        .about-hero-title {
+          font-family: var(--heading);
+          font-size: clamp(56px, 7vw, 94px);
+          font-weight: 800;
+          line-height: 0.94;
+          letter-spacing: -0.05em;
+          color: var(--bright);
+          margin: 0;
+        }
+        .about-hero-title .accent {
+          background: linear-gradient(135deg, var(--accent) 0%, #2a76ff 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+        .about-hero-copy {
+          max-width: 760px;
+          color: var(--muted);
+          font-size: 18px;
+          line-height: 1.75;
+          margin: 0;
+        }
+        .about-mini-card {
+          border: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.58);
+          backdrop-filter: blur(18px);
+          border-radius: 18px;
+          padding: 18px 20px;
+        }
+        .about-panel {
+          border: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.58);
+          backdrop-filter: blur(18px);
+          border-radius: 24px;
+          box-shadow: 0 28px 70px rgba(0, 82, 255, 0.06);
+        }
+        @media (max-width: 900px) {
+          .about-hero-shell {
+            min-height: auto;
+            padding: 120px 4vw 72px;
+          }
+          .about-hero-title {
+            font-size: clamp(42px, 12vw, 64px);
+          }
+        }
+      `}</style>
+      <section className="about-hero-shell">
+        <Squares
+          direction="diagonal"
+          speed={0.25}
+          squareSize={40}
+          borderColor="rgba(0, 82, 255, 0.03)"
+          hoverFillColor="rgba(0, 82, 255, 0.06)"
+        />
+        <div style={{ position: "absolute", top: "8%", right: "-12%", width: "32vw", height: "32vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.03) 40%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "42%", left: "-12%", width: "30vw", height: "30vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(255, 107, 53, 0.05) 0%, rgba(255, 107, 53, 0.02) 42%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
+
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1400, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(320px, 0.85fr)", gap: "56px", alignItems: "center" }}>
+            <div>
+              <span className="mkt-eyebrow">[LUCIDE_TECH_MANIFESTO_v1.0]</span>
+              <h1 className="about-hero-title" style={{ marginTop: 18, maxWidth: 780 }}>
+                Design <span className="accent">First.</span>
+                <br />
+                <span style={{ color: "var(--muted)" }}>Engineered Always.</span>
+              </h1>
+              <p className="about-hero-copy" style={{ marginTop: 26 }}>
+                Lucide Tech sits at the intersection of aesthetic clarity and hard engineering.
+                We build digital experiences that feel premium, load fast, and actually help people make decisions.
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginTop: 34 }}>
+                {[
+                  { label: "ESTABLISHED", value: "2024 // DXB", note: "Studio roots" },
+                  { label: "FOCUS", value: "HIGH_FIDELITY", note: "Design and system quality" },
+                  { label: "APPROACH", value: "SELECTIVE", note: "Boutique execution" },
+                ].map((item) => (
+                  <div key={item.label} className="about-mini-card">
+                    <span className="mkt-eyebrow" style={{ marginBottom: 10 }}>{item.label}</span>
+                    <div style={{ fontFamily: "var(--heading)", fontSize: "clamp(24px, 2vw, 34px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--bright)", lineHeight: 1 }}>{item.value}</div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--accent)", marginTop: 8, textTransform: "uppercase" }}>{item.note}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="about-panel" style={{ padding: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", padding: "8px 14px", borderRadius: 999, border: "1px solid rgba(0, 82, 255, 0.12)", background: "rgba(0, 82, 255, 0.04)", color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em" }}>// STUDIO_VALUES</span>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", letterSpacing: "0.16em" }}>OPERATING_MODE // ACTIVE</span>
+              </div>
+              <div style={{ display: "grid", gap: 12 }}>
+                {[
+                  ["Fidelity Over Speed", "We optimize for clarity and robust behavior, not shortcuts."],
+                  ["Design Meets Science", "The interface is part of the product, not decoration."],
+                  ["Radical Transparency", "Methodology and data lineage are always visible."],
+                ].map(([title, desc], idx) => (
+                  <div key={title} style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "14px 16px", borderRadius: 16, border: "1px solid rgba(0, 82, 255, 0.08)", background: idx === 0 ? "rgba(0, 82, 255, 0.05)" : "rgba(255,255,255,0.45)" }}>
+                    <div>
+                      <div style={{ fontFamily: "var(--heading)", fontSize: 16, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.03em" }}>{title}</div>
+                      <div style={{ marginTop: 4, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
+                    </div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.16em", color: "var(--accent)", paddingTop: 2 }}>0{idx + 1}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <section
         style={{

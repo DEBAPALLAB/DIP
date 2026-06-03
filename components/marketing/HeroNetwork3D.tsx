@@ -16,14 +16,8 @@ interface NodeData {
   name: string;
   conformity: number;
   influenceRadius: number;
+  basePosition: THREE.Vector3;
 }
-
-const BASE_COLORS = [
-  new THREE.Color("#ff6b35"), // Early Adopters (orange)
-  new THREE.Color("#C8F135"), // Support (lime)
-  new THREE.Color("#ff4444"), // Opposition (red)
-  new THREE.Color("#888888"), // Undecided (grey)
-];
 
 const GROUP_NAMES = ["Early Adopter", "Support", "Opposition", "Undecided"];
 const GROUP_WEIGHTS = [0.28, 0.32, 0.18, 0.22];
@@ -38,7 +32,7 @@ function pickGroup(): number {
   return 0;
 }
 
-export function HeroNetwork3D() {
+function HeroNetworkCanvas() {
   const mountRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef({ x: 0, y: 0 });
   const relativeMouseRef = useRef({ x: 0, y: 0 }); // for raycasting
@@ -58,36 +52,90 @@ export function HeroNetwork3D() {
     const el = mountRef.current;
     if (!el || typeof window === "undefined") return;
 
+    // Visibility Observer to pause rendering when off-screen
+    let isVisible = true;
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      const entry = entries[0];
+      isVisible = entry.isIntersecting;
+    };
+    const visibilityObserver = new IntersectionObserver(observerCallback, {
+      threshold: 0.01,
+    });
+    visibilityObserver.observe(el);
+
     const W = el.clientWidth || 560;
     const H = el.clientHeight || 560;
 
+    const isLightTheme = document.body.classList.contains("marketing-theme") || 
+                          !!document.querySelector(".marketing-theme");
+
+    // Unified adaptive colors based on theme context
+    const THEME_COLORS = [
+      isLightTheme ? new THREE.Color("#0052ff") : new THREE.Color("#C8F135"), // Early Adopters (Cobalt / Lime)
+      isLightTheme ? new THREE.Color("#6366f1") : new THREE.Color("#9333ea"), // Support (Indigo / Purple)
+      isLightTheme ? new THREE.Color("#f43f5e") : new THREE.Color("#ef4444"), // Opposition (Rose / Red)
+      isLightTheme ? new THREE.Color("#94a3b8") : new THREE.Color("#4b5563"), // Undecided (Slate Gray)
+    ];
+
+    const activeColor = isLightTheme ? new THREE.Color("#0052ff") : new THREE.Color("#C8F135");
+
     /* ── Renderer ──────────────────────────────────────────────── */
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
 
     /* ── Scene / Camera ────────────────────────────────────────── */
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(52, W / H, 0.1, 100);
+    const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
     camera.position.z = 8.5;
+
+    // Removed fog to keep colors vibrant, crisp, and high-contrast
+
+    /* ── Lights ────────────────────────────────────────────────── */
+    const ambientLight = new THREE.AmbientLight(isLightTheme ? 0xffffff : 0x222222, isLightTheme ? 0.8 : 0.35);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, isLightTheme ? 1.0 : 1.5);
+    dirLight1.position.set(6, 12, 8);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(activeColor, isLightTheme ? 0.7 : 0.95);
+    dirLight2.position.set(-6, -4, 4);
+    scene.add(dirLight2);
+
+    const pointLight = new THREE.PointLight(activeColor, isLightTheme ? 2.5 : 3.0, 15);
+    pointLight.position.set(0, 0, 1);
+    scene.add(pointLight);
 
     /* ── Graph Group ───────────────────────────────────────────── */
     const graph = new THREE.Group();
     scene.add(graph);
 
-    /* ── Grid/HUD Background ───────────────────────────────────── */
-    const gridHelper = new THREE.GridHelper(14, 28, 0x222222, 0x111111);
-    gridHelper.position.z = -3;
-    gridHelper.rotation.x = Math.PI / 2.3;
-    scene.add(gridHelper);
+    /* ── Undulating Topographical Grid Floor ──────────────────── */
+    const gridColor = isLightTheme ? 0x0052ff : 0xC8F135;
+    const planeGeo = new THREE.PlaneGeometry(18, 18, 16, 16);
+    const planeMat = new THREE.MeshStandardMaterial({
+      color: gridColor,
+      wireframe: true,
+      transparent: true,
+      opacity: isLightTheme ? 0.22 : 0.32,
+      roughness: 0.5,
+      metalness: 0.1,
+      emissive: new THREE.Color(gridColor),
+      emissiveIntensity: 0.15,
+    });
+    const waveGrid = new THREE.Mesh(planeGeo, planeMat);
+    waveGrid.position.set(0, -2.1, -1.5);
+    waveGrid.rotation.x = -Math.PI / 2.3;
+    scene.add(waveGrid);
 
     /* ── Stars / Dust Particles Background ─────────────────────── */
-    const starCount = 150;
+    const starCount = 180;
     const starPositions = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount * 3; i += 3) {
-      const r = 4 + Math.random() * 8;
+      const r = 5 + Math.random() * 9;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       starPositions[i] = r * Math.sin(phi) * Math.cos(theta);
@@ -97,19 +145,19 @@ export function HeroNetwork3D() {
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
     const starMat = new THREE.PointsMaterial({
-      size: 0.035,
-      color: 0x888888,
+      size: 0.04,
+      color: isLightTheme ? 0x8888aa : 0xcccccc,
       transparent: true,
-      opacity: 0.25,
+      opacity: isLightTheme ? 0.35 : 0.45,
     });
     const starPoints = new THREE.Points(starGeo, starMat);
     scene.add(starPoints);
 
-    /* ── Shared Geometries (Optimized!) ────────────────────────── */
-    const sharedGeo = new THREE.SphereGeometry(1, 12, 12);
+    /* ── Shared Geometry (Smoother node spheres) ───────────────── */
+    const sharedGeo = new THREE.SphereGeometry(1, 8, 8);
 
     /* ── Nodes ─────────────────────────────────────────────────── */
-    const NODE_COUNT = 90;
+    const NODE_COUNT = 65;
     const nodeData: NodeData[] = [];
     const positions: THREE.Vector3[] = [];
     const nodeMeshes: THREE.Mesh[] = [];
@@ -130,19 +178,23 @@ export function HeroNetwork3D() {
       positions.push(pos);
 
       const g = pickGroup();
-      const size = 0.045 + Math.random() * 0.075;
-      const opacity = 0.55 + Math.random() * 0.45;
+      const size = 0.055 + Math.random() * 0.085;
+      const opacity = 0.75 + Math.random() * 0.25;
 
-      const mat = new THREE.MeshBasicMaterial({
-        color: BASE_COLORS[g].clone(),
+      // Ultra-vibrant glowing node material (optimized to Standard)
+      const mat = new THREE.MeshStandardMaterial({
+        color: THEME_COLORS[g].clone(),
+        roughness: 0.4,
+        metalness: 0.1,
         transparent: true,
-        opacity,
+        opacity: 0.9,
+        emissive: THEME_COLORS[g].clone(),
+        emissiveIntensity: g === 1 ? 0.5 : 0.25, // beautiful interior glow!
       });
 
       const mesh = new THREE.Mesh(sharedGeo, mat);
       mesh.scale.setScalar(size);
       mesh.position.copy(pos);
-      // Store reference index for raycasting
       mesh.userData = { index: i };
       graph.add(mesh);
       nodeMeshes.push(mesh);
@@ -153,22 +205,23 @@ export function HeroNetwork3D() {
         distFromCenter: pos.length(),
         adopted: false,
         baseOpacity: opacity,
-        baseColor: BASE_COLORS[g].clone(),
+        baseColor: THEME_COLORS[g].clone(),
         scale: size,
         targetScale: size,
         id: `AG-${String(i).padStart(3, "0")}`,
         name: `Agent ${i}`,
         conformity: Math.floor(65 + Math.random() * 30),
         influenceRadius: parseFloat((1.2 + Math.random() * 2.2).toFixed(1)),
+        basePosition: pos.clone(),
       });
     }
 
-    /* ── Edges with Vertex Colors (Legibility & Visual Quality) ── */
+    /* ── Edges with Vertex Colors ────────────────────────────── */
     const DIST_THRESHOLD = 2.0;
     const edgeVerts: number[] = [];
     const edgeColors: number[] = [];
     const edgeConnections: { i: number; j: number; vertIndex: number }[] = [];
-    const greenEdges: { from: THREE.Vector3; to: THREE.Vector3 }[] = [];
+    const activeEdges: { fromIdx: number; toIdx: number }[] = [];
 
     let vertexCounter = 0;
     for (let i = 0; i < NODE_COUNT; i++) {
@@ -185,25 +238,23 @@ export function HeroNetwork3D() {
             positions[j].x, positions[j].y, positions[j].z
           );
 
-          // If either node is a green node (Support group, which is group 1)
+          // If either node is in Support group (index 1)
           const isGreenI = nodeData[i].group === 1;
           const isGreenJ = nodeData[j].group === 1;
           const isGreenEdge = isGreenI || isGreenJ;
 
-          const greenColor = new THREE.Color("#C8F135");
-
           if (isGreenEdge) {
             edgeColors.push(
-              greenColor.r, greenColor.g, greenColor.b,
-              greenColor.r, greenColor.g, greenColor.b
+              activeColor.r, activeColor.g, activeColor.b,
+              activeColor.r, activeColor.g, activeColor.b
             );
-            greenEdges.push({
-              from: positions[i],
-              to: positions[j],
+            activeEdges.push({
+              fromIdx: i,
+              toIdx: j,
             });
           } else {
-            const c1 = BASE_COLORS[nodeData[i].group];
-            const c2 = BASE_COLORS[nodeData[j].group];
+            const c1 = THEME_COLORS[nodeData[i].group];
+            const c2 = THEME_COLORS[nodeData[j].group];
             edgeColors.push(
               c1.r, c1.g, c1.b,
               c2.r, c2.g, c2.b
@@ -227,55 +278,61 @@ export function HeroNetwork3D() {
     const edgeMat = new THREE.LineBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.12,
+      opacity: isLightTheme ? 0.28 : 0.22, // pop connections
     });
     const edgeSegments = new THREE.LineSegments(edgeGeo, edgeMat);
     graph.add(edgeSegments);
 
-    /* ── Flowing Dotted Streams for Green Edges ────────────────── */
+    /* ── Flowing Dotted Streams for Active Edges ──────────────── */
     const numDotsPerEdge = 4;
-    const totalFlowDots = greenEdges.length * numDotsPerEdge;
+    const totalFlowDots = activeEdges.length * numDotsPerEdge;
     const flowPositions = new Float32Array(totalFlowDots * 3);
     const flowGeo = new THREE.BufferGeometry();
     flowGeo.setAttribute("position", new THREE.BufferAttribute(flowPositions, 3));
 
     const flowMat = new THREE.PointsMaterial({
-      color: 0xC8F135,
-      size: 0.045,
+      color: activeColor,
+      size: 0.075, // larger flow dots
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.95,
       blending: THREE.AdditiveBlending,
     });
     const flowPoints = new THREE.Points(flowGeo, flowMat);
     graph.add(flowPoints);
 
     /* ── Centre Hub ────────────────────────────────────────────── */
-    const hubGeo = new THREE.SphereGeometry(0.22, 20, 20);
-    const hubMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#ff6b35"),
+    const hubGeo = new THREE.SphereGeometry(0.24, 20, 20);
+    const hubMat = new THREE.MeshStandardMaterial({
+      color: activeColor,
+      emissive: activeColor,
+      emissiveIntensity: 0.6,
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.35,
     });
     const hub = new THREE.Mesh(hubGeo, hubMat);
     graph.add(hub);
 
     // Outer glow ring
-    const ringGeo = new THREE.RingGeometry(0.32, 0.38, 48);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#ff6b35"),
+    const ringGeo = new THREE.RingGeometry(0.34, 0.40, 48);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: activeColor,
+      emissive: activeColor,
+      emissiveIntensity: 0.4,
       transparent: true,
-      opacity: 0.15,
+      opacity: 0.22,
       side: THREE.DoubleSide,
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     graph.add(ring);
 
     /* ── Second orbit ring ─────────────────────────────────────── */
-    const ring2Geo = new THREE.RingGeometry(0.55, 0.59, 48);
-    const ring2Mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#C8F135"),
+    const ring2Geo = new THREE.RingGeometry(0.58, 0.62, 48);
+    const ring2Mat = new THREE.MeshStandardMaterial({
+      color: THEME_COLORS[1],
+      emissive: THEME_COLORS[1],
+      emissiveIntensity: 0.3,
       transparent: true,
-      opacity: 0.08,
+      opacity: 0.14,
       side: THREE.DoubleSide,
     });
     const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
@@ -287,17 +344,19 @@ export function HeroNetwork3D() {
     let isCascading = false;
     let cascadeTimer = 0;
     const CASCADE_CYCLE = 5.0; // trigger cascade every 5s
-    const CONTAGION_SPEED = 0.35; // time between contagion hops in seconds
+    const CONTAGION_SPEED = 0.35;
     let contagionTimer = 0;
 
     function triggerContagionCascade() {
       isCascading = true;
       cascadeQueue = [];
-      // Reset all nodes to base state
       nodeData.forEach((n) => {
         n.adopted = false;
-        (n.mesh.material as THREE.MeshBasicMaterial).color.copy(n.baseColor);
-        (n.mesh.material as THREE.MeshBasicMaterial).opacity = n.baseOpacity;
+        const mat = n.mesh.material as THREE.MeshStandardMaterial;
+        mat.color.copy(n.baseColor);
+        mat.opacity = n.baseOpacity;
+        mat.emissive.copy(n.baseColor);
+        mat.emissiveIntensity = n.group === 1 ? 0.15 : 0.04;
       });
 
       // Find nodes closest to the center to initiate cascade
@@ -316,7 +375,6 @@ export function HeroNetwork3D() {
 
     /* ── Raycasting & Mouse Interaction ────────────────────────── */
     const raycaster = new THREE.Raycaster();
-    // increase search tolerance for cleaner pointer feel
     raycaster.params.Points = { threshold: 0.12 };
     const relativeMouse = new THREE.Vector2();
 
@@ -353,22 +411,28 @@ export function HeroNetwork3D() {
 
     /* ── Active Signal Packets (Traveling pulses on edges) ──────── */
     interface Packet {
-      from: THREE.Vector3;
-      to: THREE.Vector3;
+      fromIdx: number;
+      toIdx: number;
       progress: number;
       speed: number;
       mesh: THREE.Mesh;
     }
     const activePackets: Packet[] = [];
-    const packetGeo = new THREE.SphereGeometry(0.02, 6, 6);
-    const packetMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const packetGeo = new THREE.SphereGeometry(0.024, 8, 8);
+    const packetMat = new THREE.MeshStandardMaterial({ 
+      color: activeColor,
+      emissive: activeColor,
+      emissiveIntensity: 1.5,
+      transparent: true,
+      opacity: 0.9,
+    });
 
     function createPacket(fromIdx: number, toIdx: number) {
       const pMesh = new THREE.Mesh(packetGeo, packetMat);
       graph.add(pMesh);
       activePackets.push({
-        from: positions[fromIdx],
-        to: positions[toIdx],
+        fromIdx,
+        toIdx,
         progress: 0,
         speed: 2.2 + Math.random() * 1.5,
         mesh: pMesh,
@@ -386,6 +450,9 @@ export function HeroNetwork3D() {
       const now = performance.now();
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
+
+      if (!isVisible) return;
+
       time += dt;
       cascadeTimer += dt;
 
@@ -393,24 +460,48 @@ export function HeroNetwork3D() {
       starPoints.rotation.y = time * 0.015;
       starPoints.rotation.x = Math.sin(time * 0.01) * 0.05;
 
-      // Auto rotation of graph (extremely slow and elegant)
+      // Auto rotation of graph
       graph.rotation.y += 0.0006;
 
-      // Mouse parallax
-      const targetRX = mouseRef.current.y * 0.28;
-      graph.rotation.x += (targetRX - graph.rotation.x) * 0.05;
+      // Camera parallax for massive stereoscopic depth
+      const targetCamX = mouseRef.current.x * 2.0;
+      const targetCamY = -mouseRef.current.y * 2.0;
+      camera.position.x += (targetCamX - camera.position.x) * 0.045;
+      camera.position.y += (targetCamY - camera.position.y) * 0.045;
+      camera.lookAt(0, 0, 0);
 
-      // Central Hub animation
+      // Central Hub pulse
       const hubScale = 1 + Math.sin(time * 2.5) * 0.12;
       hub.scale.setScalar(hubScale);
-      hubMat.opacity = 0.2 + Math.sin(time * 2.5) * 0.08;
+      (hub.material as THREE.MeshStandardMaterial).opacity = 0.25 + Math.sin(time * 2.5) * 0.08;
 
       ring.rotation.z = time * 0.45;
       ring.rotation.x = Math.sin(time * 0.3) * 0.25;
-      ringMat.opacity = 0.12 + Math.sin(time * 2.0) * 0.05;
+      (ring.material as THREE.MeshStandardMaterial).opacity = 0.16 + Math.sin(time * 2.0) * 0.06;
 
       ring2.rotation.z = -time * 0.28;
-      ring2Mat.opacity = 0.06 + Math.sin(time * 1.2) * 0.03;
+      (ring2.material as THREE.MeshStandardMaterial).opacity = 0.1 + Math.sin(time * 1.2) * 0.04;
+
+      // Animate grid topography waves
+      const posAttr = planeGeo.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < posAttr.count; i++) {
+        v.fromBufferAttribute(posAttr, i);
+        const dist = Math.sqrt(v.x * v.x + v.y * v.y);
+        const z = Math.sin(dist * 0.8 - time * 1.6) * 0.25;
+        posAttr.setZ(i, z);
+      }
+      posAttr.needsUpdate = true;
+
+      // Organic float & undulation for nodes
+      nodeData.forEach((node, idx) => {
+        const tOffset1 = time * 0.8 + node.distFromCenter * 1.5;
+        const tOffset2 = time * 1.1 + node.distFromCenter * 2.0;
+
+        node.mesh.position.x = node.basePosition.x + Math.sin(tOffset1) * 0.08;
+        node.mesh.position.y = node.basePosition.y + Math.cos(tOffset2) * 0.08;
+        node.mesh.position.z = node.basePosition.z + Math.sin(tOffset1 + tOffset2) * 0.06;
+      });
 
       /* ── Raycasting & Node Hover Handling ──────────────────────── */
       raycaster.setFromCamera(relativeMouse, camera);
@@ -418,14 +509,12 @@ export function HeroNetwork3D() {
 
       let hoveredIdx = -1;
       if (intersects.length > 0) {
-        // Retrieve node index from user data
         const firstIntersect = intersects[0];
         if (firstIntersect.object.userData) {
           hoveredIdx = firstIntersect.object.userData.index;
         }
       }
 
-      // If hover state changed, update UI state and trigger highlights
       if (hoveredIdx !== lastHoveredIndex) {
         lastHoveredIndex = hoveredIdx;
         if (hoveredIdx !== -1) {
@@ -433,7 +522,7 @@ export function HeroNetwork3D() {
           setHoveredAgent({
             id: node.id,
             groupName: GROUP_NAMES[node.group],
-            color: `#${BASE_COLORS[node.group].getHexString()}`,
+            color: `#${THEME_COLORS[node.group].getHexString()}`,
             conformity: node.conformity,
             influenceRadius: node.influenceRadius,
             adopted: node.adopted,
@@ -443,7 +532,6 @@ export function HeroNetwork3D() {
         }
       }
 
-      // Update tooltip position smoothly if hovered
       if (hoveredIdx !== -1) {
         setTooltipPos({
           x: relativeMouseRef.current.x,
@@ -456,23 +544,20 @@ export function HeroNetwork3D() {
       const hoveredNeighbors = isNodeHovered ? adjacency[hoveredIdx] : [];
 
       nodeData.forEach((node, idx) => {
-        // Adjust scales based on interactive state
         if (idx === hoveredIdx) {
           node.targetScale = node.scale * 1.8;
         } else if (isNodeHovered && hoveredNeighbors.includes(idx)) {
           node.targetScale = node.scale * 1.35;
         } else if (isNodeHovered) {
-          node.targetScale = node.scale * 0.65;
+          node.targetScale = node.scale * 0.6;
         } else {
           node.targetScale = node.scale;
         }
 
-        // Lerp scale for ultra-smooth feedback
         const currentScale = node.mesh.scale.x;
         const nextScale = currentScale + (node.targetScale - currentScale) * 0.18;
         node.mesh.scale.setScalar(nextScale);
 
-        // Lerp opacities for node dimming effect
         let targetOpacity = node.baseOpacity;
         if (node.adopted) {
           targetOpacity = 0.95;
@@ -486,69 +571,75 @@ export function HeroNetwork3D() {
             targetOpacity = 0.15;
           }
         }
-        const mat = node.mesh.material as THREE.MeshBasicMaterial;
+        const mat = node.mesh.material as THREE.MeshStandardMaterial;
         mat.opacity += (targetOpacity - mat.opacity) * 0.15;
       });
 
-      /* ── Edge Colors / Highlight Redrawing ─────────────────────── */
+      /* ── Edge Coordinates & Colors Redrawing ──────────────────── */
+      const edgePosAttr = edgeGeo.getAttribute("position") as THREE.BufferAttribute;
+      const edgePosArr = edgePosAttr.array as Float32Array;
       const colorsAttr = edgeGeo.getAttribute("color") as THREE.BufferAttribute;
       const colorsArr = colorsAttr.array as Float32Array;
 
       edgeConnections.forEach((edge) => {
-        const offset = edge.vertIndex * 3; // each vertex has 3 floats (RGB)
+        const offset = edge.vertIndex * 3;
 
+        const posI = nodeData[edge.i].mesh.position;
+        const posJ = nodeData[edge.j].mesh.position;
         const nodeI = nodeData[edge.i];
         const nodeJ = nodeData[edge.j];
 
-        // Determine if edge connects to the active hover state
+        // Draw dynamic coordinates stretching with floating nodes
+        edgePosArr[offset] = posI.x;
+        edgePosArr[offset + 1] = posI.y;
+        edgePosArr[offset + 2] = posI.z;
+        edgePosArr[offset + 3] = posJ.x;
+        edgePosArr[offset + 4] = posJ.y;
+        edgePosArr[offset + 5] = posJ.z;
+
         const isHoverConnected = isNodeHovered && (edge.i === hoveredIdx || edge.j === hoveredIdx);
-
-        // Green edge check
         const isGreen = nodeI.group === 1 || nodeJ.group === 1;
-        const greenColor = new THREE.Color("#C8F135");
 
-        let cI = isGreen ? greenColor : (nodeI.mesh.material as THREE.MeshBasicMaterial).color;
-        let cJ = isGreen ? greenColor : (nodeJ.mesh.material as THREE.MeshBasicMaterial).color;
+        let cI = isGreen ? activeColor : (nodeI.mesh.material as THREE.MeshStandardMaterial).color;
+        let cJ = isGreen ? activeColor : (nodeJ.mesh.material as THREE.MeshStandardMaterial).color;
 
-        // Dynamic edge coloring based on state
         let intensity = isGreen ? 0.35 : 0.18;
 
         if (isNodeHovered) {
           if (isHoverConnected) {
-            intensity = 0.95; // bright active edge
+            intensity = 0.95;
           } else {
-            intensity = 0.02; // dim unrelated edges
+            intensity = 0.02;
           }
         } else if (nodeI.adopted && nodeJ.adopted) {
-          intensity = 0.65; // adopted-to-adopted connections active
+          intensity = 0.65;
         }
 
-        // Set colors in buffer
         colorsArr[offset] = cI.r * intensity;
         colorsArr[offset + 1] = cI.g * intensity;
         colorsArr[offset + 2] = cI.b * intensity;
-
         colorsArr[offset + 3] = cJ.r * intensity;
         colorsArr[offset + 4] = cJ.g * intensity;
         colorsArr[offset + 5] = cJ.b * intensity;
       });
+      edgePosAttr.needsUpdate = true;
       colorsAttr.needsUpdate = true;
 
-      /* ── Flow Dotted streams along green edges ─────────────────── */
+      /* ── Flow Dotted streams along dynamic edges ───────────────── */
       let flowIdx = 0;
       const flowPosAttr = flowGeo.getAttribute("position") as THREE.BufferAttribute;
       const flowPosArr = flowPosAttr.array as Float32Array;
 
-      greenEdges.forEach((edge) => {
+      activeEdges.forEach((edge) => {
+        const posFrom = nodeData[edge.fromIdx].mesh.position;
+        const posTo = nodeData[edge.toIdx].mesh.position;
         for (let d = 0; d < numDotsPerEdge; d++) {
           const offset = d / numDotsPerEdge;
-          // Progress moves forward along the line segment
-          const progress = (time * 0.45 + offset) % 1.0;
+          const progress = (time * 0.35 + offset) % 1.0;
 
-          // Interpolate current position
-          const x = edge.from.x + (edge.to.x - edge.from.x) * progress;
-          const y = edge.from.y + (edge.to.y - edge.from.y) * progress;
-          const z = edge.from.z + (edge.to.z - edge.from.z) * progress;
+          const x = posFrom.x + (posTo.x - posFrom.x) * progress;
+          const y = posFrom.y + (posTo.y - posFrom.y) * progress;
+          const z = posFrom.z + (posTo.z - posFrom.z) * progress;
 
           flowPosArr[flowIdx] = x;
           flowPosArr[flowIdx + 1] = y;
@@ -558,7 +649,7 @@ export function HeroNetwork3D() {
       });
       flowPosAttr.needsUpdate = true;
 
-      /* ── Active Propagation Cascades (Contagion Simulation) ────── */
+      /* ── Active Propagation Cascades ──────────────────────────── */
       if (cascadeTimer >= CASCADE_CYCLE) {
         triggerContagionCascade();
         cascadeTimer = 0;
@@ -569,21 +660,20 @@ export function HeroNetwork3D() {
         if (contagionTimer >= CONTAGION_SPEED) {
           contagionTimer = 0;
 
-          // Next generation of cascade adoptions
           const nextQueue: number[] = [];
           cascadeQueue.forEach((parentIdx) => {
             const neighbors = adjacency[parentIdx];
             neighbors.forEach((neighIdx) => {
               const neighbor = nodeData[neighIdx];
               if (!neighbor.adopted) {
-                // High-fidelity probability cascade
-                const adoptionChance = neighbor.conformity / 250 + 0.15; // Watts-Strogatz dynamic adaptation
+                const adoptionChance = neighbor.conformity / 250 + 0.15;
                 if (Math.random() < adoptionChance) {
                   neighbor.adopted = true;
-                  (neighbor.mesh.material as THREE.MeshBasicMaterial).color.set("#ff6b35");
+                  const mat = neighbor.mesh.material as THREE.MeshStandardMaterial;
+                  mat.color.set(activeColor);
+                  mat.emissive.set(activeColor);
+                  mat.emissiveIntensity = 0.5;
                   nextQueue.push(neighIdx);
-
-                  // Create visually flowing packet traveling along edge
                   createPacket(parentIdx, neighIdx);
                 }
               }
@@ -598,20 +688,19 @@ export function HeroNetwork3D() {
         }
       }
 
-      /* ── Animate active packets traveling along edges ─────────── */
+      /* ── Animate dynamic edge packets ─────────────────────────── */
       for (let i = activePackets.length - 1; i >= 0; i--) {
         const p = activePackets[i];
         p.progress += p.speed * dt;
 
         if (p.progress >= 1.0) {
-          // Packet finished journey, dispose and clean up
           graph.remove(p.mesh);
           activePackets.splice(i, 1);
         } else {
-          // Interpolate linear position between nodes
-          p.mesh.position.lerpVectors(p.from, p.to, p.progress);
-          // Pulse opacity for dynamic aesthetic
-          (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.sin(p.progress * Math.PI);
+          const posFrom = nodeData[p.fromIdx].mesh.position;
+          const posTo = nodeData[p.toIdx].mesh.position;
+          p.mesh.position.lerpVectors(posFrom, posTo, p.progress);
+          (p.mesh.material as THREE.MeshStandardMaterial).opacity = Math.sin(p.progress * Math.PI) * 0.9;
         }
       }
 
@@ -619,8 +708,6 @@ export function HeroNetwork3D() {
     };
 
     animate();
-
-    // Trigger initial cascade
     triggerContagionCascade();
 
     /* ── Cleanup ────────────────────────────────────────────────── */
@@ -628,6 +715,7 @@ export function HeroNetwork3D() {
       cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMouseMove);
       resizeObs.disconnect();
+      visibilityObserver.disconnect();
       renderer.dispose();
       sharedGeo.dispose();
       hubGeo.dispose();
@@ -638,6 +726,9 @@ export function HeroNetwork3D() {
       edgeGeo.dispose();
       flowGeo.dispose();
       flowMat.dispose();
+      packetMat.dispose();
+      planeGeo.dispose();
+      planeMat.dispose();
 
       activePackets.forEach((p) => graph.remove(p.mesh));
 
@@ -719,7 +810,7 @@ export function HeroNetwork3D() {
               <span style={{ color: "var(--muted)" }}>STATUS:</span>
               <span
                 style={{
-                  color: hoveredAgent.adopted ? "var(--orange)" : "var(--muted)",
+                  color: hoveredAgent.adopted ? "var(--accent)" : "var(--muted)",
                   fontWeight: 700,
                 }}
               >
@@ -733,3 +824,31 @@ export function HeroNetwork3D() {
   );
 }
 
+export function HeroNetwork3D() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsLoaded(true);
+          observer.disconnect(); // Load once and keep loaded
+        }
+      },
+      { rootMargin: "150px" } // Pre-load when within 150px of viewport
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+      {isLoaded ? <HeroNetworkCanvas /> : <div style={{ width: "100%", height: "100%", background: "transparent" }} />}
+    </div>
+  );
+}

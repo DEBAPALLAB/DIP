@@ -6,11 +6,11 @@ import Squares from "@/components/marketing/InteractiveBackground";
 
 const DEEP_FEATURES = [
   {
-    icon: "⬡",
+    icon: "◼",
     tag: "01_CORE_ENGINE",
     title: "Behavioral Vector Modeling",
     headline: "Real people. Real data. Real decisions.",
-    desc: "We ingest the General Social Survey 2024 — 1,499 verified respondents — and extract multi-dimensional behavioral vectors representing trust, risk aversion, social conformity, and economic outlook. These aren't archetypes. They're living mathematical distributions drawn from real human responses.",
+    desc: "We ingest the General Social Survey 2024 and extract multi-dimensional behavioral vectors representing trust, risk aversion, social conformity, and economic outlook. These are living distributions drawn from real human responses.",
     stats: [
       { val: "1,499", label: "Real respondents" },
       { val: "±2.4%", label: "Margin of error" },
@@ -18,11 +18,11 @@ const DEEP_FEATURES = [
     ],
   },
   {
-    icon: "◎",
+    icon: "◉",
     tag: "02_NETWORK_DYNAMICS",
     title: "Social Cascade Simulation",
     headline: "Map the exact moment local becomes global.",
-    desc: "Simulations run on high-fidelity Watts-Strogatz small-world networks that model 'The Strength of Weak Ties'. We identify the structural bottlenecks where influence stalls or accelerates — giving you precise leverage points before real-world deployment.",
+    desc: "Simulations run on high-fidelity Watts-Strogatz small-world networks that model the strength of weak ties. We identify the structural bottlenecks where influence stalls or accelerates before real-world deployment.",
     stats: [
       { val: "5,000", label: "Max agents" },
       { val: "∞", label: "Network topologies" },
@@ -34,7 +34,7 @@ const DEEP_FEATURES = [
     tag: "03_INTELLIGENCE",
     title: "LLM-Powered Agent Reasoning",
     headline: "Agents that think, hesitate, and resist.",
-    desc: "Every agent uses state-of-the-art language model reasoning to interpret your narrative and decide — based on their unique sociological profile — whether to adopt, resist, or propagate. This produces non-deterministic, richly realistic social dynamics that statistical models cannot replicate.",
+    desc: "Every agent uses language-model reasoning to interpret your narrative and decide, based on their sociological profile, whether to adopt, resist, or propagate. The result is realistic social dynamics that statistical models cannot replicate.",
     stats: [
       { val: "GPT-4o", label: "Reasoning backbone" },
       { val: "98.2%", label: "Profile fidelity" },
@@ -51,7 +51,7 @@ const ALL_FEATURES = [
     desc: "Run thousands of simulation variants with different strategies in parallel to find the optimal approach before committing.",
   },
   {
-    icon: "◈",
+    icon: "◇",
     tag: "ANALYSIS",
     title: "Tipping Point Detection",
     desc: "Identify exact cascade thresholds with graph-theoretic precision. Know where influence stalls before it costs you.",
@@ -60,10 +60,10 @@ const ALL_FEATURES = [
     icon: "⊞",
     tag: "EXPORT",
     title: "Behavioral Intelligence Reports",
-    desc: "Full exportable output: adoption curves, influence maps, persona breakdowns, and bottleneck analysis.",
+    desc: "Export adoption curves, influence maps, persona breakdowns, and bottleneck analysis as shareable artifacts.",
   },
   {
-    icon: "⬔",
+    icon: "⬚",
     tag: "SEGMENTATION",
     title: "Population Filtering",
     desc: "Slice populations by persona archetype, trust cluster, economic tier, or any behavioral dimension.",
@@ -78,67 +78,273 @@ const ALL_FEATURES = [
     icon: "◉",
     tag: "SECURITY",
     title: "Encrypted Workspaces",
-    desc: "All simulation data encrypted at rest and in transit. Role-based access controls and audit logs.",
+    desc: "All simulation data is encrypted at rest and in transit. Role-based access controls and audit logs included.",
   },
 ];
 
 export default function FeaturesPage() {
   return (
-    <div style={{ background: "var(--bg)", color: "var(--text)" }}>
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section
-        style={{
-          position: "relative",
-          minHeight: "72vh",
-          display: "flex",
-          alignItems: "center",
-          padding: "160px 4vw 100px",
-          overflow: "hidden",
-        }}
-      >
+    <div style={{ background: "var(--bg)", color: "var(--text)", overflowX: "hidden" }}>
+      <style jsx>{`
+        .feature-hero-shell {
+          position: relative;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          padding: 140px 4vw 96px;
+          overflow: hidden;
+        }
+
+        .feature-hero-grid {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.9;
+        }
+
+        .feature-hero-blur {
+          position: absolute;
+          border-radius: 999px;
+          filter: blur(84px);
+          pointer-events: none;
+        }
+
+        .feature-hero-title {
+          font-family: var(--heading);
+          font-size: clamp(56px, 7vw, 94px);
+          font-weight: 800;
+          line-height: 0.94;
+          letter-spacing: -0.05em;
+          color: var(--bright);
+          margin: 0;
+        }
+
+        .feature-hero-title .accent {
+          background: linear-gradient(135deg, var(--accent) 0%, #2a76ff 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          text-shadow: 0 0 40px rgba(0, 82, 255, 0.12);
+        }
+
+        .feature-hero-copy {
+          max-width: 650px;
+          color: var(--muted);
+          font-size: 18px;
+          line-height: 1.7;
+          margin: 0;
+        }
+
+        .feature-stat {
+          border: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.56);
+          backdrop-filter: blur(18px);
+          border-radius: 18px;
+          padding: 18px 20px;
+          box-shadow: 0 22px 56px rgba(0, 82, 255, 0.05);
+        }
+
+        .feature-stat-label {
+          font-family: var(--mono);
+          font-size: 9px;
+          letter-spacing: 0.18em;
+          color: var(--muted);
+          display: block;
+          margin-bottom: 10px;
+        }
+
+        .feature-stat-value {
+          font-family: var(--heading);
+          font-size: clamp(24px, 2vw, 34px);
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          color: var(--bright);
+          line-height: 1;
+        }
+
+        .feature-stat-note {
+          font-family: var(--mono);
+          font-size: 9px;
+          letter-spacing: 0.12em;
+          color: var(--accent);
+          margin-top: 8px;
+          text-transform: uppercase;
+        }
+
+        @media (max-width: 900px) {
+          .feature-hero-shell {
+            min-height: auto;
+            padding: 120px 4vw 72px;
+          }
+
+          .feature-hero-title {
+            font-size: clamp(42px, 12vw, 64px);
+          }
+        }
+      `}</style>
+
+      <section className="feature-hero-shell">
         <Squares
           direction="diagonal"
           speed={0.25}
           squareSize={40}
-          borderColor="rgba(255,107,53,0.05)"
-          hoverFillColor="rgba(255,107,53,0.08)"
+          borderColor="rgba(0, 82, 255, 0.03)"
+          hoverFillColor="rgba(0, 82, 255, 0.06)"
         />
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            maxWidth: 1400,
-            margin: "0 auto",
-            width: "100%",
-          }}
-        >
-          <span className="mkt-eyebrow">[PRODUCT_CAPABILITIES]</span>
-          <h1
-            className="hero-h1"
-            style={{ marginTop: 20, maxWidth: 760 }}
-          >
-            Engineered for
-            <br />
-            <span className="accent">Precision.</span>
-          </h1>
-          <p className="hero-sub">
-            Notaprompt provides a level of granularity in social simulation
-            never before accessible outside academic research. By combining real
-            behavioral data with modern LLM reasoning, we map the latent
-            landscape of public opinion.
-          </p>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <Link href="/setup" className="btn-hero-primary">
-              START SIMULATING →
-            </Link>
-            <Link href="/technology" className="btn-hero-ghost">
-              SEE THE TECHNOLOGY
-            </Link>
+
+        <div className="feature-hero-grid">
+          <div
+            className="feature-hero-blur"
+            style={{
+              top: "8%",
+              right: "-10%",
+              width: "32vw",
+              height: "32vw",
+              background:
+                "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.03) 38%, transparent 72%)",
+            }}
+          />
+          <div
+            className="feature-hero-blur"
+            style={{
+              top: "48%",
+              left: "-12%",
+              width: "30vw",
+              height: "30vw",
+              background:
+                "radial-gradient(circle, rgba(255, 107, 53, 0.05) 0%, rgba(255, 107, 53, 0.02) 40%, transparent 72%)",
+            }}
+          />
+        </div>
+
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1400, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(320px, 0.85fr)", gap: "56px", alignItems: "center" }}>
+            <div>
+              <span className="mkt-eyebrow">[PRODUCT_CAPABILITIES]</span>
+              <h1 className="feature-hero-title" style={{ marginTop: 18, maxWidth: 760 }}>
+                Engineered for
+                <br />
+                <span className="accent">Precision.</span>
+              </h1>
+              <p className="feature-hero-copy" style={{ marginTop: 26 }}>
+                Notaprompt turns strategic ideas into measurable simulation runs.
+                Compare adoption paths, isolate tipping points, and inspect the
+                agent-level behaviors that drive outcomes before you commit.
+              </p>
+
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 34 }}>
+                <Link href="/setup" className="btn-hero-primary">
+                  START SIMULATING →
+                </Link>
+                <Link href="/technology" className="btn-hero-ghost">
+                  SEE THE TECHNOLOGY
+                </Link>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginTop: 34 }}>
+                <div className="feature-stat">
+                  <span className="feature-stat-label">NETWORKS</span>
+                  <div className="feature-stat-value">Small-world</div>
+                  <div className="feature-stat-note">Topological cascade modeling</div>
+                </div>
+                <div className="feature-stat">
+                  <span className="feature-stat-label">DATA</span>
+                  <div className="feature-stat-value">1,499</div>
+                  <div className="feature-stat-note">Verified respondent vectors</div>
+                </div>
+                <div className="feature-stat">
+                  <span className="feature-stat-label">OUTPUT</span>
+                  <div className="feature-stat-value">Reports</div>
+                  <div className="feature-stat-note">Adoption, resistance, and bottlenecks</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 16 }}>
+              <div
+                style={{
+                  padding: 24,
+                  border: "1px solid var(--border)",
+                  borderRadius: 24,
+                  background: "rgba(255, 255, 255, 0.58)",
+                  backdropFilter: "blur(18px)",
+                  boxShadow: "0 28px 70px rgba(0, 82, 255, 0.06)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em", color: "var(--accent)" }}>// FEATURE_MAP</span>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--muted)" }}>LIVE_PREVIEW</span>
+                </div>
+                <div style={{ display: "grid", gap: 12 }}>
+                  {[
+                    ["Behavioral vectors", "Real respondent distributions"],
+                    ["Cascade simulation", "Small-world propagation graph"],
+                    ["Agent reasoning", "LLM-backed local decisions"],
+                    ["Telemetry output", "Shareable insight artifacts"],
+                  ].map(([title, desc], idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 16,
+                        padding: "14px 16px",
+                        borderRadius: 16,
+                        border: "1px solid rgba(0, 82, 255, 0.08)",
+                        background: idx === 1 ? "rgba(0, 82, 255, 0.05)" : "rgba(255,255,255,0.45)",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontFamily: "var(--heading)", fontSize: 16, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.03em" }}>{title}</div>
+                        <div style={{ marginTop: 4, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
+                      </div>
+                      <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.16em", color: "var(--accent)", paddingTop: 2 }}>
+                        0{idx + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div className="feature-stat">
+                  <span className="feature-stat-label">MODES</span>
+                  <div className="feature-stat-value">Explore</div>
+                  <div className="feature-stat-note">Browse capabilities by layer</div>
+                </div>
+                <div className="feature-stat">
+                  <span className="feature-stat-label">ACCESS</span>
+                  <div className="feature-stat-value">Free</div>
+                  <div className="feature-stat-note">Start without a credit card</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Deep Feature Sections ─────────────────────────────────── */}
+      <section className="mkt-section" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="mkt-section-header">
+          <span className="mkt-eyebrow">[FULL_FEATURE_SET]</span>
+          <h2 className="mkt-h2">
+            Everything in
+            <br />
+            the Engine.
+          </h2>
+        </div>
+
+        <div className="features-grid-3">
+          {ALL_FEATURES.map((f, i) => (
+            <GlowCard key={i}>
+              <div className="feature-icon-wrap">{f.icon}</div>
+              <span className="feature-card-tag">// {f.tag}</span>
+              <h3 className="feature-card-title">{f.title}</h3>
+              <p className="feature-card-desc">{f.desc}</p>
+            </GlowCard>
+          ))}
+        </div>
+      </section>
+
       {DEEP_FEATURES.map((f, i) => (
         <section
           key={i}
@@ -158,7 +364,6 @@ export default function FeaturesPage() {
               alignItems: "center",
             }}
           >
-            {/* Text */}
             <div style={{ order: i % 2 === 1 ? 1 : 0 }}>
               <span className="mkt-eyebrow">// {f.tag}</span>
               <h2
@@ -196,20 +401,18 @@ export default function FeaturesPage() {
               </p>
             </div>
 
-            {/* Stats card */}
             <div style={{ order: i % 2 === 1 ? 0 : 1 }}>
               <div
                 style={{
                   padding: "48px",
                   border: "1px solid var(--border)",
                   borderRadius: "12px",
-                  background:
-                    "linear-gradient(160deg, rgba(255,255,255,0.025), rgba(255,255,255,0.005))",
+                  background: "var(--panel)",
+                  backdropFilter: "blur(12px)",
                   position: "relative",
                   overflow: "hidden",
                 }}
               >
-                {/* Top accent line */}
                 <div
                   style={{
                     position: "absolute",
@@ -218,14 +421,14 @@ export default function FeaturesPage() {
                     right: 0,
                     height: 1,
                     background:
-                      "linear-gradient(90deg, transparent, rgba(255,107,53,0.5), transparent)",
+                      "linear-gradient(90deg, transparent, rgba(0, 82, 255, 0.4), transparent)",
                   }}
                 />
                 <span
                   style={{
                     fontFamily: "var(--mono)",
                     fontSize: "9px",
-                    color: "var(--orange)",
+                    color: "var(--accent)",
                     letterSpacing: "0.2em",
                     display: "block",
                     marginBottom: "36px",
@@ -274,32 +477,6 @@ export default function FeaturesPage() {
         </section>
       ))}
 
-      {/* ── All Features Grid ─────────────────────────────────────── */}
-      <section
-        className="mkt-section"
-        style={{ borderTop: "1px solid var(--border)" }}
-      >
-        <div className="mkt-section-header">
-          <span className="mkt-eyebrow">[FULL_FEATURE_SET]</span>
-          <h2 className="mkt-h2">
-            Everything in
-            <br />
-            the Engine.
-          </h2>
-        </div>
-        <div className="features-grid-3">
-          {ALL_FEATURES.map((f, i) => (
-            <GlowCard key={i}>
-              <div className="feature-icon-wrap">{f.icon}</div>
-              <span className="feature-card-tag">// {f.tag}</span>
-              <h3 className="feature-card-title">{f.title}</h3>
-              <p className="feature-card-desc">{f.desc}</p>
-            </GlowCard>
-          ))}
-        </div>
-      </section>
-
-      {/* ── CTA ──────────────────────────────────────────────────── */}
       <div className="pricing-cta-banner">
         <span className="mkt-eyebrow">[GET_STARTED]</span>
         <h2 className="pricing-cta-title">
@@ -310,14 +487,7 @@ export default function FeaturesPage() {
         <p className="pricing-cta-sub">
           Start free. No credit card. Up to 100 agents on the Explorer tier.
         </p>
-        <div
-          style={{
-            display: "flex",
-            gap: "16px",
-            justifyContent: "center",
-            flexWrap: "wrap",
-          }}
-        >
+        <div style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
           <Link href="/register" className="btn-hero-primary">
             CREATE FREE ACCOUNT →
           </Link>

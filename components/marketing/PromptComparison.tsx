@@ -168,6 +168,7 @@ export function PromptComparison() {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [compilerLineIdx, setCompilerLineIdx] = useState(0);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [hoveredSection, setHoveredSection] = useState<"side-a" | "side-b" | null>(null);
 
   const currentTemplate = PROMPT_TEMPLATES[selectedTemplateIdx];
   const currentToken = currentTemplate.tokens[activeTokenIdx];
@@ -550,6 +551,7 @@ export function PromptComparison() {
         .workspace-column {
           display: flex;
           flex-direction: column;
+          transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), filter 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
         .workspace-column.side-a {
           border-right: 1px solid var(--border);
@@ -945,7 +947,15 @@ export function PromptComparison() {
         {/* Splitted Workspace View */}
         <div className="ab-playground-workspace">
           {/* Stream A Column */}
-          <div className="workspace-column side-a">
+          <div 
+            className="workspace-column side-a"
+            onMouseEnter={() => setHoveredSection("side-a")}
+            onMouseLeave={() => setHoveredSection(null)}
+            style={{
+              opacity: hoveredSection === "side-b" ? 0.35 : 1,
+              filter: hoveredSection === "side-b" ? "blur(1.5px)" : "none",
+            }}
+          >
             <div className="column-header">
               <span className="workspace-badge badge-red">STREAM_A // BORING TEXT CHATBOT</span>
               <div className="header-status">
@@ -1024,7 +1034,15 @@ export function PromptComparison() {
           </div>
 
           {/* Stream B Column */}
-          <div className="workspace-column side-b">
+          <div 
+            className="workspace-column side-b"
+            onMouseEnter={() => setHoveredSection("side-b")}
+            onMouseLeave={() => setHoveredSection(null)}
+            style={{
+              opacity: hoveredSection === "side-a" ? 0.35 : 1,
+              filter: hoveredSection === "side-a" ? "blur(1.5px)" : "none",
+            }}
+          >
             <div className="column-header">
               <span className="workspace-badge badge-green">STREAM_B // NOTAPROMPT DEEP COMPILATION</span>
               <div className="header-status">

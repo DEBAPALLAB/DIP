@@ -13,6 +13,7 @@ export default function MarketingLayout({
       
       {/* ── HIGH-FIDELITY MARKETING HEADER GRADIENT & VERTICAL CURTAIN SHAFTS ── */}
       <div 
+        className="layout-header-gradient"
         style={{
           position: "absolute",
           top: 0,

@@ -379,21 +379,22 @@ export default function SetupPage() {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }
                 }
-                /* Premium Glassmorphic input overrides */
+                /* Premium telemetry inputs */
                 .no-scrollbar input, .no-scrollbar select, .no-scrollbar textarea {
-                    background: rgba(255, 255, 255, 0.58) !important;
+                    background: rgba(0, 0, 0, 0.03) !important;
                     border: 1px solid var(--border) !important;
                     color: var(--bright) !important;
-                    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                    border-radius: 2px !important;
                 }
                 .no-scrollbar input:hover, .no-scrollbar select:hover, .no-scrollbar textarea:hover {
                     border-color: var(--border-bright) !important;
-                    background: rgba(255, 255, 255, 0.8) !important;
+                    background: rgba(0, 0, 0, 0.05) !important;
                 }
                 .no-scrollbar input:focus, .no-scrollbar select:focus, .no-scrollbar textarea:focus {
                     border-color: var(--accent) !important;
-                    background: rgba(255, 255, 255, 0.95) !important;
-                    box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.15), inset 0 1px 3px rgba(0,0,0,0.05) !important;
+                    background: rgba(0, 0, 0, 0.07) !important;
+                    box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.08), inset 0 1px 2px rgba(0,0,0,0.02) !important;
                 }
             `}</style>
 
@@ -447,23 +448,23 @@ export default function SetupPage() {
                    </filter>
                 </defs>
 
-                <text x="30%" y="22%" fill="var(--bright)" fontSize="14" fontFamily="var(--mono)" opacity="0.15" pointerEvents="none" fontWeight="700">VOLATILE_SKEPTICS</text>
-                <text x="70%" y="22%" fill="var(--bright)" fontSize="14" fontFamily="var(--mono)" textAnchor="end" opacity="0.15" pointerEvents="none" fontWeight="700">EARLY_ADOPTERS</text>
-                <text x="30%" y="78%" fill="var(--bright)" fontSize="14" fontFamily="var(--mono)" opacity="0.15" pointerEvents="none" fontWeight="700">STAGNANT_RESISTANCE</text>
-                <text x="70%" y="78%" fill="var(--bright)" fontSize="14" fontFamily="var(--mono)" textAnchor="end" opacity="0.15" pointerEvents="none" fontWeight="700">LOYAL_PRAGMATISTS</text>
-                <line x1="25%" y1="50%" x2="75%" y2="50%" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="10 10" />
-                <line x1="50%" y1="20%" x2="50%" y2="80%" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="10 10" />
-
+                <text x="30%" y="22%" fill="var(--muted)" fontSize="10" fontFamily="var(--mono)" letterSpacing="0.12em" opacity="0.45" pointerEvents="none" fontWeight="800">VOLATILE_SKEPTICS</text>
+                <text x="70%" y="22%" fill="var(--muted)" fontSize="10" fontFamily="var(--mono)" letterSpacing="0.12em" textAnchor="end" opacity="0.45" pointerEvents="none" fontWeight="800">EARLY_ADOPTERS</text>
+                <text x="30%" y="78%" fill="var(--muted)" fontSize="10" fontFamily="var(--mono)" letterSpacing="0.12em" opacity="0.45" pointerEvents="none" fontWeight="800">STAGNANT_RESISTANCE</text>
+                <text x="70%" y="78%" fill="var(--muted)" fontSize="10" fontFamily="var(--mono)" letterSpacing="0.12em" textAnchor="end" opacity="0.45" pointerEvents="none" fontWeight="800">LOYAL_PRAGMATISTS</text>
+                <line x1="25%" y1="50%" x2="75%" y2="50%" stroke="var(--border-bright)" strokeWidth="1" strokeDasharray="6 6" />
+                <line x1="50%" y1="20%" x2="50%" y2="80%" stroke="var(--border-bright)" strokeWidth="1" strokeDasharray="6 6" />
+ 
                 {/* Holographic Radar Scanner Grid (Active during Synthesis) */}
                 {(isGenerating || isAiLoading) && (
                     <g style={{ transform: "translate(50%, 50%)", transformOrigin: "center" }}>
-                        <circle cx="0" cy="0" r="100" fill="none" stroke="rgba(255,107,53,0.15)" strokeWidth="1" strokeDasharray="5 5" />
-                        <circle cx="0" cy="0" r="200" fill="none" stroke="rgba(255,107,53,0.08)" strokeWidth="1.5" />
-                        <circle cx="0" cy="0" r="300" fill="none" stroke="rgba(255,107,53,0.04)" strokeWidth="1" strokeDasharray="10 5" />
-                        <line x1="0" y1="0" x2="0" y2="-300" stroke="var(--orange)" strokeWidth="1.5" strokeOpacity="0.6" style={{ transformOrigin: "0px 0px", animation: "radar-spin 2.5s linear infinite" }} />
+                        <circle cx="0" cy="0" r="100" fill="none" stroke="rgba(0,82,255,0.12)" strokeWidth="1" strokeDasharray="5 5" />
+                        <circle cx="0" cy="0" r="200" fill="none" stroke="rgba(0,82,255,0.06)" strokeWidth="1.5" />
+                        <circle cx="0" cy="0" r="300" fill="none" stroke="rgba(0,82,255,0.03)" strokeWidth="1" strokeDasharray="10 5" />
+                        <line x1="0" y1="0" x2="0" y2="-300" stroke="var(--accent)" strokeWidth="1.5" strokeOpacity="0.6" style={{ transformOrigin: "0px 0px", animation: "radar-spin 2.5s linear infinite" }} />
                     </g>
                 )}
-
+ 
                 {sim.agents.map((ag, idx) => {
                     // Central spread (35% to 65% width, 25% to 75% height)
                     const jitterX = ((idx % 7) - 3.5) * 2; 
@@ -471,7 +472,7 @@ export default function SetupPage() {
                     
                     const cx = 35 + (ag.trust * 30) + (jitterX / 10); 
                     const cy = 75 - (ag.risk * 50) + (jitterY / 10); 
-                    const radius = isGenerating ? 3 : 4 + (ag.income * 12);
+                    const radius = isGenerating ? 2.5 : 3 + (ag.income * 4);
                     return (
                         <circle 
                            key={ag.id} cx={`${cx}%`} cy={`${cy}%`} r={radius} 
@@ -486,19 +487,19 @@ export default function SetupPage() {
                         </circle>
                     );
                 })}
-
+ 
                 {/* ── LIVE STATUS COUNTER ── */}
                 <g style={{ transform: "translate(50%, 90%)" }}>
-                    <text x="0" y="0" textAnchor="middle" fill="var(--orange)" fontFamily="var(--mono)" fontSize="11" fontWeight="800" opacity="0.6">
+                    <text x="0" y="0" textAnchor="middle" fill="var(--muted)" fontFamily="var(--mono)" fontSize="10" fontWeight="800" opacity="0.6">
                         ACTIVE_AGENTS: {sim.agents.length.toString().padStart(3, '0')} / {agentCount} PROTOTYPES
                     </text>
                 </g>
             </svg>
-
+ 
             {/* ── LEFT PANEL: CONFIGURATION ── */}
-            <div style={{ position: "absolute", top: 80, left: 32, bottom: 32, width: "380px", background: "var(--panel)", backdropFilter: "blur(28px)", border: "1px solid var(--border)", borderRadius: "24px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 28px 70px rgba(0, 82, 255, 0.05)" }}>
+            <div style={{ position: "absolute", top: 80, left: 32, bottom: 32, width: "380px", background: "var(--panel)", backdropFilter: "blur(28px)", border: "1px solid var(--border)", borderRadius: "4px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 20px 40px rgba(0, 0, 0, 0.04)" }}>
                 {/* AI ARCHITECT HEADER */}
-                <div style={{ padding: "32px 24px", borderBottom: "1px solid var(--border)", background: "linear-gradient(to bottom, rgba(0, 82, 255, 0.05), transparent)", flexShrink: 0 }}>
+                <div style={{ padding: "32px 24px", borderBottom: "1px solid var(--border)", background: "linear-gradient(to bottom, rgba(0, 82, 255, 0.03), transparent)", flexShrink: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
                         <span style={{ color: "var(--accent)", fontSize: "14px" }}>✦</span>
                         <span style={{ fontFamily: "var(--mono)", fontSize: "11px", fontWeight: 800, color: "var(--bright)", letterSpacing: "0.2em" }}>PARSING_ENGINE</span>
@@ -513,11 +514,10 @@ export default function SetupPage() {
                         onClick={handleAiGenerate} 
                         disabled={isAiLoading || !aiPrompt} 
                         className={isAiLoading ? "" : "btn-v2-primary"}
-                        style={{ width: "100%", height: "44px", borderRadius: "99px", fontSize: "12px", fontWeight: 800, letterSpacing: "0.1em", border: isAiLoading ? "1px solid var(--border)" : "none", color: isAiLoading ? "var(--muted)" : "#fff", background: isAiLoading ? "transparent" : "var(--accent)" }}
+                        style={{ width: "100%", height: "40px", borderRadius: "2px", fontSize: "11px", fontWeight: 800, fontFamily: "var(--mono)", letterSpacing: "0.1em", border: isAiLoading ? "1px solid var(--border)" : "none", color: isAiLoading ? "var(--muted)" : "#fff", background: isAiLoading ? "transparent" : "var(--accent)", cursor: isAiLoading ? "default" : "pointer" }}
                     >
                         {isAiLoading ? "SYNTHESIZING..." : "GENERATE SCENARIO"}
                     </button>
-                    
                     <div style={{ display: "flex", gap: "8px", marginTop: "20px", overflowX: "auto" }} className="no-scrollbar">
                         {TEMPLATES.map((t) => (
                             <div 
@@ -611,7 +611,7 @@ export default function SetupPage() {
             </div>
 
             {/* ── RIGHT PANEL: AUDIENCE & GTM ── */}
-            <div style={{ position: "absolute", top: 80, right: 32, bottom: 32, width: "380px", background: "var(--panel)", backdropFilter: "blur(28px)", border: "1px solid var(--border)", borderRadius: "24px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 28px 70px rgba(0, 82, 255, 0.05)" }}>
+            <div style={{ position: "absolute", top: 80, right: 32, bottom: 32, width: "380px", background: "var(--panel)", backdropFilter: "blur(28px)", border: "1px solid var(--border)", borderRadius: "4px", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "0 20px 40px rgba(0, 0, 0, 0.04)" }}>
                 <div className="no-scrollbar" style={{ flex: 1, padding: "32px 24px", overflowY: "auto" }}>
                     
                     {/* STRATEGIC AI AUDIT CARD */}
@@ -778,10 +778,10 @@ export default function SetupPage() {
                   disabled={sim.agents.length === 0 || isGenerating || isLaunching} 
                   className="btn-v2-primary"
                   style={{ 
-                    height: "56px", padding: "0 64px", borderRadius: "99px", fontSize: "14px", fontWeight: 900, 
-                    letterSpacing: "0.15em", boxShadow: "0 20px 50px rgba(0, 82, 255, 0.15)",
+                    height: "46px", padding: "0 48px", borderRadius: "4px", fontSize: "12px", fontWeight: 800, 
+                    letterSpacing: "0.15em", boxShadow: "0 10px 25px rgba(0, 82, 255, 0.12)",
                     pointerEvents: "auto",
-                    fontFamily: "var(--sans)"
+                    fontFamily: "var(--mono)"
                   }}
                 >
                     {isLaunching ? "BOOTING_SIMULATION_CORE..." : isGenerating ? "RECALIBRATING..." : "START_SIMULATION_SEQUENCES"}
@@ -803,27 +803,27 @@ export default function SetupPage() {
 const fieldWrapper = { display: "flex", flexDirection: "column" as const, gap: "6px" };
 
 const inputStyle = { 
-    width: "100%", height: "42px", padding: "0 16px", 
-    background: "rgba(255, 255, 255, 0.58)", border: "1px solid var(--border)", 
-    borderRadius: "10px", color: "var(--bright)", fontFamily: "var(--sans)", fontSize: "13px", 
+    width: "100%", height: "40px", padding: "0 12px", 
+    background: "rgba(0, 0, 0, 0.03)", border: "1px solid var(--border)", 
+    borderRadius: "2px", color: "var(--bright)", fontFamily: "var(--sans)", fontSize: "12px", 
     outline: "none", transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)"
+    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
 };
 
 const selectStyle = { 
     ...inputStyle, cursor: "pointer", 
     appearance: "none" as const, 
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='rgba(0,0,0,0.5)' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E")`,
-    backgroundRepeat: "no-repeat", backgroundPosition: "right 16px center"
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='rgba(0,0,0,0.4)' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center"
 };
 
 const textareaStyle = { 
-    ...inputStyle, height: "auto", padding: "12px 16px", resize: "none" as const, lineHeight: "1.6" 
+    ...inputStyle, height: "auto", padding: "10px 12px", resize: "none" as const, lineHeight: "1.5" 
 };
 
 const sectionLabel = { 
-    fontFamily: "var(--sans)", fontSize: "12px", fontWeight: 800, color: "var(--accent)", 
-    textTransform: "uppercase" as const, marginBottom: "20px", letterSpacing: "0.1em",
+    fontFamily: "var(--mono)", fontSize: "11px", fontWeight: 800, color: "var(--accent)", 
+    textTransform: "uppercase" as const, marginBottom: "20px", letterSpacing: "0.12em",
     display: "flex", alignItems: "center", gap: "12px"
 };
 

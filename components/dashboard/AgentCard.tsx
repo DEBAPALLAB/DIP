@@ -20,9 +20,9 @@ function TraitBar({ label, value, color }: { label: string; value: number; color
                     {(value * 100).toFixed(0)}%
                 </span>
             </div>
-            <div style={{ height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 10, overflow: "hidden", position: "relative", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ height: 3, background: "var(--progress-bg)", borderRadius: 10, overflow: "hidden", position: "relative", border: "1px solid var(--progress-border)" }}>
                 {/* Ruler Ticks */}
-                <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px)", backgroundSize: "10% 100%", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, var(--progress-tick) 1px, transparent 1px)", backgroundSize: "10% 100%", pointerEvents: "none" }} />
                 <div style={{ height: "100%", width: `${value * 100}%`, background: color, boxShadow: `0 0 10px ${color}55`, transition: "width 1.2s cubic-bezier(0.16, 1, 0.3, 1)" }} />
             </div>
         </div>
@@ -32,10 +32,10 @@ function TraitBar({ label, value, color }: { label: string; value: number; color
 function TacticalBrackets() {
     return (
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 5, opacity: 0.5 }}>
-            <div style={{ position: "absolute", top: 10, left: 10, width: 8, height: 8, borderTop: "1.5px solid rgba(255,255,255,0.4)", borderLeft: "1.5px solid rgba(255,255,255,0.4)" }} />
-            <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderTop: "1.5px solid rgba(255,255,255,0.4)", borderRight: "1.5px solid rgba(255,255,255,0.4)" }} />
-            <div style={{ position: "absolute", bottom: 10, left: 10, width: 8, height: 8, borderBottom: "1.5px solid rgba(255,255,255,0.4)", borderLeft: "1.5px solid rgba(255,255,255,0.4)" }} />
-            <div style={{ position: "absolute", bottom: 10, right: 10, width: 8, height: 8, borderBottom: "1.5px solid rgba(255,255,255,0.4)", borderRight: "1.5px solid rgba(255,255,255,0.4)" }} />
+            <div style={{ position: "absolute", top: 10, left: 10, width: 8, height: 8, borderTop: "1.5px solid var(--bracket-color)", borderLeft: "1.5px solid var(--bracket-color)" }} />
+            <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderTop: "1.5px solid var(--bracket-color)", borderRight: "1.5px solid var(--bracket-color)" }} />
+            <div style={{ position: "absolute", bottom: 10, left: 10, width: 8, height: 8, borderBottom: "1.5px solid var(--bracket-color)", borderLeft: "1.5px solid var(--bracket-color)" }} />
+            <div style={{ position: "absolute", bottom: 10, right: 10, width: 8, height: 8, borderBottom: "1.5px solid var(--bracket-color)", borderRight: "1.5px solid var(--bracket-color)" }} />
         </div>
     );
 }
@@ -43,10 +43,10 @@ function TacticalBrackets() {
 function CardBackground() {
     return (
         <div style={{ position: "absolute", inset: 0, zIndex: -1, pointerEvents: "none" }}>
-            <svg width="100%" height="100%" opacity="0.08">
+            <svg width="100%" height="100%" opacity="var(--card-pattern-opacity, 0.08)">
                 <pattern id="cardPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <circle cx="1" cy="1" r="0.8" fill="white" />
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="0.2" />
+                    <circle cx="1" cy="1" r="0.8" fill="var(--card-pattern-color, white)" />
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--card-pattern-color, white)" strokeWidth="0.2" />
                 </pattern>
                 <rect width="100%" height="100%" fill="url(#cardPattern)" />
             </svg>
@@ -61,20 +61,20 @@ function ModelBadge({ model }: { model?: string }) {
     else if (model.includes("glm")) label = "GLM-4";
     else if (model.includes("liquid")) label = "Liquid";
     else if (model.includes("riverflow")) label = "RiverFlow";
-    
+
     return (
-        <span style={{ 
-            fontSize: 6, 
-            fontFamily: "var(--mono)", 
-            color: "var(--muted)", 
-            background: "rgba(255,255,255,0.03)", 
-            padding: "2px 6px", 
+        <span style={{
+            fontSize: 6,
+            fontFamily: "var(--mono)",
+            color: "var(--muted)",
+            background: "var(--chip-bg)",
+            padding: "2px 6px",
             borderRadius: 100,
-            border: "1px solid rgba(255,255,255,0.06)",
+            border: "1px solid var(--chip-border)",
             verticalAlign: "middle",
             letterSpacing: "0.1em",
             fontWeight: 800,
-            boxShadow: "inset 0 1px 2px rgba(0,0,0,0.5)"
+            boxShadow: "inset 0 1px 2px rgba(0,0,0,0.15)"
         }}>
             CHIP::{label.toUpperCase()}
         </span>
@@ -83,22 +83,22 @@ function ModelBadge({ model }: { model?: string }) {
 
 function DecisionBadge({ decision, model }: { decision: DecisionType, model?: string }) {
     const color = decision === "support" ? "var(--support)" : decision === "oppose" ? "var(--oppose)" : decision === "neutral" ? "var(--neutral)" : "var(--muted)";
-    
+
     if (!decision) return (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-             <span style={{ fontSize: 6, fontFamily: "var(--mono)", color: "var(--orange)", background: "rgba(255,107,53,0.1)", padding: "2px 8px", borderRadius: "100px", border: "1px solid rgba(255,107,53,0.3)", fontWeight: 800, boxSizing: "border-box" }}>STBY::PENDING</span>
+            <span style={{ fontSize: 6, fontFamily: "var(--mono)", color: "var(--orange)", background: "rgba(255,107,53,0.1)", padding: "2px 8px", borderRadius: "100px", border: "1px solid rgba(255,107,53,0.3)", fontWeight: 800, boxSizing: "border-box" }}>STBY::PENDING</span>
         </div>
     );
     return (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <ModelBadge model={model} />
-            <span style={{ 
-                fontSize: 6, 
-                fontFamily: "var(--mono)", 
-                color: color, 
-                background: `${color}15`, 
-                padding: "2px 8px", 
-                borderRadius: "100px", 
+            <span style={{
+                fontSize: 6,
+                fontFamily: "var(--mono)",
+                color: color,
+                background: `${color}15`,
+                padding: "2px 8px",
+                borderRadius: "100px",
                 border: `1px solid ${color}40`,
                 fontWeight: 800,
                 letterSpacing: "0.05em"
@@ -122,33 +122,26 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
                 position: "relative",
                 padding: "20px 18px",
                 minHeight: "140px",
-                background: selected ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.02)",
+                background: selected
+                    ? "linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 60%), var(--card-selected-bg)"
+                    : "linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 60%), var(--card-bg)",
                 backdropFilter: "blur(24px)",
                 borderRadius: "16px",
-                border: selected ? "1px solid var(--support)" : "1px solid rgba(255, 255, 255, 0.08)",
+                border: selected ? "1px solid var(--support)" : "1px solid var(--card-border)",
                 cursor: "pointer",
                 transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                boxShadow: selected ? "0 20px 40px rgba(0,0,0,0.5), 0 0 15px rgba(200, 241, 53, 0.1)" : "none",
+                boxShadow: selected ? "var(--card-shadow-selected)" : "var(--card-shadow-default)",
                 display: "flex",
                 flexDirection: "column",
                 overflow: "hidden"
             }}
         >
-            <style jsx>{`
-                .results-card::after {
-                    content: "";
-                    position: absolute;
-                    inset: 0;
-                    background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent 60%);
-                    pointer-events: none;
-                }
-            `}</style>
-            
+
             {/* Ambient Sentiment Glow */}
             {state.decision && (
-                <div style={{ 
-                    position: "absolute", 
-                    top: -30, right: -30, width: 80, height: 80, 
+                <div style={{
+                    position: "absolute",
+                    top: -30, right: -30, width: 80, height: 80,
                     borderRadius: "50%",
                     background: state.decision === "support" ? "var(--support)" : state.decision === "oppose" ? "var(--oppose)" : "var(--neutral)",
                     filter: "blur(30px)",
@@ -179,13 +172,13 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
                         {agent.name.charAt(0)}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                        <div style={{ 
-                            fontFamily: "'Plus Jakarta Sans', sans-serif", 
-                            fontSize: 14, 
-                            color: "var(--bright)", 
+                        <div style={{
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                            fontSize: 14,
+                            color: "var(--bright)",
                             fontWeight: 700,
-                            whiteSpace: "nowrap", 
-                            overflow: "hidden", 
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
                             textOverflow: "ellipsis",
                             letterSpacing: "-0.01em"
                         }}>
@@ -201,10 +194,10 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
 
             {/* Trait Tags */}
             <div style={{ display: "flex", gap: 4, marginBottom: 12, alignItems: "center", opacity: 0.8 }}>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 7, color: "var(--muted)", border: "1px solid rgba(255,255,255,0.1)", padding: "1px 6px", borderRadius: "4px" }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 7, color: "var(--muted)", border: "1px solid var(--chip-border)", padding: "1px 6px", borderRadius: "4px" }}>
                     {agent.persona.toUpperCase()}
                 </span>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 7, color: "rgba(255,255,255,0.3)" }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 7, color: "var(--age-label-color)" }}>
                     AGE_{agent.age}
                 </span>
             </div>

@@ -82,6 +82,14 @@ function buildSimulationTitle(productName: string | undefined, scenarioLabel: st
 // ─── State machine ─────────────────────────────────────────────────────────────
 
 type SimPhase = "UNCONFIGURED" | "CONFIGURED" | "RUNNING" | "DONE";
+type PreviewTab = "network" | "list" | "agent";
+
+interface ConsoleMessage {
+    id: string;
+    role: "user" | "system";
+    title?: string;
+    body: string;
+}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -111,7 +119,15 @@ export default function SimulatePage() {
 
     const [running, setRunning] = useState(false);
     const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+    const [rightSidebarTab, setRightSidebarTab] = useState<"agent" | "stats">("stats");
+    const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
     const [activePanel, setActivePanel] = useState<"log" | "chart" | "snapshots">("chart");
+    const [previewTab, setPreviewTab] = useState<PreviewTab>("network");
+    const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
+    const [chatInput, setChatInput] = useState("");
+    const chatThreadRef = useRef<HTMLDivElement>(null);
+    const [leftPanelWidth, setLeftPanelWidth] = useState(420);
+    const [isResizingWorkbench, setIsResizingWorkbench] = useState(false);
 
     const [scenarioId, setScenarioId] = useState<string>(SCENARIOS[0].id);
     const [customScenario, setCustomScenario] = useState<Scenario | null>(null);
@@ -127,9 +143,47 @@ export default function SimulatePage() {
 
     const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
     const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isScenarioDropdownOpen, setIsScenarioDropdownOpen] = useState(false);
     const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [stepInsight, setStepInsight] = useState<string | null>(null);
+
+    // Auto-scroll chat thread to bottom on message or simulation status update
+    useEffect(() => {
+        if (chatThreadRef.current) {
+            chatThreadRef.current.scrollTop = chatThreadRef.current.scrollHeight;
+        }
+    }, [consoleMessages, running, isGenerating]);
+
+    const influenceWeightedAdoption = useMemo(() => {
+        if (!agents.length) return "0%";
+        let totalInfluence = 0;
+        let supportInfluence = 0;
+        agents.forEach(a => {
+            const inf = a.influence_score ?? 0.1;
+            totalInfluence += inf;
+            if (states[a.id]?.decision === 'support') {
+                supportInfluence += inf;
+            }
+        });
+        return totalInfluence > 0 ? `${Math.round((supportInfluence / totalInfluence) * 100)}%` : "0%";
+    }, [agents, states]);
+
+    const consensusIndex = useMemo(() => {
+        if (!agents.length) return "0.0";
+        const support = Object.values(states).filter(s => s.decision === 'support').length / agents.length;
+        const oppose = Object.values(states).filter(s => s.decision === 'oppose').length / agents.length;
+        const polarization = 4 * support * oppose;
+        return (1 - polarization).toFixed(2);
+    }, [agents, states]);
+
+    const activeLeaders = useMemo(() => {
+        const leaders = agents.filter(a => (a.influence_score ?? 0) > 0.7);
+        if (!leaders.length) return "0/0";
+        const active = leaders.filter(a => states[a.id]?.decision && states[a.id].decision !== 'neutral').length;
+        return `${active}/${leaders.length}`;
+    }, [agents, states]);
 
     const abortRef = useRef(false);
     const controllerRef = useRef<AbortController | null>(null);
@@ -185,6 +239,28 @@ export default function SimulatePage() {
         };
     }, []);
 
+    useEffect(() => {
+        if (!isResizingWorkbench) return;
+
+        const handlePointerMove = (event: PointerEvent) => {
+            setLeftPanelWidth(Math.min(Math.max(event.clientX - 10, 360), 620));
+        };
+
+        const handlePointerUp = () => setIsResizingWorkbench(false);
+
+        window.addEventListener("pointermove", handlePointerMove);
+        window.addEventListener("pointerup", handlePointerUp);
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+
+        return () => {
+            window.removeEventListener("pointermove", handlePointerMove);
+            window.removeEventListener("pointerup", handlePointerUp);
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        };
+    }, [isResizingWorkbench]);
+
     // Derived scenario from context
     const scenario = useMemo(
         () => customScenario ?? simCtx.scenario ?? getScenario(scenarioId),
@@ -199,6 +275,8 @@ export default function SimulatePage() {
     }, [simCtx.scenario]);
 
     // ─── Initializer (URL Param & Context Sync) ───
+    const { hydrated: simHydrated, dbSimulationId, loadSimulationFromDb, setScenario, setAgentCount } = simCtx;
+
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
         const urlId = searchParams.get('id');
@@ -206,30 +284,30 @@ export default function SimulatePage() {
         const urlCount = Number(searchParams.get("count"));
 
         async function hydrate() {
-            if (!simCtx.hydrated) return; // Wait for hydration!
-            if (urlId && urlId !== simCtx.dbSimulationId) {
+            if (!simHydrated) return; // Wait for hydration!
+            if (urlId && urlId !== dbSimulationId) {
                 setIsLoadingDb(true);
-                await simCtx.loadSimulationFromDb(urlId);
+                await loadSimulationFromDb(urlId);
                 setIsLoadingDb(false);
             } else if (!urlId && !quickLaunchAppliedRef.current && agents.length === 0) {
                 const requestedScenario = SCENARIOS.find((item) => item.id === urlScenario);
                 if (requestedScenario) {
                     setScenarioId(requestedScenario.id);
                     setCustomScenario(null);
-                    simCtx.setScenario(requestedScenario);
+                    setScenario(requestedScenario);
                 }
 
                 if (Number.isFinite(urlCount) && urlCount >= 2) {
                     const safeCount = Math.min(Math.max(Math.round(urlCount), 2), 10000);
                     setQuickLaunchCount(safeCount);
-                    simCtx.setAgentCount(safeCount);
+                    setAgentCount(safeCount);
                 }
 
                 quickLaunchAppliedRef.current = true;
             }
         }
         hydrate();
-    }, [agents.length, simCtx, simCtx.dbSimulationId, simCtx.hydrated]);
+    }, [agents.length, simHydrated, dbSimulationId, loadSimulationFromDb, setScenario, setAgentCount]);
 
     // Update phase based on state
     useEffect(() => {
@@ -299,19 +377,29 @@ export default function SimulatePage() {
                 setSelectedAgentId(null);
                 setPhase("CONFIGURED");
 
+                setConsoleMessages((current) => [
+                    ...current,
+                    {
+                        id: `${Date.now()}-${current.length}`,
+                        role: "system",
+                        title: "Population Configured",
+                        body: `Successfully generated ${count.toLocaleString()} synthetic agents with Watts-Strogatz social connection topology.`
+                    }
+                ]);
+
                 // If associated with a DB record, update config
                 if (simCtx.dbSimulationId) {
                     await supabase
                         .from("simulations")
-                    .update({
-                        configuration: {
-                            title: buildSimulationTitle(simCtx.product?.name, scenario.label),
-                            agents: newAgents,
-                            edges: newEdges,
-                            scenario_id: scenarioId,
-                            custom_scenario: customScenario,
-                            branches: simCtx.branches,
-                        }
+                        .update({
+                            configuration: {
+                                title: buildSimulationTitle(simCtx.product?.name, scenario.label),
+                                agents: newAgents,
+                                edges: newEdges,
+                                scenario_id: scenarioId,
+                                custom_scenario: customScenario,
+                                branches: simCtx.branches,
+                            }
                         })
                         .eq("id", simCtx.dbSimulationId);
                 }
@@ -409,7 +497,7 @@ export default function SimulatePage() {
             let doneCount = 0;
             setProgress({ done: 0, total: agents.length });
             abortRef.current = false; // Reset on start
-            
+
             simCtx.clearTicker();
             simCtx.addTickerMsg(`INITIATING_STEP_${currentStep + 1}_PROCEDURES`, "info");
 
@@ -426,20 +514,20 @@ export default function SimulatePage() {
                     batch: batch.map(agent => {
                         // Seed logic: handle first step partners
                         const isSeeded = currentStep === 0 && currentStates[agent.id]?.isSeeded;
-                        
+
                         const neighborIds = edges
                             .filter(([a, b]) => a === agent.id || b === agent.id)
                             .map(([a, b]) => (a === agent.id ? b : a));
-                        
+
                         return {
                             agentId: agent.id,
                             agent: agent,
                             neighborStates: Object.fromEntries(
                                 neighborIds.map(nid => [
                                     nid,
-                                    { 
-                                        decision: neighborSnapshot[nid]?.decision ?? "neutral", 
-                                        reasoning: neighborSnapshot[nid]?.reasoning ?? "" 
+                                    {
+                                        decision: neighborSnapshot[nid]?.decision ?? "neutral",
+                                        reasoning: neighborSnapshot[nid]?.reasoning ?? ""
                                     }
                                 ])
                             ),
@@ -494,7 +582,7 @@ export default function SimulatePage() {
                     } else {
                         // Failover 2: Max attempts exceeded! Trigger deterministic local fallback to ensure zero skipped nodes
                         simCtx.addTickerMsg(`BATCH_${originalIndex}_SALVAGED_VIA_LOCAL_FALLBACK`, "info");
-                        
+
                         const fallbackResults = batch.map(agent => {
                             const isSeeded = currentStep === 0 && currentStates[agent.id]?.isSeeded;
                             const neighborIds = edges
@@ -504,11 +592,11 @@ export default function SimulatePage() {
                             const neighborStateMap: Record<number, AgentState> = Object.fromEntries(
                                 neighborIds.map(nid => [
                                     nid,
-                                    { 
-                                        decision: neighborSnapshot[nid]?.decision ?? "neutral", 
-                                        reasoning: neighborSnapshot[nid]?.reasoning ?? "", 
-                                        step: null, 
-                                        pending: false 
+                                    {
+                                        decision: neighborSnapshot[nid]?.decision ?? "neutral",
+                                        reasoning: neighborSnapshot[nid]?.reasoning ?? "",
+                                        step: null,
+                                        pending: false
                                     }
                                 ])
                             );
@@ -526,8 +614,8 @@ export default function SimulatePage() {
                             );
 
                             const finalDecision = isSeeded ? "support" as DecisionType : decision;
-                            const finalReasoning = isSeeded 
-                                ? "I am supporting this product as an early partner." 
+                            const finalReasoning = isSeeded
+                                ? "I am supporting this product as an early partner."
                                 : `Cognitive alignment with archetype ${agent.persona} completed successfully.`;
 
                             return {
@@ -545,7 +633,7 @@ export default function SimulatePage() {
                 // ─── Phase 3: State Integration ──────────────────────────────────────
                 data.results.forEach((resItem: RunStepResponse) => {
                     const agent = agents.find(a => a.id === resItem.agentId)!;
-                    
+
                     const finalDecision = resItem.decision;
                     const finalReasoning = resItem.reasoning;
 
@@ -560,7 +648,8 @@ export default function SimulatePage() {
 
                     simCtx.addAgentHistoryPoint(resItem.agentId, {
                         step: currentStep,
-                        decision: finalDecision
+                        decision: finalDecision,
+                        reasoning: finalReasoning
                     });
 
                     simCtx.addLogEntry({
@@ -580,7 +669,7 @@ export default function SimulatePage() {
 
                 // Update local context state at end of batch for live feedback
                 simCtx.setAgentStates({ ...newStates });
-                
+
                 // Real-time Analyst Alert
                 const batchSupport = data.results.filter((r: RunStepResponse) => r.decision === 'support').length;
                 if (batchSupport / batch.length < 0.3) {
@@ -607,13 +696,24 @@ export default function SimulatePage() {
             const snap = buildSnapshot(currentStep, newStates);
             simCtx.addAdoptionPoint(snap);
             const prevSnap = simCtx.adoptionCurve.length > 0 ? simCtx.adoptionCurve[simCtx.adoptionCurve.length - 1] : undefined;
-            setStepInsight(generateStepInsight(snap, currentStep + 1, prevSnap));
+            const insightText = generateStepInsight(snap, currentStep + 1, prevSnap);
+            setStepInsight(insightText);
+
+            setConsoleMessages((current) => [
+                ...current,
+                {
+                    id: `${Date.now()}-${current.length}`,
+                    role: "system",
+                    title: `Step ${currentStep + 1} Complete`,
+                    body: insightText
+                }
+            ]);
 
             simCtx.setStep(currentStep + 1);
             setRunning(false);
             setPhase("DONE");
             setProgress(null);
-            
+
             simCtx.addTickerMsg(`STEP_${currentStep + 1}_ANALYSIS_COMPLETE`, "success");
 
             return newStates;
@@ -735,7 +835,7 @@ export default function SimulatePage() {
         simCtx.setLog(log);
         simCtx.setScenario(scenario);
         simCtx.setFlowStep("complete");
-        
+
         const url = simCtx.dbSimulationId ? `/results?id=${simCtx.dbSimulationId}` : "/results";
         router.push(url);
     }, [agents, edges, states, step, history, log, scenario, mainView, agentHistories, simCtx, router]);
@@ -771,14 +871,14 @@ export default function SimulatePage() {
     const filteredAgents = useMemo(() => {
         return agents.filter((ag) => {
             const st = states[ag.id];
-            
+
             let matchesSearch = false;
             if (isAISearch && filterSearch !== "") {
                 // Behavioral/Semantic Search
                 const query = filterSearch.toLowerCase();
                 const persona = ag.persona.toLowerCase();
                 const job = ag.job.toLowerCase();
-                
+
                 // Matches "Stubborn" -> High Risk/StatusQuo
                 if (query.includes("stubborn") && (ag.risk > 0.7 || (ag.statusQuoBias || 0.5) > 0.7)) matchesSearch = true;
                 // Matches "Follower" -> High Social
@@ -788,11 +888,11 @@ export default function SimulatePage() {
                 // Default to persona/job match
                 else if (persona.includes(query) || job.includes(query)) matchesSearch = true;
             } else {
-                matchesSearch = filterSearch === "" || 
+                matchesSearch = filterSearch === "" ||
                     ag.name.toLowerCase().includes(filterSearch.toLowerCase()) ||
                     ag.job.toLowerCase().includes(filterSearch.toLowerCase());
             }
-            
+
             const matchesPersona = filterPersona === "all" || ag.persona === filterPersona;
             const matchesDecision = filterDecision === "all" || (st && (st.decision === filterDecision || (filterDecision === "null" && st.decision === null)));
 
@@ -812,52 +912,98 @@ export default function SimulatePage() {
 
     const isConfigured = phase !== "UNCONFIGURED";
 
+    // Tab stays active when selectedAgentId changes
+
+    const appendConsoleMessage = (message: Omit<ConsoleMessage, "id">) => {
+        setConsoleMessages((current) => [
+            ...current,
+            { ...message, id: `${Date.now()}-${current.length}` },
+        ]);
+    };
+
+    const selectAgentForInspection = (id: number) => {
+        setSelectedAgentId(id);
+        setRightSidebarTab("agent");
+        setIsRightSidebarOpen(true);
+    };
+
+    const handleCloseRightSidebar = useCallback(() => {
+        setIsRightSidebarOpen(false);
+        setSelectedAgentId(null);
+    }, []);
+
+    const handleBuildPreset = () => {
+        const safeCount = Math.min(Math.max(Math.round(quickLaunchCount ?? simCtx.agentCount ?? 50), 2), 10000);
+        appendConsoleMessage({ role: "user", body: `${safeCount.toLocaleString()} agents > build population` });
+        void handleGenerate(safeCount);
+    };
+
+    const handleRunStepPreset = () => {
+        appendConsoleMessage({ role: "user", body: `Run step ${step + 1}` });
+        void handleRunStep();
+    };
+
+    const handleAutoPreset = () => {
+        appendConsoleMessage({ role: "user", body: "Auto 3x" });
+        void handleAutoRun();
+    };
+
+    const handleResetPreset = () => {
+        appendConsoleMessage({ role: "user", body: "Reset workspace" });
+        handleFullReset();
+        appendConsoleMessage({
+            role: "system",
+            title: "Simulation update",
+            body: "Workspace reset. Population and run state cleared.",
+        });
+    };
+
+    const handleSendMessage = () => {
+        if (!chatInput.trim()) return;
+        appendConsoleMessage({ role: "user", body: chatInput.trim() });
+        const text = chatInput.trim();
+        setChatInput("");
+
+        // Auto trigger action based on simulation state
+        if (phase === "UNCONFIGURED") {
+            handleBuildPreset();
+        } else {
+            handleRunStepPreset();
+        }
+    };
+
     // ─── Render ────────────────────────────────────────────────────────────────
 
     const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     const urlId = searchParams.get('id');
     const isMismatchSim = urlId && simCtx.dbSimulationId !== urlId;
 
-    if (isLoadingDb || !simCtx.hydrated || isMismatchSim) {
-        return (
-            <div style={{ height: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "20px" }}>
-                <div className="live-dot" style={{ width: 40, height: 40 }} />
-                <p style={{ color: "var(--orange)", fontFamily: "var(--mono)", letterSpacing: "0.2em" }}>RECONSTRUCTING_SIMULATION_STATE...</p>
-            </div>
-        );
-    }
+    const showLoading = isLoadingDb || !simHydrated || isMismatchSim;
 
     return (
-        <div className="sim-container results-root marketing-theme" style={{ 
-            position: "fixed", inset: 0, width: "100%", height: "100%", 
-            overflow: "hidden", zIndex: 100, display: "flex", flexDirection: "column",
-            background: "var(--bg)",
-        }}>
+        <div className="sim-lovable-shell marketing-theme">
+            {/* Left Sidebar Expand Floating Button */}
+            {leftSidebarCollapsed && (
+                <button
+                    type="button"
+                    className="floating-expand-btn animate-in fade-in"
+                    onClick={() => setLeftSidebarCollapsed(false)}
+                    title="Show sidebar panel"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                </button>
+            )}
+            {showLoading && (
+                <div style={{ position: "absolute", inset: 0, background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "20px", zIndex: 9999 }}>
+                    <div className="live-dot" style={{ width: 40, height: 40 }} />
+                    <p style={{ color: "var(--orange)", fontFamily: "var(--mono)", letterSpacing: "0.2em" }}>RECONSTRUCTING_SIMULATION_STATE...</p>
+                </div>
+            )}
             <style jsx global>{`
-                .telemetry-label {
-                    position: absolute;
-                    font-family: var(--mono);
-                    font-size: 8px;
-                    color: var(--muted);
-                    pointer-events: none;
-                    letter-spacing: 0.25em;
-                    text-transform: uppercase;
-                    z-index: 5;
-                    opacity: 0.5;
-                }
-            `}</style>
-
-            {/* Tactical Telemetry Overlays */}
-            <div className="telemetry-label" style={{ top: 80, left: 24 }}>TRINITY_SYS_LVL: 0.94</div>
-            <div className="telemetry-label" style={{ top: 80, right: 24 }}>SIM_ID_HASH: {simCtx.dbSimulationId?.slice(0,12) || "LOCAL_CACHE"}</div>
-            <div className="telemetry-label" style={{ bottom: 24, left: 24 }}>COORDS: 40.7128°N | 74.0060°W</div>
-            <div className="telemetry-label" style={{ bottom: 24, right: 24 }}>MEM_FLOW: {agents.length || 0}P / {mounted ? new Date().toLocaleTimeString() : "--:--:--"}</div>
-
-            {/* ── PREMIUM MISSION CONTROL BACKGROUND ── */}
-            <div style={{ position: "absolute", top: "0%", left: "50%", transform: "translateX(-50%)", width: "100%", height: "100%", background: "radial-gradient(circle at top left, rgba(0, 82, 255, 0.08), transparent 40%), radial-gradient(circle at top right, rgba(255, 107, 53, 0.06), transparent 35%)", pointerEvents: "none", zIndex: 0 }} />
-            <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, rgba(0,82,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,82,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", zIndex: 0, pointerEvents: "none", opacity: 0.5 }} />
-            <style jsx global>{`
-                html, body {
+                html,
+                body {
                     overflow: hidden !important;
                     height: 100% !important;
                     width: 100% !important;
@@ -867,212 +1013,489 @@ export default function SimulatePage() {
                 }
             `}</style>
 
-            {/* ── TOP: Simulation Ticker ── */}
-            <TopBar
-                step={step}
-                running={running}
-                states={states}
-                history={history}
-                scenarioLabel={scenario.label}
-                agentCount={agents.length}
-            />
+            <div
+                className={`sim-workbench ${leftSidebarCollapsed ? "left-collapsed" : ""}`}
+                style={{
+                    gridTemplateColumns: leftSidebarCollapsed
+                        ? `0px 0px minmax(0, 1fr)`
+                        : `${leftPanelWidth}px 14px minmax(0, 1fr)`
+                }}
+            >
+                <aside className="conversation-panel">
+                    {/* Project Switcher Overlay Drawer */}
+                    {isDrawerOpen && (
+                        <div
+                            className="drawer-backdrop"
+                            onClick={() => setIsDrawerOpen(false)}
+                        />
+                    )}
 
-            {/* ── Control bar ── */}
-            <div className="control-bar" style={{ 
-                display: "flex", alignItems: "center", gap: 12, padding: "0 24px", height: "56px", 
-                borderBottom: "1px solid var(--border)", 
-                background: "rgba(255, 255, 255, 0.45)", backdropFilter: "blur(24px)", 
-                flexShrink: 0, zIndex: 20, boxShadow: "0 4px 30px rgba(0, 82, 255, 0.02)" 
-            }}>
-                <Link href="/dashboard" className="btn-ghost-setup" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "6px", marginRight: "12px" }}>
-                    <span style={{ fontSize: "14px" }}>←</span> DASHBOARD
-                </Link>
-
-                <div style={{ fontFamily: "var(--mono)", fontSize: 13, color: "var(--bright)", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 700, marginRight: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                    <div className="landing-nav-dot" style={{ width: 8, height: 8, boxShadow: "0 0 10px var(--accent)" }}>◉</div>
-                    TRINITY_ENGINE
-                </div>
-
-                <ScenarioPicker
-                    value={scenarioId}
-                    onChange={handleScenarioChange}
-                    onCustom={() => setShowCustomForm(true)}
-                    disabled={running || step > 0}
-                />
-
-                <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
-                    {progress && (
-                        <>
-                            <div className="step-progress-bar">
-                                <div className="step-progress-fill" style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }} />
+                    <div className={`sim-side-drawer ${isDrawerOpen ? "open" : ""}`}>
+                        <div className="drawer-header">
+                            <div className="drawer-brand">
+                                <div className="drawer-logo">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="2" y="2" width="9" height="9" rx="2.5" fill="#0052ff" />
+                                        <rect x="13" y="2" width="9" height="9" rx="2.5" fill="#0052ff" />
+                                        <rect x="2" y="13" width="9" height="9" rx="2.5" fill="#0052ff" />
+                                        <rect x="13" y="13" width="9" height="9" rx="2.5" fill="#0052ff" />
+                                    </svg>
+                                </div>
+                                <span className="drawer-workspace-name">Notaprompt</span>
                             </div>
-                            <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--accent)" }}>
-                                {progress.done}/{progress.total}
-                            </span>
-                        </>
-                    )}
-
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)" }}>
-                        STEP {step} / ∞
-                    </span>
-
-                    {(step >= 1 || phase === "DONE") && (
-                        <button 
-                            onClick={handleViewResults}
-                            className="btn-cta" 
-                            style={{ padding: "8px 16px", height: "32px", color: "#fff" }}
-                        >
-                            View Results →
-                        </button>
-                    )}
-
-                    {isConfigured && (
-                        <>
-                            <button id="btn-autorun" className="btn-ghost-setup" onClick={handleAutoRun} disabled={running} title="Run 3 steps automatically" style={{ height: "32px", padding: "0 12px" }}>
-                                ▶▶ AUTO ×3
+                            <button
+                                type="button"
+                                className="drawer-close-btn-ref"
+                                onClick={() => setIsDrawerOpen(false)}
+                                aria-label="Close project menu"
+                                title="Close project menu"
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="11 17 6 12 11 7"></polyline>
+                                    <polyline points="18 17 13 12 18 7"></polyline>
+                                </svg>
                             </button>
+                        </div>
 
-                            {running ? (
-                                <div style={{ display: "flex", gap: 6 }}>
-                                    <button 
-                                        className="btn-cta" 
-                                        onClick={handleStop}
-                                        style={{ 
-                                            height: "32px", 
-                                            padding: "0 16px", 
-                                            background: "#ff3b3b",
-                                            color: "white",
-                                            border: "2px solid rgba(255, 255, 255, 0.4)",
-                                            fontWeight: 900,
-                                            fontSize: "10px",
-                                            letterSpacing: "0.05em",
-                                            boxShadow: "0 0 30px rgba(255, 59, 59, 0.5)"
-                                        }}
+                        <div className="drawer-content no-scrollbar">
+                            {/* Scenario Dropdown Selector Section */}
+                            <div className="scenario-selector-section">
+                                <span className="drawer-section-title">Scenario</span>
+                                <div className="scenario-picker-container">
+                                    <button
+                                        type="button"
+                                        className="scenario-picker-trigger"
+                                        onClick={() => setIsScenarioDropdownOpen(!isScenarioDropdownOpen)}
                                     >
-                                        ■ STOP_SIMULATION
+                                        <div className="scenario-badge">
+                                            <span>{scenario.label ? scenario.label.charAt(0) : "S"}</span>
+                                        </div>
+                                        <span className="scenario-trigger-label">{scenario.label}</span>
+                                        <svg className={`chevron-icon ${isScenarioDropdownOpen ? 'open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="6 9 12 15 18 9" />
+                                        </svg>
                                     </button>
-                                    {phase === "RUNNING" && (
-                                        <button 
-                                            className="btn-ghost-setup"
-                                            onClick={() => {
-                                                // Force a retry of the current step
-                                                runStep(step, states);
-                                            }}
-                                            style={{ height: "32px", padding: "0 12px", border: "1px solid var(--accent)", color: "var(--accent)" }}
-                                        >
-                                            ↻ RETRY_BATCH
-                                        </button>
+
+                                    {isScenarioDropdownOpen && (
+                                        <div className="scenario-dropdown-menu">
+                                            {SCENARIOS.map((s) => (
+                                                <button
+                                                    key={s.id}
+                                                    onClick={() => {
+                                                        handleScenarioChange(s.id);
+                                                        setIsScenarioDropdownOpen(false);
+                                                    }}
+                                                    className={`scenario-dropdown-item ${scenarioId === s.id ? "active" : ""}`}
+                                                >
+                                                    <span className="item-dot"></span>
+                                                    {s.label}
+                                                </button>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* General Navigation Menu */}
+                            <div className="navigation-section">
+                                <span className="drawer-section-title">General</span>
+                                <div className="drawer-menu-group">
+                                    <Link href="/" className="drawer-menu-item">
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                            <polyline points="9 22 9 12 15 12 15 22" />
+                                        </svg>
+                                        <span className="menu-label">Home</span>
+                                    </Link>
+                                    <Link href="/dashboard" className="drawer-menu-item">
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect width="7" height="9" x="3" y="3" rx="1" />
+                                            <rect width="7" height="5" x="14" y="3" rx="1" />
+                                            <rect width="7" height="9" x="14" y="12" rx="1" />
+                                            <rect width="7" height="5" x="3" y="16" rx="1" />
+                                        </svg>
+                                        <span className="menu-label">Dashboard</span>
+                                    </Link>
+                                    <Link href="/setup" className="drawer-menu-item">
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                        <span className="menu-label">Setup Settings</span>
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {/* Tools section */}
+                            <div className="tools-section">
+                                <span className="drawer-section-title">Tools</span>
+                                <div className="drawer-menu-group">
+                                    <div className="drawer-menu-item disabled">
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                                        </svg>
+                                        <span className="menu-label">Analytics</span>
+                                    </div>
+                                    <div className="drawer-menu-item disabled">
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                                        </svg>
+                                        <span className="menu-label">Market Dynamics</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Recents list */}
+                            <div className="recents-section">
+                                <span className="drawer-section-title">Recents</span>
+                                <div className="drawer-menu-group">
+                                    <div className="drawer-menu-item disabled">
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <polyline points="12 6 12 12 16 14" />
+                                        </svg>
+                                        <span className="menu-label">{scenario.label}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Section */}
+                        <div className="drawer-footer">
+                            <div className="upgrade-promo-card">
+                                <div className="promo-info">
+                                    <div className="promo-title">Upgrade to Pro</div>
+                                    <div className="promo-subtitle">Unlock larger population sizes</div>
+                                </div>
+                                <div className="promo-icon-btn">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div className="user-profile-row-ref">
+                                <div className="user-avatar-ref">
+                                    <span>DG</span>
+                                </div>
+                                <div className="user-info-ref">
+                                    <div className="user-name-ref">Developer Account</div>
+                                    <div className="user-email-ref">admin@strawberry.ai</div>
+                                </div>
+                                <div className="user-chevron-ref">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="6 9 12 15 18 9" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="sim-left-header">
+                        <div className="header-left" onClick={() => setIsDrawerOpen(true)}>
+                            <button
+                                type="button"
+                                className="hamburger-menu-btn"
+                                aria-label="Switch project"
+                                title="Switch project"
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                    <line x1="4" y1="6" x2="20" y2="6" />
+                                    <line x1="4" y1="12" x2="16" y2="12" />
+                                    <line x1="4" y1="18" x2="20" y2="18" />
+                                </svg>
+                            </button>
+                            <div className="header-info">
+                                <div className="project-title-row">
+                                    <span className="project-name">{simCtx.product?.name || "HabitLoop"}</span>
+                                    <svg className="dropdown-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <polyline points="6 9 12 15 18 9" />
+                                    </svg>
+                                </div>
+                                <span className="preview-status">Previewing last saved version</span>
+                            </div>
+                        </div>
+                        <div className="header-actions">
+                            <Link href={simCtx.dbSimulationId ? `/results?id=${simCtx.dbSimulationId}` : "/results"} title="View history & report" className="header-action-btn">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                            </Link>
+                            <button
+                                type="button"
+                                title="Hide panel"
+                                className="header-action-btn"
+                                onClick={() => setLeftSidebarCollapsed(true)}
+                            >
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="9" y1="3" x2="9" y2="21" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div ref={chatThreadRef} className="chat-thread no-scrollbar">
+                        {consoleMessages.map((message) => (
+                            <div key={message.id} className={`chat-wrapper ${message.role}`}>
+                                {message.role === "system" && <div className="chat-avatar system">N</div>}
+                                <div className="chat-body-group">
+                                    <span className="chat-timestamp">{message.role === "system" ? "Analyst" : "User"}</span>
+                                    <div className="chat-bubble">
+                                        {message.title && <strong className="chat-bubble-title">{message.title}</strong>}
+                                        <p>{message.body}</p>
+                                        {message.role === "system" && message.title?.includes("Complete") && !running && message.id === consoleMessages.filter(m => m.role === "system" && m.title?.includes("Complete")).slice(-1)[0]?.id && (
+                                            <div className="next-actions" style={{ marginTop: 10 }}>
+                                                <button type="button" onClick={handleRunStepPreset} className="primary" style={{ height: 26, fontSize: 9 }}>Run next step</button>
+                                                <button type="button" onClick={handleViewResults} style={{ height: 26, fontSize: 9, marginLeft: 6 }}>View report</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                {message.role === "user" && <div className="chat-avatar user">U</div>}
+                            </div>
+                        ))}
+
+                        {consoleMessages.length === 0 && !isGenerating && !running && (
+                            <div className="chat-wrapper system">
+                                <div className="chat-avatar system">N</div>
+                                <div className="chat-body-group">
+                                    <span className="chat-timestamp">System</span>
+                                    <div className="chat-bubble">
+                                        <strong className="chat-bubble-title">Setup Guidance</strong>
+                                        <p>Population ready. Select a product scenario parameters and execute steps to simulate market adoption behavior.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {(isGenerating || running) && (
+                            <div className="chat-wrapper system">
+                                <div className="chat-avatar system">N</div>
+                                <div className="chat-body-group">
+                                    <span className="chat-timestamp">System</span>
+                                    <div className="chat-bubble shimmer-response" style={{ width: "100%", maxWidth: "340px", padding: "16px", borderRadius: "4px", border: "1px solid var(--border-bright)" }}>
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                                            <strong className="chat-bubble-title" style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", color: "var(--orange)" }}>
+                                                {isGenerating ? "// GENERATING_POPULATION" : `// SIMULATING_STEP_0${step + 1}`}
+                                            </strong>
+                                            <span className="live-dot" style={{ width: 6, height: 6, background: "var(--accent)" }} />
+                                        </div>
+                                        <div style={{ fontFamily: "var(--sans)", fontSize: 12, color: "var(--text)", lineHeight: 1.4, marginBottom: 12 }}>
+                                            {isGenerating
+                                                ? `Building ${Number(quickLaunchCount || simCtx.agentCount || 50).toLocaleString()} synthetic respondents and compiling social network graph...`
+                                                : `Running multi-agent step decisions across Watts-Strogatz network...`}
+                                        </div>
+                                        {progress ? (
+                                            <div style={{ width: "100%" }}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, fontFamily: "var(--mono)", color: "var(--muted)", marginBottom: 4 }}>
+                                                    <span>BATCH_INDEX: {progress.done} / {progress.total}</span>
+                                                    <span>{Math.round((progress.done / progress.total) * 100)}%</span>
+                                                </div>
+                                                <div style={{ width: "100%", height: 4, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
+                                                    <div style={{ height: "100%", width: `${(progress.done / progress.total) * 100}%`, background: "var(--accent)", transition: "width 0.3s ease-out" }} />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: "flex", gap: 6 }}>
+                                                <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--muted)", textTransform: "uppercase" }}>CALIBRATING NETWORK NODES...</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="chat-input-container" style={{ padding: "0 12px 12px 12px", borderTop: "1px solid rgba(0, 82, 255, 0.05)", background: "rgba(255, 255, 255, 0.45)" }}>
+                        <div className="chat-input-bar">
+                            <input
+                                type="text"
+                                placeholder={isConfigured ? "Ask the analyst or type a command..." : "Type a command (e.g. 'build 100')..."}
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        handleSendMessage();
+                                    }
+                                }}
+                            />
+                            <button
+                                type="button"
+                                className="send-btn"
+                                onClick={handleSendMessage}
+                                disabled={!chatInput.trim() || isGenerating || running}
+                            >
+                                Send
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="control-dock">
+                        <div 
+                            className="sidebar-stats-pill clickable-stats-trigger" 
+                            onClick={() => {
+                                setRightSidebarTab("stats");
+                                setIsRightSidebarOpen(true);
+                            }}
+                            title="Click to view overall stats"
+                        >
+                            <div className="stat-item">
+                                <span>Epoch</span>
+                                <strong>{step}</strong>
+                            </div>
+                            <div className="stat-item">
+                                <span>Adoption</span>
+                                <strong>{agents.length ? `${Math.round((Object.values(states).filter((s) => s.decision === "support").length / agents.length) * 100)}%` : "0%"}</strong>
+                            </div>
+                            <div className="stat-item">
+                                <span>Friction</span>
+                                <strong>{agents.length ? `${Math.round((Object.values(states).filter((s) => s.decision === "neutral").length / agents.length) * 100)}%` : "0%"}</strong>
+                            </div>
+                            <div className="stat-item">
+                                <span>Resistance</span>
+                                <strong>{agents.length ? `${Math.round((Object.values(states).filter((s) => s.decision === "oppose").length / agents.length) * 100)}%` : "0%"}</strong>
+                            </div>
+                            <div className="stat-item">
+                                <span>Inf-Adoption</span>
+                                <strong>{influenceWeightedAdoption}</strong>
+                            </div>
+                            <div className="stat-item">
+                                <span>Consensus</span>
+                                <strong>{consensusIndex}</strong>
+                            </div>
+                            <div className="stat-item">
+                                <span>Active Leaders</span>
+                                <strong>{activeLeaders}</strong>
+                            </div>
+                            <div className="stat-item">
+                                <span>Pop Size</span>
+                                <strong>{agents.length}</strong>
+                            </div>
+                        </div>
+
+                        <div className="quick-controls">
+                            <button type="button" className="action-btn auto" onClick={handleAutoPreset} disabled={!isConfigured || running || isGenerating}>
+                                Auto 3x
+                            </button>
+                            <button type="button" className="action-btn reset" onClick={handleResetPreset} disabled={running || isGenerating}>
+                                Reset
+                            </button>
+                            {running ? (
+                                <button type="button" className="action-btn stop danger" onClick={handleStop}>
+                                    Stop
+                                </button>
                             ) : (
-                                <button 
-                                    id="btn-step" 
-                                    className="btn-cta" 
-                                    onClick={handleRunStep} 
-                                    style={{ 
-                                        height: "32px", 
-                                        padding: "0 16px", 
-                                        background: "linear-gradient(135deg, var(--accent) 0%, #2a76ff 100%)",
-                                        color: "white",
-                                        border: "none",
-                                        transition: "all 0.3s ease"
-                                    }}
-                                >
-                                    <span style={{ fontWeight: 700 }}>▶ RUN STEP {step + 1}</span>
+                                <button type="button" className="action-btn run primary" onClick={isConfigured ? handleRunStepPreset : handleBuildPreset} disabled={isGenerating}>
+                                    {isConfigured ? `Run Step ${step + 1}` : "Build"}
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </aside>
 
-                            <button id="btn-reset" className="btn-ghost-setup" onClick={handleReset} disabled={running} title="Reset simulation (keep population)" style={{ height: "32px", padding: "0 12px" }}>
-                                ⟳ RESET
+                <button
+                    type="button"
+                    className={`workbench-resizer ${isResizingWorkbench ? "active" : ""}`}
+                    aria-label="Resize simulation panels"
+                    onPointerDown={(event) => {
+                        event.preventDefault();
+                        setIsResizingWorkbench(true);
+                    }}
+                />
+
+                <section className="preview-panel">
+                    <header className="preview-toolbar">
+                        <div className="preview-tabs" role="tablist" aria-label="Simulation views">
+                            <button
+                                type="button"
+                                className={previewTab === "network" ? "active" : ""}
+                                onClick={() => setPreviewTab("network")}
+                                title="Main Grid"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: previewTab === "network" ? 6 : 0, flexShrink: 0 }}>
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="2" y1="12" x2="22" y2="12" />
+                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                </svg>
+                                {previewTab === "network" && <span>Main Grid</span>}
                             </button>
-                        </>
-                    )}
 
-                    <button id="btn-reconfigure" className="btn-ghost-setup" onClick={handleFullReset} disabled={running} title="Re-configure population" style={{ height: "32px", padding: "0 12px" }}>
-                        ◈ CONFIG
-                    </button>
-                </div>
-            </div>
+                            <span className="tab-separator">|</span>
 
-            <div className="sim-main-content" style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0, position: "relative", zIndex: 10 }}>
-                {/* ── LEFT SIDEBAR ── */}
-                <div className="sidebar-left results-card" style={{ 
-                    display: "flex", flexDirection: "column", 
-                    width: leftSidebarCollapsed ? "40px" : "320px", 
-                    transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
-                    margin: "12px 0 12px 12px",
-                    background: "var(--panel)",
-                    backdropFilter: "blur(32px)",
-                    overflow: "hidden",
-                    position: "relative",
-                    borderRadius: leftSidebarCollapsed ? "12px" : "18px",
-                    border: "1px solid var(--border)"
-                }}>
-                    <button 
-                        onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
-                        style={{ position: "absolute", top: 12, right: 12, zIndex: 50, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}
-                    >
-                        {leftSidebarCollapsed ? "[+]" : "[-]"}
-                    </button>
-
-                    {!leftSidebarCollapsed && (
-                        <div className="no-scrollbar" style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", padding: "12px" }}>
-                            <div style={{ flexShrink: 0, marginBottom: "16px" }}>
-                                <div className="results-side-label" style={{ fontSize: "9px", marginBottom: "8px", paddingLeft: "4px" }}>STRATEGIC_BRIEF</div>
-                                <div style={{ background: "rgba(0, 82, 255, 0.02)", borderRadius: "12px", padding: "4px", border: "1px solid var(--border)" }}>
-                                    <ProductBrief scenario={scenario} />
-                                </div>
-                            </div>
-
-                            <div style={{ flexShrink: 0, marginBottom: "16px" }}>
-                                <InterventionPanel />
-                            </div>
-
-                            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                                <div className="results-side-label" style={{ fontSize: "9px", marginBottom: "8px", paddingLeft: "4px" }}>PERSONA_DISTRIBUTION</div>
-                                <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto", background: "rgba(0, 82, 255, 0.02)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-                                    {agents.length > 0 && <PersonaBreakdown agents={agents} states={states} />}
-                                </div>
-                            </div>
+                            <button
+                                type="button"
+                                className={previewTab === "list" ? "active" : ""}
+                                onClick={() => setPreviewTab("list")}
+                                title="Agent List"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: previewTab === "list" ? 6 : 0, flexShrink: 0 }}>
+                                    <rect x="3" y="3" width="7" height="7" />
+                                    <rect x="14" y="3" width="7" height="7" />
+                                    <rect x="14" y="14" width="7" height="7" />
+                                    <rect x="3" y="14" width="7" height="7" />
+                                </svg>
+                                {previewTab === "list" && <span>Agent List</span>}
+                            </button>
                         </div>
-                    )}
-                </div>
 
-                {/* ── MAIN VIEWPORT ── */}
-                <div className="sim-viewport results-card" style={{ 
-                    flex: 1, display: "flex", flexDirection: "column", 
-                    background: "var(--panel)", 
-                    margin: "12px", 
-                    borderRadius: "18px",
-                    border: "1px solid var(--border)",
-                    position: "relative", overflow: "hidden", height: "calc(100% - 24px)" 
-                }}>
-                    {isConfigured && (
-                        <div className="results-hero-top" style={{ 
-                            padding: "16px 20px", 
-                            background: "linear-gradient(to bottom, rgba(0, 82, 255, 0.02), transparent)",
-                            borderBottom: "1px solid var(--border)",
-                            alignItems: "center"
-                        }}>
-                             <div className="results-side-label" style={{ marginBottom: 0, color: "var(--bright)", opacity: 0.9 }}>AGENT_FIELD · {filteredAgents.length} MATCHES</div>
-                             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                                <button onClick={() => setMainView("network")} className="btn btn-ghost" style={{ border: "none", color: mainView === "network" ? "var(--accent)" : "var(--muted)", fontSize: 10, background: mainView === "network" ? "rgba(0, 82, 255, 0.08)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>🕸️ NETWORK</button>
-                                <button onClick={() => setMainView("grid")} className="btn btn-ghost" style={{ border: "none", color: mainView === "grid" ? "var(--accent)" : "var(--muted)", fontSize: 10, background: mainView === "grid" ? "rgba(0, 82, 255, 0.08)" : "transparent", borderRadius: "100px", padding: "4px 12px", transition: "all 0.2s" }}>📦 GRID</button>
-                             </div>
+                        <div className="preview-title">
+                            {/* Empty space */}
                         </div>
-                    )}
 
-                    {isConfigured && (
-                       <AgentListFilter
-                          search={filterSearch} onSearchChange={setFilterSearch}
-                          persona={filterPersona} onPersonaChange={setFilterPersona}
-                          decision={filterDecision} onDecisionChange={setFilterDecision}
-                          isAISearch={isAISearch} onToggleAI={() => setIsAISearch(!isAISearch)}
-                          isSearching={isSearchingAI} resultsCount={filteredAgents.length}
-                       />
-                    )}
+                        <div className="preview-tabs" role="tablist" aria-label="Inspector views">
+                            <button
+                                type="button"
+                                className={isRightSidebarOpen && rightSidebarTab === "agent" ? "active" : ""}
+                                onClick={() => {
+                                    if (selectedAgentId !== null) {
+                                        if (isRightSidebarOpen && rightSidebarTab === "agent") {
+                                            handleCloseRightSidebar();
+                                        } else {
+                                            setRightSidebarTab("agent");
+                                            setIsRightSidebarOpen(true);
+                                        }
+                                    }
+                                }}
+                                disabled={selectedAgentId === null}
+                                title={selectedAgentId === null ? "Select an agent to inspect details" : "Agent Details"}
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: (isRightSidebarOpen && rightSidebarTab === "agent") ? 6 : 0, flexShrink: 0 }}>
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                                {(isRightSidebarOpen && rightSidebarTab === "agent") && <span>Agent Detail</span>}
+                            </button>
 
-                    <div className="sim-viewport-inner" style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
+                            <span className="tab-separator">|</span>
+
+                            <button
+                                type="button"
+                                className={isRightSidebarOpen && rightSidebarTab === "stats" ? "active" : ""}
+                                onClick={() => {
+                                    if (isRightSidebarOpen && rightSidebarTab === "stats") {
+                                        handleCloseRightSidebar();
+                                    } else {
+                                        setRightSidebarTab("stats");
+                                        setIsRightSidebarOpen(true);
+                                    }
+                                }}
+                                disabled={!isConfigured}
+                                title="Overall Statistics"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: (isRightSidebarOpen && rightSidebarTab === "stats") ? 6 : 0, flexShrink: 0 }}>
+                                    <line x1="18" y1="20" x2="18" y2="10" />
+                                    <line x1="12" y1="20" x2="12" y2="4" />
+                                    <line x1="6" y1="20" x2="6" y2="14" />
+                                </svg>
+                                {(isRightSidebarOpen && rightSidebarTab === "stats") && <span>Overall Stats</span>}
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="preview-content" style={{ padding: 0, overflow: "hidden" }}>
                         {!isConfigured ? (
                             <ConfigScreen
                                 onGenerate={handleGenerate}
@@ -1081,151 +1504,98 @@ export default function SimulatePage() {
                                 maxCount={Math.max(quickLaunchCount ?? 0, 1499)}
                             />
                         ) : (
-                            <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
-                                {mainView === "grid" ? (
-                                    <AgentGrid agents={filteredAgents} states={states} selectedId={selectedAgentId} onSelect={setSelectedAgentId} />
-                                ) : (
-                                    <GlobalNetworkGraph agents={filteredAgents} edges={edges} states={states} selectedId={selectedAgentId} onSelect={setSelectedAgentId} />
-                                )}
+                            <div className="preview-layout-container">
+                                <div className="preview-view-main">
+                                    {previewTab === "network" ? (
+                                        <GlobalNetworkGraph
+                                            agents={filteredAgents}
+                                            edges={edges}
+                                            states={states}
+                                            selectedId={selectedAgentId}
+                                            onSelect={selectAgentForInspection}
+                                        />
+                                    ) : (
+                                        <div className="agent-list-view">
+                                            <AgentListFilter
+                                                search={filterSearch}
+                                                onSearchChange={setFilterSearch}
+                                                persona={filterPersona}
+                                                onPersonaChange={setFilterPersona}
+                                                decision={filterDecision}
+                                                onDecisionChange={setFilterDecision}
+                                                isAISearch={isAISearch}
+                                                onToggleAI={() => setIsAISearch(!isAISearch)}
+                                                isSearching={isSearchingAI}
+                                                resultsCount={filteredAgents.length}
+                                            />
+                                            <AgentGrid agents={filteredAgents} states={states} selectedId={selectedAgentId} onSelect={selectAgentForInspection} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className={`agent-detail-sidebar-container ${isRightSidebarOpen ? "open" : ""}`}>
+                                    {isRightSidebarOpen && (
+                                        <div className="agent-detail-sidebar-inner">
+                                            <div className="agent-detail-sidebar-header-tabs" style={{ justifyContent: "space-between", alignItems: "center", padding: "12px 18px" }}>
+                                                <span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 800, color: "var(--orange)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                                                    // {rightSidebarTab === "agent" ? "AGENT_INSPECTOR" : "GLOBAL_STATISTICS"}
+                                                </span>
+                                                
+                                                <button
+                                                    type="button"
+                                                    className="close-btn"
+                                                    onClick={handleCloseRightSidebar}
+                                                    aria-label="Close panel"
+                                                    style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                    </svg>
+                                                </button>
+                                            </div>
+
+                                            <div className="agent-detail-sidebar-body">
+                                                {rightSidebarTab === "agent" && selectedAgent && selectedState ? (
+                                                    <AgentDetail
+                                                        agent={selectedAgent}
+                                                        state={selectedState}
+                                                        agentHistory={selectedHistory}
+                                                        allStates={states}
+                                                        agents={agents}
+                                                        edges={edges}
+                                                        onSelectAgent={selectAgentForInspection}
+                                                        onToggleSeed={handleToggleSeed}
+                                                        isConfigPhase={step === 0}
+                                                    />
+                                                ) : rightSidebarTab === "stats" ? (
+                                                    <div className="overall-stats-tab-content">
+                                                        <div className="stats-section-block">
+                                                            <h4>Adoption Trajectory</h4>
+                                                            <div className="chart-wrapper-box" style={{ height: "220px", width: "100%", position: "relative" }}>
+                                                                <AdoptionChart history={history} total={agents.length} />
+                                                            </div>
+                                                        </div>
+                                                        <div className="stats-section-block log-block">
+                                                            <h4>Recent Step Logs</h4>
+                                                            <div className="steplog-wrapper-box" style={{ flex: 1, minHeight: "260px" }}>
+                                                                <StepLog entries={log} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="empty-tab-state">
+                                                        No agent selected. Use the grid view to select a node for detailed analysis.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
-                </div>
-
-                {/* ── RIGHT SIDEBAR ── */}
-                <div className="sidebar-right results-card" style={{ 
-                    display: "flex", flexDirection: "column", 
-                    width: rightSidebarCollapsed ? "40px" : "380px", 
-                    transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
-                    margin: "12px 12px 12px 0",
-                    background: "var(--panel)",
-                    backdropFilter: "blur(32px)",
-                    border: "1px solid var(--border)", 
-                    borderRadius: rightSidebarCollapsed ? "12px" : "18px",
-                    overflow: "hidden",
-                    position: "relative"
-                }}>
-                    <button
-                        onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
-                        style={{ position: "absolute", top: 12, left: 12, zIndex: 50, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}
-                    >
-                        {rightSidebarCollapsed ? "[-]" : "[+]"}
-                    </button>
-
-                    {!rightSidebarCollapsed && (
-                        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                            <div style={{ 
-                                display: "flex", 
-                                background: "rgba(0, 82, 255, 0.01)", 
-                                borderBottom: "1px solid var(--border)", 
-                                height: "40px", 
-                                flexShrink: 0 
-                            }}>
-                                <div onClick={() => setActivePanel("chart")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "chart" ? "var(--accent)" : "var(--muted)", borderRight: "1px solid var(--border)", background: activePanel === "chart" ? "rgba(0, 82, 255, 0.08)" : "transparent", transition: "all 0.2s" }}>CASCADES</div>
-                                <div onClick={() => setActivePanel("log")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "log" ? "var(--accent)" : "var(--muted)", borderRight: "1px solid var(--border)", background: activePanel === "log" ? "rgba(0, 82, 255, 0.08)" : "transparent", transition: "all 0.2s" }}>LIVE_LOG</div>
-                                <div onClick={() => setActivePanel("snapshots")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "10px", fontWeight: "700", fontFamily: "var(--mono)", letterSpacing: "0.1em", color: activePanel === "snapshots" ? "var(--accent)" : "var(--muted)", background: activePanel === "snapshots" ? "rgba(0, 82, 255, 0.08)" : "transparent", transition: "all 0.2s" }}>BRANCHES</div>
-                            </div>
-                            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                                {activePanel === "chart" ? (
-                                    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                                        <div style={{ flex: 1, minHeight: 0 }}>
-                                        <AdoptionChart history={history} total={agents.length} />
-                                        </div>
-                                        <div className="insight-panel" style={{ padding: "16px", background: "rgba(0, 82, 255, 0.02)", borderTop: "1px solid var(--border)" }}>
-                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                                <div className="label" style={{ fontSize: "10px", color: "var(--accent)", fontWeight: 800, fontFamily: "var(--mono)" }}>STEP_{step}_INSIGHT</div>
-                                                <button 
-                                                    onClick={handleStrategicSweep} 
-                                                    disabled={isAnalyzing || step === 0}
-                                                    className="btn btn-ghost" 
-                                                    style={{ fontSize: 9, padding: "2px 8px", border: "1px solid rgba(0, 82, 255, 0.25)", color: "var(--accent)" }}
-                                                >
-                                                    {isAnalyzing ? "ANALYZING..." : "✨ STRATEGIC_SWEEP"}
-                                                </button>
-                                            </div>
-                                            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--bright)" }}>{stepInsight || "Awaiting population synthesis..."}</p>
-                                        </div>
-                                    </div>
-                                ) : activePanel === "log" ? (
-                                    <StepLog entries={log} />
-                                ) : (
-                                    <div style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
-                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                            <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--accent)", fontWeight: 700 }}>BRANCH_SNAPSHOTS</div>
-                                            <button 
-                                                onClick={() => {
-                                                    const name = prompt("Enter branch name:", `Branch at Step ${step}`);
-                                                    if (name) void simCtx.saveSnapshot(name);
-                                                }}
-                                                className="btn btn-primary" style={{ fontSize: 9, padding: "4px 10px" }}
-                                            >
-                                                + SAVE_BRANCH
-                                            </button>
-                                         </div>
-
-                                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                            {simCtx.branches.length === 0 ? (
-                                                <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", textAlign: "center", padding: "40px 0" }}>No branches saved yet.</div>
-                                            ) : (
-                                                simCtx.branches.map((snap) => (
-                                                    <div key={snap.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "rgba(0, 82, 255, 0.02)", border: "1px solid var(--border)", borderRadius: "4px" }}>
-                                                        <div>
-                                                            <div style={{ fontSize: 11, color: "var(--bright)", fontWeight: 600 }}>{snap.name}</div>
-                                                            <div style={{ fontSize: 9, color: "var(--muted)" }}>Step {snap.step} - {snap.adoption}% adoption</div>
-                                                        </div>
-                                                        <button
-                                                            disabled={!snap.simulationId}
-                                                            onClick={() => {
-                                                                const branchId = snap.simulationId || snap.id;
-                                                                if (branchId) router.push(`/simulate?id=${branchId}`);
-                                                            }}
-                                                            className="btn btn-ghost" style={{ fontSize: 9, color: "var(--accent)", border: "1px solid rgba(0, 82, 255, 0.25)", opacity: snap.simulationId ? 1 : 0.5 }}
-                                                        >
-                                                            {snap.simulationId ? "OPEN" : "SAVING..."}
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            )}
-                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                </section>
             </div>
-
-            {/* ── AGENT HIGHLIGHT (MATCH RESULTS SIDE CARD / DRAWER) ── */}
-            {selectedAgentId !== null && selectedAgent && selectedState && (
-                <div style={{ 
-                    position: "fixed", top: "12px", right: "12px", width: "440px", height: "calc(100% - 24px)", 
-                    background: "var(--panel)", backdropFilter: "blur(40px)", 
-                    WebkitBackdropFilter: "blur(40px)",
-                    border: "1px solid var(--border)", zIndex: 1000, 
-                    boxShadow: "-20px 0 100px rgba(0, 82, 255, 0.05)", 
-                    display: "flex", flexDirection: "column", 
-                    borderRadius: "24px",
-                    animation: "slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)" 
-                }}>
-                    <div style={{ 
-                        padding: "16px 20px", 
-                        borderBottom: "1px solid var(--border)", 
-                        display: "flex", justifyContent: "space-between", alignItems: "center", 
-                        background: "linear-gradient(to right, rgba(0, 82, 255, 0.05), transparent)" 
-                    }}>
-                        <div className="results-side-label" style={{ marginBottom: 0, color: "var(--bright)", letterSpacing: "0.2em", display: "flex", alignItems: "center", gap: 10 }}>
-                            <span>AGENT_TELEMETRY</span>
-                            <span style={{ color: "var(--muted)", fontSize: "10px", fontFamily: "var(--mono)", letterSpacing: "0.08em" }}>
-                                ID:{String(selectedAgent.id).padStart(3, "0")}
-                            </span>
-                        </div>
-                        <button onClick={() => setSelectedAgentId(null)} className="btn-ghost-setup" style={{ fontSize: 9, padding: "4px 10px", borderRadius: "100px" }}>CLOSE [×]</button>
-                    </div>
-                    <div style={{ flex: 1, overflow: "hidden" }}>
-                        <AgentDetail agent={selectedAgent} state={selectedState} agentHistory={selectedHistory} allStates={states} agents={agents} edges={edges} onSelectAgent={setSelectedAgentId} onToggleSeed={handleToggleSeed} isConfigPhase={step === 0} />
-                    </div>
-                </div>
-            )}
 
             {showCustomForm && (
                 <CustomScenarioForm
@@ -1234,7 +1604,1680 @@ export default function SimulatePage() {
                     existing={null}
                 />
             )}
+
+            <style jsx global>{`
+                .sim-lovable-shell {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 100;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    background:
+                        linear-gradient(180deg, rgba(0, 82, 255, 0.045) 0%, rgba(250, 249, 246, 0.98) 240px, var(--bg) 100%),
+                        var(--bg);
+                    color: var(--text);
+                    font-family: var(--sans);
+                }
+
+                .sim-workbench {
+                    display: grid;
+                    gap: 0;
+                    flex: 1;
+                    min-height: 0;
+                    padding: 18px 20px 20px;
+                }
+
+                /* Drawer Backdrop */
+                .drawer-backdrop {
+                    position: absolute;
+                    inset: 0;
+                    z-index: 100;
+                    background: rgba(15, 23, 42, 0.08);
+                    backdrop-filter: blur(1.5px);
+                    border-radius: 12px;
+                    animation: fadeIn 0.2s ease-out;
+                }
+
+                /* Floating Drawer Pop-Out (Slides horizontally from left to right) */
+                .sim-side-drawer {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    bottom: 0;
+                    width: 290px;
+                    max-width: 85%;
+                    background: rgba(255, 255, 255, 0.90);
+                    backdrop-filter: blur(20px);
+                    color: #1e293b;
+                    z-index: 120;
+                    box-shadow: 10px 0 40px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+                    display: flex;
+                    flex-direction: column;
+                    transform: translateX(-100%);
+                    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+                    border-right: 1px solid rgba(0, 82, 255, 0.08);
+                    border-radius: 12px;
+                }
+
+                .sim-side-drawer.open {
+                    transform: translateX(0);
+                }
+
+                .hamburger-menu-btn,
+                .drawer-close-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 28px;
+                    padding: 0;
+                    border: 1px solid rgba(0, 0, 0, 0.08);
+                    border-radius: 6px;
+                    background: #ffffff;
+                    color: var(--muted);
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .hamburger-menu-btn:hover,
+                .drawer-close-btn:hover {
+                    color: var(--bright);
+                    background: #f8fafc;
+                    border-color: rgba(0, 82, 255, 0.15);
+                }
+
+                .drawer-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    height: 56px;
+                    padding: 12px 16px;
+                    border-bottom: 1px solid rgba(0, 82, 255, 0.06);
+                    background: rgba(255, 255, 255, 0.4);
+                    backdrop-filter: blur(10px);
+                }
+
+                .drawer-brand {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .drawer-logo {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    filter: drop-shadow(0 2px 6px rgba(0, 82, 255, 0.15));
+                }
+
+                .drawer-workspace-name {
+                    font-size: 15px;
+                    font-weight: 800;
+                    font-family: var(--sans);
+                    color: #0052ff;
+                    letter-spacing: -0.01em;
+                }
+
+                .drawer-close-btn-ref {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    border: 1px solid rgba(15, 23, 42, 0.06);
+                    border-radius: 6px;
+                    background: #ffffff;
+                    color: #64748b;
+                    cursor: pointer;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+                }
+
+                .drawer-close-btn-ref:hover {
+                    color: #0f172a;
+                    background: #f8fafc;
+                    border-color: rgba(15, 23, 42, 0.12);
+                    transform: translateX(-1px);
+                }
+
+                .drawer-content {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                }
+
+                .scenario-selector-section {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .scenario-picker-container {
+                    position: relative;
+                    width: 100%;
+                }
+
+                .scenario-picker-trigger {
+                    display: flex;
+                    align-items: center;
+                    width: 100%;
+                    padding: 10px 12px;
+                    background: #ffffff;
+                    border: 1px solid rgba(15, 23, 42, 0.06);
+                    border-radius: 10px;
+                    cursor: pointer;
+                    text-align: left;
+                    font-family: var(--sans);
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+                    gap: 10px;
+                }
+
+                .scenario-picker-trigger:hover {
+                    border-color: rgba(0, 82, 255, 0.2);
+                    background: #fafbfe;
+                    box-shadow: 0 4px 12px rgba(0, 82, 255, 0.04);
+                }
+
+                .scenario-badge {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 6px;
+                    background: linear-gradient(135deg, #0052ff 0%, #003dbb 100%);
+                    color: #ffffff;
+                    font-weight: 800;
+                    font-size: 11px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: var(--sans);
+                    box-shadow: 0 2px 4px rgba(0, 82, 255, 0.2);
+                }
+
+                .scenario-trigger-label {
+                    flex: 1;
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #1e293b;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .scenario-picker-trigger .chevron-icon {
+                    color: #94a3b8;
+                    transition: transform 0.2s ease;
+                }
+
+                .scenario-picker-trigger .chevron-icon.open {
+                    transform: rotate(180deg);
+                    color: #0f172a;
+                }
+
+                .scenario-dropdown-menu {
+                    position: absolute;
+                    top: calc(100% + 6px);
+                    left: 0;
+                    right: 0;
+                    background: #ffffff;
+                    border: 1px solid rgba(15, 23, 42, 0.08);
+                    border-radius: 10px;
+                    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+                    z-index: 130;
+                    padding: 6px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                    animation: slideUpIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+
+                @keyframes slideUpIn {
+                    from { transform: translateY(4px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+
+                .scenario-dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    width: 100%;
+                    padding: 8px 10px;
+                    border-radius: 8px;
+                    border: 0;
+                    background: transparent;
+                    font-family: var(--sans);
+                    font-size: 12.5px;
+                    font-weight: 600;
+                    color: #475569;
+                    cursor: pointer;
+                    text-align: left;
+                    transition: all 0.15s ease;
+                }
+
+                .scenario-dropdown-item:hover {
+                    color: #0f172a;
+                    background: #f1f5f9;
+                }
+
+                .scenario-dropdown-item.active {
+                    color: #0052ff;
+                    background: #eff6ff;
+                }
+
+                .scenario-dropdown-item .item-dot {
+                    width: 5px;
+                    height: 5px;
+                    border-radius: 50%;
+                    background: transparent;
+                    transition: background 0.15s ease;
+                }
+
+                .scenario-dropdown-item.active .item-dot {
+                    background: #0052ff;
+                }
+
+                .drawer-section-title {
+                    font-size: 10px;
+                    font-weight: 700;
+                    font-family: var(--mono);
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                    padding: 0 4px;
+                    margin-bottom: 6px;
+                }
+
+                .drawer-menu-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+
+                .drawer-menu-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    color: #475569;
+                    background: transparent;
+                    border: 0;
+                    width: 100%;
+                    text-align: left;
+                    font-size: 13px;
+                    font-family: var(--sans);
+                    font-weight: 600;
+                    cursor: pointer;
+                    text-decoration: none;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+
+                .drawer-menu-item:hover:not(.disabled) {
+                    color: #0f172a;
+                    background: rgba(15, 23, 42, 0.04);
+                }
+
+                .drawer-menu-item.active {
+                    color: #0052ff;
+                    background: rgba(0, 82, 255, 0.06);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                }
+
+                .drawer-menu-item.disabled {
+                    opacity: 0.45;
+                    cursor: not-allowed;
+                }
+
+                .drawer-menu-item .menu-icon-svg {
+                    color: currentColor;
+                    opacity: 0.75;
+                    transition: transform 0.2s ease, opacity 0.2s ease;
+                }
+
+                .drawer-menu-item:hover .menu-icon-svg {
+                    opacity: 1;
+                    transform: scale(1.05);
+                }
+
+                .drawer-footer {
+                    padding: 18px 16px;
+                    border-top: 1px solid rgba(0, 82, 255, 0.05);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                    background: rgba(248, 250, 252, 0.5);
+                    border-radius: 0 0 12px 12px;
+                }
+
+                .upgrade-promo-card {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
+                    border: 1px solid rgba(168, 85, 247, 0.12);
+                    border-radius: 10px;
+                    padding: 12px;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .upgrade-promo-card::before {
+                    content: "";
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+                    transform: translateX(-100%);
+                    transition: transform 0.6s ease;
+                }
+
+                .upgrade-promo-card:hover::before {
+                    transform: translateX(100%);
+                }
+
+                .promo-info {
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .promo-title {
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: #1e293b;
+                    font-family: var(--sans);
+                }
+
+                .promo-subtitle {
+                    font-size: 10px;
+                    color: #64748b;
+                    font-family: var(--sans);
+                }
+
+                .chat-wrapper {
+                    display: flex;
+                    gap: 12px;
+                    max-width: 85%;
+                    align-items: flex-start;
+                }
+
+                .chat-wrapper.user {
+                    margin-left: auto;
+                    flex-direction: row;
+                    justify-content: flex-end;
+                }
+
+                .chat-avatar {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 11px;
+                    font-weight: 700;
+                    font-family: var(--sans);
+                    flex-shrink: 0;
+                }
+
+                .chat-avatar.system {
+                    background: rgba(0, 82, 255, 0.08);
+                    color: #0052ff;
+                    border: 1px solid rgba(0, 82, 255, 0.15);
+                }
+
+                .chat-avatar.user {
+                    background: #f1f5f9;
+                    color: #334155;
+                    border: 1px solid #cbd5e1;
+                }
+
+                .chat-body-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+
+                .chat-wrapper.user .chat-body-group {
+                    align-items: flex-end;
+                }
+
+                .chat-wrapper.system .chat-body-group {
+                    align-items: flex-start;
+                }
+
+                .chat-timestamp {
+                    font-size: 9px;
+                    color: var(--muted);
+                    font-family: var(--sans);
+                    font-weight: 500;
+                }
+
+                .chat-bubble {
+                    border-radius: 12px;
+                    padding: 12px 14px;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    font-family: var(--sans);
+                }
+
+                .chat-wrapper.system .chat-bubble {
+                    background: rgba(0, 0, 0, 0.02);
+                    color: var(--text);
+                    border: 1px solid var(--border);
+                    border-top-left-radius: 2px;
+                }
+
+                .chat-wrapper.user .chat-bubble {
+                    background: #eff6ff;
+                    color: #1e40af;
+                    border: 1px solid #bfdbfe;
+                    border-top-right-radius: 2px;
+                }
+
+                .chat-bubble-title {
+                    display: block;
+                    font-size: 9px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    color: var(--muted);
+                    margin-bottom: 4px;
+                }
+
+                .chat-bubble p {
+                    margin: 0;
+                }
+
+                .shimmer-response::after {
+                    content: "";
+                    position: absolute;
+                    inset: 0;
+                    transform: translateX(-120%);
+                    background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.0) 35%, rgba(255, 255, 255, 0.78) 50%, rgba(255, 255, 255, 0.0) 65%, transparent 100%);
+                    animation: response-shimmer 1.7s ease-in-out infinite;
+                }
+
+                .next-actions {
+                    display: flex;
+                    gap: 8px;
+                    margin-top: 10px;
+                    flex-wrap: wrap;
+                }
+
+                .promo-icon-btn {
+                    width: 20px;
+                    height: 20px;
+                    background: #f59e0b;
+                    color: #000;
+                    font-size: 9px;
+                    font-weight: 800;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
+                }
+
+                .user-profile-row-ref {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    width: 100%;
+                    padding: 4px 0;
+                }
+
+                .user-avatar-ref {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #0052ff 0%, #003dbb 100%);
+                    color: white;
+                    font-size: 12.5px;
+                    font-weight: 700;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: var(--sans);
+                    box-shadow: 0 2px 6px rgba(0, 82, 255, 0.15);
+                    flex-shrink: 0;
+                }
+
+                .user-info-ref {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1px;
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .user-name-ref {
+                    font-size: 12.5px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    font-family: var(--sans);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .user-email-ref {
+                    font-size: 10.5px;
+                    color: #64748b;
+                    font-family: var(--sans);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .user-chevron-ref {
+                    color: #94a3b8;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                /* Floating Collapse Restore Button */
+                .floating-expand-btn {
+                    position: absolute;
+                    left: 0;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    z-index: 150;
+                    width: 18px;
+                    height: 48px;
+                    background: rgba(255, 255, 255, 0.84);
+                    backdrop-filter: blur(12px);
+                    border: 1px solid rgba(0, 82, 255, 0.12);
+                    border-left: 0;
+                    border-radius: 0 8px 8px 0;
+                    box-shadow: 4px 0 16px rgba(15, 23, 42, 0.08);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--bright);
+                    padding: 0;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+
+                .floating-expand-btn:hover {
+                    width: 22px;
+                    background: #ffffff;
+                    color: var(--accent);
+                    box-shadow: 4px 0 20px rgba(0, 82, 255, 0.15);
+                }
+
+                /* Collapsed Panel Slide Actions */
+                .conversation-panel {
+                    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s, width 0.25s;
+                }
+
+                .left-collapsed .conversation-panel {
+                    transform: translateX(-100%);
+                    opacity: 0;
+                    pointer-events: none;
+                }
+
+                .left-collapsed .workbench-resizer {
+                    display: none;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                .sim-workbench {
+                    display: grid;
+                    gap: 0;
+                    flex: 1;
+                    min-height: 0;
+                    padding: 18px 20px 20px;
+                }
+
+                .conversation-panel,
+                .preview-panel {
+                    min-height: 0;
+                    border: 1px solid rgba(0, 82, 255, 0.13);
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.78);
+                    box-shadow: 0 18px 54px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+                    backdrop-filter: blur(24px);
+                    overflow: hidden;
+                }
+
+                .conversation-panel {
+                    display: flex;
+                    flex-direction: column;
+                    position: relative;
+                    padding: 0;
+                }
+
+                .workbench-resizer {
+                    align-self: stretch;
+                    justify-self: center;
+                    width: 14px;
+                    height: auto;
+                    padding: 0;
+                    border: 0;
+                    border-radius: 0;
+                    background: transparent;
+                    cursor: col-resize;
+                    position: relative;
+                }
+
+                .workbench-resizer::before {
+                    content: "";
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    width: 4px;
+                    height: 84px;
+                    border-radius: 999px;
+                    background: rgba(0, 82, 255, 0.14);
+                    transform: translate(-50%, -50%);
+                    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72), 0 10px 22px rgba(0, 82, 255, 0.12);
+                    transition: width 160ms ease, background 160ms ease;
+                }
+
+                .workbench-resizer:hover::before,
+                .workbench-resizer.active::before {
+                    width: 6px;
+                    background: rgba(0, 82, 255, 0.42);
+                }
+
+                .sim-left-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    height: 52px;
+                    padding: 8px 12px;
+                    border-bottom: 1px solid rgba(0, 82, 255, 0.08);
+                    background: rgba(255, 255, 255, 0.4);
+                    backdrop-filter: blur(10px);
+                    flex-shrink: 0;
+                }
+
+                .header-left {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    cursor: pointer;
+                }
+
+                .logo-icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 26px;
+                    height: 26px;
+                    filter: drop-shadow(0 2px 5px rgba(255, 75, 75, 0.12));
+                }
+
+                .header-info {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1px;
+                }
+
+                .project-title-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+
+                .project-name {
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: var(--bright);
+                    font-family: var(--sans);
+                    line-height: 1.2;
+                }
+
+                .dropdown-arrow {
+                    color: var(--muted);
+                    width: 9px;
+                    height: 9px;
+                    transition: transform 0.2s;
+                }
+
+                .header-left:hover .dropdown-arrow {
+                    color: var(--bright);
+                    transform: translateY(1px);
+                }
+
+                .preview-status {
+                    font-size: 9px;
+                    color: var(--muted);
+                    font-family: var(--sans);
+                    font-weight: 500;
+                    line-height: 1.1;
+                }
+
+                .header-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+
+                .header-action-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 26px;
+                    height: 26px;
+                    border: 1px solid transparent;
+                    border-radius: 6px;
+                    color: var(--muted);
+                    background: transparent;
+                    transition: all 0.15s ease;
+                }
+
+                .header-action-btn:hover {
+                    color: var(--bright);
+                    background: rgba(0, 0, 0, 0.04);
+                    border-color: rgba(0, 0, 0, 0.03);
+                }
+
+                .preview-toolbar {
+                    display: grid;
+                    grid-template-columns: auto minmax(180px, 1fr) auto;
+                    align-items: center;
+                    gap: 10px;
+                    min-height: 54px;
+                    padding: 10px 12px 14px;
+                    background: transparent;
+                }
+
+                .conversation-header span,
+                .run-summary span,
+                .chat-message span {
+                    display: block;
+                    color: var(--muted);
+                    font-family: var(--mono);
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 0;
+                    text-transform: uppercase;
+                }
+
+                .conversation-header strong,
+                .preview-title strong {
+                    color: var(--bright);
+                    font-size: 14px;
+                    font-weight: 800;
+                }
+
+                button {
+                    height: 28px;
+                    border: 1px solid rgba(0, 0, 0, 0.12);
+                    border-radius: 999px;
+                    background: rgba(255, 255, 255, 0.74);
+                    color: var(--bright);
+                    cursor: pointer;
+                    font-family: var(--mono);
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 0;
+                    padding: 0 12px;
+                }
+
+                button:disabled {
+                    cursor: not-allowed;
+                    opacity: 0.48;
+                }
+
+                button.primary {
+                    border-color: rgba(0, 82, 255, 0.45);
+                    background: linear-gradient(135deg, #2f91ff 0%, var(--accent) 100%);
+                    color: white;
+                    box-shadow: 0 8px 18px rgba(0, 82, 255, 0.2);
+                }
+
+                button.danger {
+                    border-color: rgba(214, 55, 55, 0.28);
+                    color: #c62828;
+                }
+
+                .run-summary {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 1px;
+                    border-bottom: 1px solid var(--border);
+                    background: var(--border);
+                }
+
+                .run-summary div {
+                    padding: 12px;
+                    background: rgba(255, 255, 255, 0.68);
+                }
+
+                .run-summary strong {
+                    display: block;
+                    margin-top: 6px;
+                    color: var(--bright);
+                    font-family: var(--mono);
+                    font-size: 16px;
+                }
+
+                .chat-thread {
+                    flex: 1;
+                    min-height: 0;
+                    overflow-y: auto;
+                    padding: 20px 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                }
+                .chat-input-bar {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 12px;
+                    border: 1px solid rgba(0, 0, 0, 0.08);
+                    border-radius: 12px;
+                    background: #ffffff;
+                    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+                }
+
+                .chat-input-bar input {
+                    flex: 1;
+                    border: 0;
+                    background: transparent;
+                    outline: none;
+                    font-size: 13px;
+                    color: var(--bright);
+                    font-family: var(--sans);
+                }
+
+                .chat-input-bar input::placeholder {
+                    color: #a1a1aa;
+                }
+
+                .chat-input-bar .icon-btn {
+                    width: 28px;
+                    height: 28px;
+                    border: 0;
+                    background: transparent;
+                    color: #71717a;
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: background 0.15s, color 0.15s;
+                }
+
+                .chat-input-bar .icon-btn:hover:not(:disabled) {
+                    background: #f4f4f5;
+                    color: #18181b;
+                }
+
+                .chat-input-bar .icon-btn:disabled {
+                    opacity: 0.3;
+                    cursor: not-allowed;
+                }
+
+                .chat-input-bar .send-btn {
+                    height: 28px;
+                    border: 0;
+                    border-radius: 6px;
+                    background: #0052ff;
+                    color: white;
+                    font-family: var(--sans);
+                    font-size: 11px;
+                    font-weight: 600;
+                    padding: 0 12px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 10px rgba(0, 82, 255, 0.15);
+                    transition: background 0.15s;
+                }
+
+                .chat-input-bar .send-btn:hover:not(:disabled) {
+                    background: #0041cc;
+                }
+
+                .chat-input-bar .send-btn:disabled {
+                    background: #e4e4e7;
+                    color: #a1a1aa;
+                    box-shadow: none;
+                    cursor: not-allowed;
+                }
+
+
+                .chat-wrapper {
+                    display: flex;
+                    gap: 12px;
+                    max-width: 85%;
+                    align-items: flex-start;
+                }
+
+                .chat-wrapper.user {
+                    margin-left: auto;
+                    flex-direction: row;
+                    justify-content: flex-end;
+                }
+
+                .chat-avatar {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 11px;
+                    font-weight: 700;
+                    font-family: var(--sans);
+                    flex-shrink: 0;
+                }
+
+                .chat-avatar.system {
+                    background: rgba(0, 82, 255, 0.08);
+                    color: #0052ff;
+                    border: 1px solid rgba(0, 82, 255, 0.15);
+                }
+
+                .chat-avatar.user {
+                    background: #f1f5f9;
+                    color: #334155;
+                    border: 1px solid #cbd5e1;
+                }
+
+                .chat-body-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+
+                .chat-wrapper.user .chat-body-group {
+                    align-items: flex-end;
+                }
+
+                .chat-wrapper.system .chat-body-group {
+                    align-items: flex-start;
+                }
+
+                .chat-timestamp {
+                    font-size: 9px;
+                    color: var(--muted);
+                    font-family: var(--sans);
+                    font-weight: 500;
+                }
+
+                .chat-bubble {
+                    border-radius: 12px;
+                    padding: 12px 14px;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    font-family: var(--sans);
+                }
+
+                .chat-wrapper.system .chat-bubble {
+                    background: rgba(0, 0, 0, 0.02);
+                    color: var(--text);
+                    border: 1px solid var(--border);
+                    border-top-left-radius: 2px;
+                }
+
+                .chat-wrapper.user .chat-bubble {
+                    background: #eff6ff;
+                    color: #1e40af;
+                    border: 1px solid #bfdbfe;
+                    border-top-right-radius: 2px;
+                }
+
+                .chat-bubble-title {
+                    display: block;
+                    font-size: 9px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    color: var(--muted);
+                    margin-bottom: 4px;
+                }
+
+                .chat-bubble p {
+                    margin: 0;
+                }
+
+                .shimmer-response::after {
+                    content: "";
+                    position: absolute;
+                    inset: 0;
+                    transform: translateX(-120%);
+                    background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.0) 35%, rgba(255, 255, 255, 0.78) 50%, rgba(255, 255, 255, 0.0) 65%, transparent 100%);
+                    animation: response-shimmer 1.7s ease-in-out infinite;
+                }
+
+                .next-actions {
+                    display: flex;
+                    gap: 8px;
+                    margin-top: 10px;
+                    flex-wrap: wrap;
+                }
+
+                .control-dock {
+                    flex-shrink: 0;
+                    margin: 0 12px 12px;
+                    border: 1px solid rgba(0, 82, 255, 0.12);
+                    border-radius: 16px;
+                    background: rgba(255, 255, 255, 0.86);
+                    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+                    padding: 12px;
+                }
+
+                .prompt-display {
+                    display: none;
+                    grid-template-columns: minmax(0, 1fr) auto;
+                    gap: 10px;
+                    align-items: center;
+                    min-height: 56px;
+                    padding: 0 8px 0 18px;
+                    border: 1px solid rgba(0, 0, 0, 0.08);
+                    border-radius: 14px;
+                    background: rgba(255, 255, 255, 0.72);
+                    margin-bottom: 8px;
+                }
+
+                .prompt-display span {
+                    color: var(--muted);
+                    font-size: 19px;
+                    line-height: 1;
+                }
+
+                .prompt-display button {
+                    width: 46px;
+                    height: 46px;
+                    padding: 0;
+                    border: 0;
+                    background: #b8bdc3;
+                    color: white;
+                    font-size: 20px;
+                }
+
+                .sidebar-stats-pill {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    grid-template-rows: auto auto;
+                    row-gap: 8px;
+                    column-gap: 4px;
+                    padding: 10px 10px;
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.6);
+                    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+                    margin-bottom: 12px;
+                    font-family: var(--sans);
+                    font-size: 8px;
+                    font-weight: 500;
+                    text-align: center;
+                }
+
+                .sidebar-stats-pill .stat-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+
+                .sidebar-stats-pill .stat-item strong {
+                    color: var(--bright);
+                    font-size: 11px;
+                    font-weight: 700;
+                    margin-top: 1px;
+                }
+
+                .marketing-theme .sidebar-stats-pill {
+                    background: rgba(255, 255, 255, 0.85);
+                    border-color: rgba(0, 82, 255, 0.1);
+                }
+
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(2) strong {
+                    color: var(--support);
+                }
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(3) strong {
+                    color: var(--neutral);
+                }
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(4) strong {
+                    color: var(--oppose);
+                }
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(5) strong {
+                    color: var(--support);
+                }
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(6) strong {
+                    color: #3b82f6;
+                }
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(7) strong {
+                    color: var(--bright);
+                }
+
+                .clickable-stats-trigger {
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .clickable-stats-trigger:hover {
+                    border-color: rgba(0, 82, 255, 0.25) !important;
+                    background: rgba(0, 82, 255, 0.04) !important;
+                    box-shadow: 0 6px 16px rgba(0, 82, 255, 0.06) !important;
+                }
+
+                .sidebar-stats-pill .stat-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+
+                .sidebar-stats-pill .stat-item strong {
+                    color: var(--bright);
+                    font-size: 11px;
+                    font-weight: 700;
+                    margin-top: 1px;
+                }
+
+                .marketing-theme .sidebar-stats-pill {
+                    background: rgba(255, 255, 255, 0.85);
+                    border-color: rgba(0, 82, 255, 0.1);
+                }
+
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(2) strong {
+                    color: var(--support);
+                }
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(3) strong {
+                    color: var(--neutral);
+                }
+                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(4) strong {
+                    color: var(--oppose);
+                }
+
+                .quick-controls {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr 1.3fr;
+                    gap: 8px;
+                }
+
+                .quick-controls .action-btn {
+                    height: 38px;
+                    font-family: var(--sans);
+                    font-size: 11px;
+                    font-weight: 600;
+                    border-radius: 8px;
+                    border: 1px solid rgba(0, 82, 255, 0.1);
+                    background: #ffffff;
+                    color: var(--text);
+                    transition: all 0.2s ease;
+                    cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    text-transform: none;
+                    letter-spacing: normal;
+                }
+
+                .quick-controls .action-btn:hover:not(:disabled) {
+                    background: #f8fafc;
+                    border-color: rgba(0, 82, 255, 0.2);
+                    color: var(--bright);
+                }
+
+                .quick-controls .action-btn.primary {
+                    background: var(--support);
+                    color: #ffffff;
+                    border-color: var(--support);
+                    box-shadow: 0 4px 12px rgba(0, 82, 255, 0.15);
+                }
+
+                .quick-controls .action-btn.primary:hover:not(:disabled) {
+                    background: #0041cc;
+                    border-color: #0041cc;
+                }
+
+                .quick-controls .action-btn.danger {
+                    background: #ef4444;
+                    color: #ffffff;
+                    border-color: #ef4444;
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+                }
+
+                .quick-controls .action-btn.danger:hover:not(:disabled) {
+                    background: #dc2626;
+                }
+
+                .preview-panel {
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .preview-title {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-width: 220px;
+                    color: var(--muted);
+                    font-family: var(--mono);
+                    font-size: 11px;
+                }
+
+                .preview-title a {
+                    color: var(--accent);
+                    text-decoration: none;
+                    font-weight: 800;
+                }
+
+                .preview-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
+                }
+
+                /* CSS variables for the preview tab pills (dynamic theme support) */
+                .preview-tabs {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 3px 4px;
+                    border: 1px solid var(--pill-border, rgba(255, 255, 255, 0.06));
+                    border-radius: 999px;
+                    background: var(--pill-bg, #0a0a0c);
+                    box-shadow: var(--pill-shadow, 0 12px 30px rgba(0, 0, 0, 0.25));
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+
+                .preview-tabs button {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 999px;
+                    background: transparent;
+                    border: 1px solid transparent;
+                    color: var(--pill-text, #71717a);
+                    width: 32px;
+                    height: 32px;
+                    padding: 0;
+                    font-size: 11.5px;
+                    font-family: var(--sans);
+                    font-weight: 500;
+                    letter-spacing: -0.01em;
+                    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+
+                .preview-tabs button:hover:not(:disabled) {
+                    color: var(--pill-text-hover, #d4d4d8);
+                    background: var(--pill-hover-bg, rgba(255, 255, 255, 0.05));
+                }
+
+                .preview-tabs button:disabled {
+                    opacity: 0.35;
+                    cursor: not-allowed;
+                }
+
+                .preview-tabs button.active {
+                    width: auto;
+                    padding: 0 14px;
+                    border-color: var(--accent, #3b82f6);
+                    background: var(--pill-active-bg, rgba(59, 130, 246, 0.12));
+                    color: var(--accent, #3b82f6);
+                    box-shadow: 0 2px 12px var(--pill-active-glow, rgba(59, 130, 246, 0.3));
+                    font-weight: 600;
+                }
+
+                .preview-tabs .tab-separator {
+                    color: var(--pill-separator, rgba(255, 255, 255, 0.08));
+                    font-size: 10px;
+                    pointer-events: none;
+                    user-select: none;
+                    margin: 0 2px;
+                }
+
+                /* Define local scopes for custom variables */
+                .sim-lovable-shell, .preview-panel {
+                    --pill-bg: #0a0a0c;
+                    --pill-border: rgba(255, 255, 255, 0.06);
+                    --pill-text: #71717a;
+                    --pill-text-hover: #d4d4d8;
+                    --pill-separator: rgba(255, 255, 255, 0.08);
+                    --pill-hover-bg: rgba(255, 255, 255, 0.05);
+                    --pill-active-bg: rgba(59, 130, 246, 0.12);
+                    --pill-active-glow: rgba(59, 130, 246, 0.3);
+                    --pill-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+                }
+
+                .marketing-theme .preview-tabs {
+                    --pill-bg: rgba(15, 23, 42, 0.04);
+                    --pill-border: rgba(15, 23, 42, 0.06);
+                    --pill-text: #626575;
+                    --pill-text-hover: #0b0c10;
+                    --pill-separator: rgba(15, 23, 42, 0.08);
+                    --pill-hover-bg: rgba(0, 0, 0, 0.03);
+                    --pill-active-bg: rgba(0, 82, 255, 0.06);
+                    --pill-active-glow: rgba(0, 82, 255, 0.15);
+                    --pill-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+                }
+
+                .project-name-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 0 14px;
+                    height: 32px;
+                    border: 1px solid #3b82f6;
+                    border-radius: 999px;
+                    background: rgba(59, 130, 246, 0.12);
+                    color: #3b82f6;
+                    font-family: var(--sans);
+                    font-size: 11px;
+                    font-weight: 600;
+                    letter-spacing: 0.05em;
+                    box-shadow: 0 0 16px rgba(59, 130, 246, 0.35);
+                }
+
+                .project-name-pill .glow-dot {
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    background: #3b82f6;
+                    box-shadow: 0 0 8px #3b82f6;
+                    animation: pulse-blue 2s infinite ease-in-out;
+                }
+
+                @keyframes pulse-blue {
+                    0%, 100% { opacity: 0.6; transform: scale(0.9); }
+                    50% { opacity: 1; transform: scale(1.1); }
+                }
+
+                .status-pills {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 10px 14px;
+                    border-radius: 999px;
+                    background: rgba(255, 255, 255, 0.72);
+                    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+                    color: var(--bright);
+                    font-family: var(--mono);
+                    font-size: 11px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    white-space: nowrap;
+                }
+
+                .status-pills span {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    color: var(--bright);
+                }
+
+                .status-pills strong {
+                    color: currentColor;
+                    font-weight: 900;
+                }
+
+                .status-pills .adoption {
+                    color: var(--support);
+                }
+
+                .status-pills .friction {
+                    color: var(--neutral);
+                }
+
+                .status-pills .resistance {
+                    color: var(--oppose);
+                }
+
+                .preview-content {
+                    flex: 1;
+                    min-height: 0;
+                    display: flex;
+                    overflow: hidden;
+                    margin: 0 12px 12px;
+                    border: 1px solid rgba(0, 82, 255, 0.12);
+                    border-radius: 12px;
+                    background: var(--bg-darker);
+                }
+
+                .agent-list-view {
+                    display: flex;
+                    flex: 1;
+                    min-height: 0;
+                    flex-direction: column;
+                    background: var(--agent-list-bg, var(--bg-darker));
+                    position: relative;
+                }
+
+                .empty-detail {
+                    flex: 1;
+                    display: grid;
+                    place-items: center;
+                    align-content: center;
+                    gap: 8px;
+                    color: var(--muted);
+                    text-align: center;
+                    padding: 32px;
+                }
+
+                .empty-detail strong {
+                    color: var(--bright);
+                    font-size: 18px;
+                }
+
+                .empty-detail span {
+                    max-width: 320px;
+                    font-size: 13px;
+                    line-height: 1.5;
+                }
+
+                @keyframes thinking-dot {
+                    0%,
+                    100% {
+                        transform: translateY(0);
+                        opacity: 0.4;
+                    }
+                    50% {
+                        transform: translateY(-5px);
+                        opacity: 1;
+                    }
+                }
+
+                @keyframes response-shimmer {
+                    from {
+                        transform: translateX(-120%);
+                    }
+                    to {
+                        transform: translateX(120%);
+                    }
+                }
+
+                .preview-layout-container {
+                    display: flex;
+                    flex: 1;
+                    min-height: 0;
+                    width: 100%;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .agent-detail-sidebar-container {
+                    width: 0px;
+                    opacity: 0;
+                    flex-shrink: 0;
+                    overflow: hidden;
+                    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+                    border-left: 0px solid transparent;
+                    display: flex;
+                    flex-direction: column;
+                    background: var(--card-bg, #ffffff);
+                }
+
+                .agent-detail-sidebar-container.open {
+                    width: 320px;
+                    opacity: 1;
+                    border-left: 1px solid var(--border, rgba(0, 82, 255, 0.12));
+                }
+
+                .agent-detail-sidebar-inner {
+                    width: 320px;
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                }
+
+                .agent-detail-sidebar-header-tabs {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 14px 16px;
+                    border-bottom: 1px solid rgba(0, 82, 255, 0.08);
+                    background: rgba(255, 255, 255, 0.5);
+                    backdrop-filter: blur(10px);
+                }
+
+                .agent-detail-sidebar-header-tabs .tab-btn {
+                    height: 28px;
+                    padding: 0 12px;
+                    border-radius: 6px;
+                    border: 1px solid transparent;
+                    font-size: 11.5px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    background: transparent;
+                    color: var(--muted);
+                    font-family: var(--sans);
+                    transition: all 0.2s ease;
+                }
+
+                .agent-detail-sidebar-header-tabs .tab-btn:hover:not(:disabled) {
+                    color: var(--bright);
+                    background: rgba(0, 82, 255, 0.04);
+                }
+
+                .agent-detail-sidebar-header-tabs .tab-btn.active {
+                    color: #0052ff;
+                    background: rgba(0, 82, 255, 0.06);
+                    border-color: rgba(0, 82, 255, 0.1);
+                }
+
+                .agent-detail-sidebar-header-tabs .tab-btn:disabled {
+                    opacity: 0.35;
+                    cursor: not-allowed;
+                }
+
+                .agent-detail-sidebar-header-tabs .close-btn {
+                    margin-left: auto;
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 6px;
+                    border: 0;
+                    background: transparent;
+                    color: var(--muted);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s ease;
+                    padding: 0;
+                }
+
+                .agent-detail-sidebar-header-tabs .close-btn:hover {
+                    background: rgba(0, 0, 0, 0.04);
+                    color: var(--bright);
+                }
+
+                .agent-detail-sidebar-body {
+                    flex: 1;
+                    overflow-y: auto;
+                    min-height: 0;
+                }
+
+                .overall-stats-tab-content {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    height: 100%;
+                    overflow-y: auto;
+                    padding: 16px;
+                    box-sizing: border-box;
+                }
+
+                .stats-section-block {
+                    background: rgba(255, 255, 255, 0.6);
+                    border: 1px solid rgba(0, 82, 255, 0.06);
+                    border-radius: 12px;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    box-shadow: 0 4px 20px rgba(0, 82, 255, 0.02);
+                }
+
+                .stats-section-block h4 {
+                    font-size: 11px;
+                    font-weight: 800;
+                    font-family: var(--mono);
+                    color: var(--muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.06em;
+                    margin: 0;
+                }
+
+                .stats-section-block.log-block {
+                    flex: 1;
+                    min-height: 320px;
+                    padding: 12px 0;
+                }
+
+                .stats-section-block.log-block h4 {
+                    padding: 0 16px 8px 16px;
+                    border-bottom: 1px solid rgba(0, 82, 255, 0.05);
+                }
+
+                .empty-tab-state {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100%;
+                    padding: 24px;
+                    text-align: center;
+                    color: var(--muted);
+                    font-size: 12.5px;
+                    line-height: 1.6;
+                }
+
+                .preview-view-main {
+                    flex: 1;
+                    min-width: 0;
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    position: relative;
+                }
+
+                @media (max-width: 980px) {
+                    .sim-workbench {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .conversation-panel {
+                        min-height: 320px;
+                    }
+                }
+            `}</style>
         </div>
     );
+
 }
 

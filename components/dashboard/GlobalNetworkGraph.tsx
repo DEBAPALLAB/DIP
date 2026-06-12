@@ -23,11 +23,11 @@ interface SimLink extends d3Force.SimulationLinkDatum<SimNode> {
 }
 
 function decisionColor(state?: AgentState): string {
-    if (!state?.decision) return "#444855"; // pending/neutral background
-    if (state.decision === "support") return "#C8F135"; // Neon lime
-    if (state.decision === "oppose") return "#ff4444"; // Crimson red
-    if (state.decision === "neutral") return "#ff6b35"; // Early partner orange
-    return "#444855";
+    if (!state?.decision) return "var(--neutral, #444855)"; // pending/neutral background
+    if (state.decision === "support") return "var(--support, #C8F135)"; // Neon lime in dark, blue in light
+    if (state.decision === "oppose") return "var(--oppose, #ff4444)"; // Crimson red
+    if (state.decision === "neutral") return "var(--orange, #ff6b35)"; // Early partner orange
+    return "var(--neutral, #444855)";
 }
 
 export default function GlobalNetworkGraph({
@@ -45,8 +45,11 @@ export default function GlobalNetworkGraph({
     const [links, setLinks] = useState<SimLink[]>([]);
 
     // Zoom & Pan pure-React state (extremely reliable, zero-dep)
-    const [zoom, setZoom] = useState(1.0);
-    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1.6);
+    const [pan, setPan] = useState({
+        x: 800 / 2 - 400 * 1.6,
+        y: 600 / 2 - 300 * 1.6
+    });
     const [isDraggingBackground, setIsDraggingBackground] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
 
@@ -65,14 +68,27 @@ export default function GlobalNetworkGraph({
     // Auto-resize observer
     useEffect(() => {
         if (!containerRef.current) return;
+        let isFirst = true;
         const observer = new ResizeObserver((entries) => {
             if (!entries[0]) return;
             const { width, height } = entries[0].contentRect;
             setDimensions({ width, height });
+            if (isFirst && width > 0) {
+                setPan({
+                    x: width / 2 - 400 * 1.6,
+                    y: height / 2 - 300 * 1.6
+                });
+                isFirst = false;
+            }
         });
         observer.observe(containerRef.current);
         return () => observer.disconnect();
     }, []);
+
+    // Generate a unique key for the network structure (nodes + edges)
+    const structureKey = useMemo(() => {
+        return `${agents.map(a => a.id).join(",")}|${edges.map(e => `${e[0]}-${e[1]}`).join(",")}`;
+    }, [agents, edges]);
 
     // Run Force Simulation (only when network structure changes)
     useEffect(() => {
@@ -81,11 +97,14 @@ export default function GlobalNetworkGraph({
         const visibleIds = new Set(agents.map((a) => a.id));
         const simNodes: SimNode[] = agents.map((a) => {
             const existingNode = nodes.find(n => n.id === a.id);
+            let x = existingNode?.x;
+            let y = existingNode?.y;
+
             return {
                 id: a.id,
                 agent: a,
-                x: existingNode?.x ?? Math.random() * dimensions.width,
-                y: existingNode?.y ?? dimensions.height * 0.4 + Math.random() * (dimensions.height * 0.2),
+                x: x ?? 400 + (Math.random() - 0.5) * 200,
+                y: y ?? 300 + (Math.random() - 0.5) * 200,
             };
         });
 
@@ -96,22 +115,22 @@ export default function GlobalNetworkGraph({
                 target,
             }));
 
-        const density = (dimensions.width * dimensions.height) / Math.max(agents.length, 1);
-        const desiredDistance = Math.min(Math.max(Math.sqrt(density) * 0.55, 25), 90);
-        const desiredCharge = -Math.min(Math.max(desiredDistance * 3.5, 70), 320);
+        const density = (800 * 600) / Math.max(agents.length, 1);
+        const desiredDistance = Math.min(Math.max(Math.sqrt(density) * 0.55, 90), 240);
+        const desiredCharge = -Math.min(Math.max(desiredDistance * 3.5, 200), 750);
 
         const simulation = d3Force.forceSimulation<SimNode>(simNodes)
             .force("link", d3Force.forceLink<SimNode, SimLink>(simLinks).id((d) => d.id).distance(desiredDistance).strength(0.75))
             .force("charge", d3Force.forceManyBody().strength(desiredCharge))
-            .force("center", d3Force.forceCenter(dimensions.width / 2, dimensions.height / 2))
+            .force("center", d3Force.forceCenter(400, 300))
             .force("collide", d3Force.forceCollide<SimNode>().radius((d) => 10 + (d.agent.influence_score * 8)))
             .alphaDecay(0.035)
             .on("tick", () => {
                 // Keep simulation organic but within broad boundaries
                 const margin = -150;
                 simNodes.forEach((node) => {
-                    node.x = Math.max(margin, Math.min(dimensions.width - margin, node.x || 0));
-                    node.y = Math.max(margin, Math.min(dimensions.height - margin, node.y || 0));
+                    node.x = Math.max(margin, Math.min(800 - margin, node.x || 0));
+                    node.y = Math.max(margin, Math.min(600 - margin, node.y || 0));
                 });
 
                 setNodes([...simNodes]);
@@ -121,7 +140,7 @@ export default function GlobalNetworkGraph({
         return () => {
             simulation.stop();
         };
-    }, [agents, edges, dimensions.width, dimensions.height]);
+    }, [structureKey]);
 
     // Zoom & Pan Handlers
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -153,9 +172,26 @@ export default function GlobalNetworkGraph({
     };
 
     const resetZoomPan = () => {
-        setZoom(1.0);
-        setPan({ x: 0, y: 0 });
+        setZoom(1.6);
+        setPan({
+            x: dimensions.width / 2 - 400 * 1.6,
+            y: dimensions.height / 2 - 300 * 1.6,
+        });
     };
+
+    // Global key listener for 'r' to recenter
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "r" || e.key === "R") {
+                if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") {
+                    return;
+                }
+                resetZoomPan();
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
 
     if (agents.length === 0) {
         return (
@@ -166,15 +202,16 @@ export default function GlobalNetworkGraph({
     }
 
     return (
-        <div 
-            ref={containerRef} 
-            style={{ 
-                flex: 1, 
-                position: "relative", 
-                overflow: "hidden", 
-                background: "radial-gradient(circle at 50% 50%, #0d0f13 0%, #050608 100%)",
-                border: "1px solid var(--border)",
-                borderRadius: "3px"
+        <div
+            ref={containerRef}
+            style={{
+                flex: 1,
+                position: "relative",
+                overflow: "hidden",
+                background: "var(--graph-bg)",
+                border: "1px solid var(--border-bright)",
+                borderRadius: "6px",
+                boxShadow: "inset 0 0 20px rgba(0, 0, 0, 0.05), 0 4px 20px rgba(0, 0, 0, 0.08)"
             }}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -184,14 +221,14 @@ export default function GlobalNetworkGraph({
             <style>
                 {`
                     @keyframes pulse-support {
-                        0% { filter: drop-shadow(0 0 2px #C8F135); opacity: 0.85; }
-                        50% { filter: drop-shadow(0 0 14px #C8F135); opacity: 1; }
-                        100% { filter: drop-shadow(0 0 2px #C8F135); opacity: 0.85; }
+                        0% { filter: drop-shadow(0 0 2px var(--support)); opacity: 0.85; }
+                        50% { filter: drop-shadow(0 0 14px var(--support)); opacity: 1; }
+                        100% { filter: drop-shadow(0 0 2px var(--support)); opacity: 0.85; }
                     }
                     @keyframes pulse-oppose {
-                        0% { filter: drop-shadow(0 0 2px #ff4444); opacity: 0.85; }
-                        50% { filter: drop-shadow(0 0 14px #ff4444); opacity: 1; }
-                        100% { filter: drop-shadow(0 0 2px #ff4444); opacity: 0.85; }
+                        0% { filter: drop-shadow(0 0 2px var(--oppose)); opacity: 0.85; }
+                        50% { filter: drop-shadow(0 0 14px var(--oppose)); opacity: 1; }
+                        100% { filter: drop-shadow(0 0 2px var(--oppose)); opacity: 0.85; }
                     }
                     .node-support circle.main-circle {
                         animation: pulse-support 2.5s infinite ease-in-out;
@@ -235,9 +272,9 @@ export default function GlobalNetworkGraph({
                     <defs>
                         <pattern id="tacticalGrid" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
                             {/* Grid ticks */}
-                            <line x1="0" y1="0" x2="60" y2="0" stroke="rgba(255, 255, 255, 0.02)" strokeWidth="0.5" />
-                            <line x1="0" y1="0" x2="0" y2="60" stroke="rgba(255, 255, 255, 0.02)" strokeWidth="0.5" />
-                            <circle cx="0" cy="0" r="1.5" fill="rgba(255,255,255,0.08)" />
+                            <line x1="0" y1="0" x2="60" y2="0" stroke="var(--border)" strokeWidth="0.5" opacity={0.4} />
+                            <line x1="0" y1="0" x2="0" y2="60" stroke="var(--border)" strokeWidth="0.5" opacity={0.4} />
+                            <circle cx="0" cy="0" r="1.5" fill="var(--text)" opacity={0.1} />
                         </pattern>
                         <filter id="hudBloom" x="-40%" y="-40%" width="180%" height="180%">
                             <feGaussianBlur stdDeviation="4.5" result="blur" />
@@ -266,12 +303,12 @@ export default function GlobalNetworkGraph({
 
                                 const sState = states[source.id];
                                 const tState = states[target.id];
-                                
+
                                 const sColor = decisionColor(sState);
                                 const tColor = decisionColor(tState);
-                                
+
                                 const isActive = sState?.decision === "support" || tState?.decision === "support";
-                                
+
                                 // Unique dynamic gradient link ID
                                 const gradientId = `grad-${source.id}-${target.id}`;
 
@@ -302,7 +339,7 @@ export default function GlobalNetworkGraph({
 
                                         {/* Browser-Native GPU-Accelerated flowing data packets! */}
                                         {isActive && (
-                                            <circle r="2.2" fill={tState?.decision === "support" ? "#C8F135" : "#ff6b35"} filter="url(#hudBloom)">
+                                            <circle r="2.2" fill={tState?.decision === "support" ? "var(--support)" : "var(--orange)"} filter="url(#hudBloom)">
                                                 <animateMotion dur="2.4s" repeatCount="indefinite" path={pathD} />
                                             </circle>
                                         )}
@@ -391,8 +428,8 @@ export default function GlobalNetworkGraph({
                                         <circle
                                             className="main-circle"
                                             r={radius}
-                                            fill={state?.decision ? color : "rgba(10, 12, 16, 0.85)"}
-                                            stroke={state?.decision ? color : "rgba(255,255,255,0.18)"}
+                                            fill={state?.decision ? color : "var(--svg-node-fill, rgba(10, 12, 16, 0.85))"}
+                                            stroke={state?.decision ? color : "var(--svg-node-stroke, rgba(255,255,255,0.18))"}
                                             strokeWidth={isSelected ? 1.8 : 1}
                                             style={{ transition: "fill 0.4s ease, stroke 0.4s ease" }}
                                         />
@@ -400,7 +437,7 @@ export default function GlobalNetworkGraph({
                                         {/* Center Reticle dot */}
                                         <circle
                                             r="1.8"
-                                            fill={isSelected ? "var(--orange)" : "#ffffff"}
+                                            fill={isSelected ? "var(--orange)" : "var(--text)"}
                                             opacity={0.7}
                                         />
 
@@ -409,7 +446,7 @@ export default function GlobalNetworkGraph({
                                             <circle
                                                 r={radius}
                                                 fill="none"
-                                                stroke="#C8F135"
+                                                stroke="var(--support)"
                                                 strokeWidth={0.8}
                                                 opacity={0.65}
                                             >
@@ -433,7 +470,8 @@ export default function GlobalNetworkGraph({
                 transform: "translate(-50%, -50%)",
                 width: 140,
                 height: 140,
-                border: "1px dashed rgba(255,255,255,0.03)",
+                border: "1px dashed var(--border)",
+                opacity: 0.4,
                 borderRadius: "50%",
                 pointerEvents: "none",
                 display: "flex",
@@ -441,8 +479,8 @@ export default function GlobalNetworkGraph({
                 justifyContent: "center",
                 zIndex: 10
             }}>
-                <div style={{ width: 12, height: 1, background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ height: 12, width: 1, background: "rgba(255,255,255,0.08)", position: "absolute" }} />
+                <div style={{ width: 12, height: 1, background: "var(--border-bright)" }} />
+                <div style={{ height: 12, width: 1, background: "var(--border-bright)", position: "absolute" }} />
             </div>
 
             {/* TACTICAL OVERLAY 1: Telemetry Panel (Bottom-Left) */}
@@ -450,9 +488,9 @@ export default function GlobalNetworkGraph({
                 position: "absolute",
                 bottom: 16,
                 left: 16,
-                background: "rgba(6, 8, 10, 0.88)",
+                background: "var(--panel)",
                 backdropFilter: "blur(12px)",
-                border: "1px solid var(--border)",
+                border: "1px solid var(--border-bright)",
                 borderRadius: "4px",
                 padding: "10px 14px",
                 fontFamily: "var(--mono)",
@@ -462,9 +500,9 @@ export default function GlobalNetworkGraph({
                 flexDirection: "column",
                 gap: 5,
                 zIndex: 15,
-                boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                boxShadow: "0 10px 25px rgba(0,0,0,0.12)"
             }}>
-                <div style={{ color: "var(--orange)", fontWeight: 700, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4, marginBottom: 4, letterSpacing: "0.12em" }}>// TELEMETRY_SYSTEM</div>
+                <div style={{ color: "var(--orange)", fontWeight: 700, borderBottom: "1px solid var(--border-bright)", paddingBottom: 4, marginBottom: 4, letterSpacing: "0.12em" }}>// TELEMETRY_SYSTEM</div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
                     <span>VIEW_SCALE:</span>
                     <span style={{ color: "var(--bright)" }}>{(zoom * 100).toFixed(0)}%</span>
@@ -475,7 +513,7 @@ export default function GlobalNetworkGraph({
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
                     <span>ADOPTION_R:</span>
-                    <span style={{ color: "#C8F135", fontWeight: 700 }}>{stats.adoptionPct}%</span>
+                    <span style={{ color: "var(--support)", fontWeight: 700 }}>{stats.adoptionPct}%</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
                     <span>AVG_INFLUENCE:</span>
@@ -497,9 +535,9 @@ export default function GlobalNetworkGraph({
                 <button
                     onClick={resetZoomPan}
                     style={{
-                        background: "rgba(6, 8, 10, 0.88)",
+                        background: "var(--panel)",
                         backdropFilter: "blur(12px)",
-                        border: "1px solid var(--border)",
+                        border: "1px solid var(--border-bright)",
                         borderRadius: "4px",
                         color: "var(--bright)",
                         fontFamily: "var(--mono)",
@@ -508,7 +546,7 @@ export default function GlobalNetworkGraph({
                         cursor: "pointer",
                         textTransform: "uppercase",
                         letterSpacing: "0.08em",
-                        boxShadow: "0 5px 15px rgba(0,0,0,0.3)"
+                        boxShadow: "0 5px 15px rgba(0,0,0,0.08)"
                     }}
                 >
                     Recenter Camera [R]
@@ -518,18 +556,20 @@ export default function GlobalNetworkGraph({
                 <div style={{
                     width: 72,
                     height: 72,
-                    border: "1.5px solid rgba(200, 241, 53, 0.15)",
+                    border: "1.5px solid var(--border-bright)",
                     borderRadius: "50%",
                     position: "relative",
-                    background: "rgba(6, 8, 10, 0.65)",
+                    background: "var(--panel)",
+                    backdropFilter: "blur(4px)",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center"
+                    justifyContent: "center",
+                    boxShadow: "0 5px 15px rgba(0,0,0,0.05)"
                 }}>
-                    <div className="spin-ring" style={{ width: "90%", height: "90%", border: "0.5px dashed rgba(255,255,255,0.06)", borderRadius: "50%" }} />
-                    <div style={{ position: "absolute", width: "100%", height: 1, background: "rgba(200, 241, 53, 0.08)" }} />
-                    <div style={{ position: "absolute", height: "100%", width: 1, background: "rgba(200, 241, 53, 0.08)" }} />
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#C8F135", opacity: 0.8, filter: "drop-shadow(0 0 5px #C8F135)", position: "absolute" }} />
+                    <div className="spin-ring" style={{ width: "90%", height: "90%", border: "0.5px dashed var(--border-bright)", borderRadius: "50%" }} />
+                    <div style={{ position: "absolute", width: "100%", height: 1, background: "var(--border-bright)", opacity: 0.5 }} />
+                    <div style={{ position: "absolute", height: "100%", width: 1, background: "var(--border-bright)", opacity: 0.5 }} />
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--support)", opacity: 0.8, filter: "drop-shadow(0 0 5px var(--support))", position: "absolute" }} />
                 </div>
             </div>
 
@@ -538,9 +578,9 @@ export default function GlobalNetworkGraph({
                 position: "absolute",
                 bottom: 16,
                 right: 16,
-                background: "rgba(6, 8, 10, 0.88)",
+                background: "var(--panel)",
                 backdropFilter: "blur(12px)",
-                border: "1px solid var(--border)",
+                border: "1px solid var(--border-bright)",
                 borderRadius: "4px",
                 padding: "8px 12px",
                 fontFamily: "var(--mono)",
@@ -550,19 +590,19 @@ export default function GlobalNetworkGraph({
                 flexDirection: "column",
                 gap: 5,
                 zIndex: 15,
-                boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                boxShadow: "0 10px 25px rgba(0,0,0,0.12)"
             }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#C8F135", boxShadow: "0 0 8px #C8F135" }} /> SUPPORT [LIME]
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--support)", boxShadow: "0 0 8px var(--support)" }} /> SUPPORT
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff6b35", boxShadow: "0 0 8px #ff6b35" }} /> SEED/PARTNER [ORANGE]
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--orange)", boxShadow: "0 0 8px var(--orange)" }} /> SEED/PARTNER
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff4444", boxShadow: "0 0 8px #ff4444" }} /> OPPOSE [RED]
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--oppose)", boxShadow: "0 0 8px var(--oppose)" }} /> OPPOSE
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#444855" }} /> NEUTRAL [GREY]
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--neutral, #444855)" }} /> NEUTRAL
                 </div>
             </div>
         </div>

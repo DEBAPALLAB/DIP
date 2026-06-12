@@ -116,8 +116,6 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<DashboardStatus>("ALL");
   const [sortBy, setSortBy] = useState<SortBy>("created_at");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  const [quickScenario, setQuickScenario] = useState(SCENARIOS[0]?.id || "ev");
-  const [quickAgentCount, setQuickAgentCount] = useState(() => Math.min(250, limits.maxAgents));
   const [now, setNow] = useState(() => new Date());
   const [latency, setLatency] = useState(140);
   const [mounted, setMounted] = useState(false);
@@ -166,9 +164,7 @@ export default function DashboardPage() {
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    setQuickAgentCount((current) => clamp(current, 10, maxQuickAgents));
-  }, [maxQuickAgents]);
+
 
   const filteredSimulations = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -234,9 +230,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleQuickLaunch = () => {
-    router.push(`/simulate?scenario=${encodeURIComponent(quickScenario)}&count=${quickAgentCount}`);
-  };
+
 
   return (
     <div className="marketing-theme dashboard-page">
@@ -373,7 +367,7 @@ export default function DashboardPage() {
                   <tbody>
                     {filteredSimulations.map((sim) => {
                       const status = normalizeStatus(sim.status);
-                      const launchCount = clamp(sim.total_agents || quickAgentCount, 10, maxQuickAgents);
+                      const launchCount = clamp(sim.total_agents || 250, 10, maxQuickAgents);
 
                       return (
                         <tr key={sim.id}>
@@ -486,50 +480,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="rail-panel launch-panel">
-              <div className="dashboard-panel-header compact">
-                <div>
-                  <span className="eyebrow">Quick Launch</span>
-                  <h2>Start a Run</h2>
-                </div>
-              </div>
 
-              <label>
-                Scenario Template
-                <select value={quickScenario} onChange={(event) => setQuickScenario(event.target.value)}>
-                  {SCENARIOS.map((scenario) => (
-                    <option key={scenario.id} value={scenario.id}>
-                      {scenario.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Agent Population
-                <div className="slider-head">
-                  <span>10</span>
-                  <strong>{quickAgentCount.toLocaleString()}</strong>
-                  <span>{maxQuickAgents.toLocaleString()}</span>
-                </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={maxQuickAgents}
-                  step={10}
-                  value={quickAgentCount}
-                  onChange={(event) => setQuickAgentCount(Number(event.target.value))}
-                />
-              </label>
-
-              <button className="btn-v2-primary dashboard-button full" type="button" onClick={handleQuickLaunch}>
-                Start Simulation
-              </button>
-            </section>
-
-            <button className="signout-button" type="button" onClick={logout}>
-              Sign Out
-            </button>
           </aside>
         </section>
       </main>

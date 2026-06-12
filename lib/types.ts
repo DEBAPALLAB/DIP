@@ -52,6 +52,7 @@ export type SimulationStates = Record<number, AgentState>;
 export interface AgentHistoryEntry {
   step: number;
   decision: DecisionType;
+  reasoning?: string;
 }
 
 export type AgentHistories = Record<number, AgentHistoryEntry[]>;

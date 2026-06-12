@@ -33,13 +33,13 @@ export default function AgentListFilter({
     isSearching
 }: AgentListFilterProps) {
     return (
-        <div 
-            style={{ 
-                display: "flex", 
-                gap: 10, 
-                padding: "12px 16px", 
-                background: "rgba(255,255,255,0.02)", 
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+        <div
+            style={{
+                display: "flex",
+                gap: 10,
+                padding: "12px 16px",
+                background: "var(--card-bg)",
+                borderBottom: "1px solid var(--border)",
                 alignItems: "center",
                 flexShrink: 0,
                 backdropFilter: "blur(8px)"
@@ -47,17 +47,17 @@ export default function AgentListFilter({
         >
             <div style={{ position: "relative", flex: 1, display: "flex", gap: 4 }}>
                 <div style={{ position: "relative", flex: 1 }}>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         placeholder={isAISearch ? "AI_FILTER_SEARCH (e.g. 'healthcare professionals')..." : "FILTER_POPULATION..."}
                         className="terminal-select"
-                        style={{ 
-                            width: "100%", 
+                        style={{
+                            width: "100%",
                             paddingRight: 40,
                             borderRadius: "100px",
                             height: "32px",
-                            background: "rgba(0,0,0,0.3)",
-                            borderColor: isAISearch ? "var(--orange)" : "rgba(255,255,255,0.1)",
+                            background: "var(--select-bg)",
+                            borderColor: isAISearch ? "var(--orange)" : "var(--select-border)",
                             boxShadow: isAISearch ? "0 0 15px rgba(255, 107, 53, 0.15)" : "none",
                             fontSize: "10px",
                             letterSpacing: "0.02em"
@@ -85,7 +85,7 @@ export default function AgentListFilter({
                         }} />
                     )}
                     {search && !isSearching && (
-                        <button 
+                        <button
                             onClick={() => onSearchChange("")}
                             style={{
                                 position: "absolute",
@@ -124,24 +124,24 @@ export default function AgentListFilter({
                 </div>
             </div>
 
-            <select 
-                className="terminal-select" 
-                value={persona} 
+            <select
+                className="terminal-select"
+                value={persona}
                 onChange={(e) => onPersonaChange(e.target.value as any)}
-                style={{ width: 130, borderRadius: "100px", height: "32px", background: "rgba(0,0,0,0.3)", borderColor: "rgba(255,255,255,0.1)", fontSize: "9px" }}
+                style={{ width: 130, borderRadius: "100px", height: "32px", background: "var(--select-bg)", borderColor: "var(--select-border)", fontSize: "9px" }}
             >
                 <option value="all">ALL_PERSONAS</option>
                 {PERSONAS.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
             </select>
 
-            <select 
-                className="terminal-select" 
-                value={decision === null ? "null" : decision} 
+            <select
+                className="terminal-select"
+                value={decision === null ? "null" : decision}
                 onChange={(e) => {
                     const val = e.target.value;
                     onDecisionChange(val === "all" ? "all" : val === "null" ? null : val as any);
                 }}
-                style={{ width: 130, borderRadius: "100px", height: "32px", background: "rgba(0,0,0,0.3)", borderColor: "rgba(255,255,255,0.1)", fontSize: "9px" }}
+                style={{ width: 130, borderRadius: "100px", height: "32px", background: "var(--select-bg)", borderColor: "var(--select-border)", fontSize: "9px" }}
             >
                 <option value="all">ALL_DECISIONS</option>
                 <option value="support">SUPPORT</option>
@@ -150,10 +150,10 @@ export default function AgentListFilter({
                 <option value="null">PENDING</option>
             </select>
 
-            <div style={{ 
-                fontFamily: "var(--mono)", 
-                fontSize: 10, 
-                color: isAISearch && search ? "var(--orange)" : "var(--muted)", 
+            <div style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                color: isAISearch && search ? "var(--orange)" : "var(--muted)",
                 marginLeft: 8,
                 whiteSpace: "nowrap"
             }}>

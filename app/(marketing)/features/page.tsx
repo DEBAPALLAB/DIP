@@ -94,21 +94,6 @@ export default function FeaturesPage() {
           padding: 140px 4vw 96px;
           overflow: hidden;
         }
-
-        .feature-hero-grid {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          opacity: 0.9;
-        }
-
-        .feature-hero-blur {
-          position: absolute;
-          border-radius: 999px;
-          filter: blur(84px);
-          pointer-events: none;
-        }
-
         .feature-hero-title {
           font-family: var(--heading);
           font-size: clamp(56px, 7vw, 94px);
@@ -118,7 +103,6 @@ export default function FeaturesPage() {
           color: var(--bright);
           margin: 0;
         }
-
         .feature-hero-title .accent {
           background: linear-gradient(135deg, var(--accent) 0%, #2a76ff 100%);
           -webkit-background-clip: text;
@@ -126,7 +110,6 @@ export default function FeaturesPage() {
           color: transparent;
           text-shadow: 0 0 40px rgba(0, 82, 255, 0.12);
         }
-
         .feature-hero-copy {
           max-width: 650px;
           color: var(--muted);
@@ -134,7 +117,6 @@ export default function FeaturesPage() {
           line-height: 1.7;
           margin: 0;
         }
-
         .feature-stat {
           border: 1px solid var(--border);
           background: rgba(255, 255, 255, 0.56);
@@ -143,7 +125,6 @@ export default function FeaturesPage() {
           padding: 18px 20px;
           box-shadow: 0 22px 56px rgba(0, 82, 255, 0.05);
         }
-
         .feature-stat-label {
           font-family: var(--mono);
           font-size: 9px;
@@ -152,16 +133,14 @@ export default function FeaturesPage() {
           display: block;
           margin-bottom: 10px;
         }
-
         .feature-stat-value {
           font-family: var(--heading);
-          font-size: clamp(24px, 2vw, 34px);
+          font-size: clamp(22px, 2vw, 32px);
           font-weight: 800;
           letter-spacing: -0.04em;
           color: var(--bright);
           line-height: 1;
         }
-
         .feature-stat-note {
           font-family: var(--mono);
           font-size: 9px;
@@ -170,55 +149,94 @@ export default function FeaturesPage() {
           margin-top: 8px;
           text-transform: uppercase;
         }
-
-        @media (max-width: 900px) {
+        .feature-hero-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+          gap: 56px;
+          align-items: center;
+        }
+        .feature-mini-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+          margin-top: 34px;
+        }
+        .feature-btn-row {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-top: 34px;
+        }
+        .feature-deep-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 80px;
+          align-items: center;
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+        .feature-deep-stats {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+        }
+        @media (max-width: 1024px) {
+          .feature-hero-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 768px) {
           .feature-hero-shell {
             min-height: auto;
-            padding: 120px 4vw 72px;
+            padding: 100px 5vw 64px;
           }
-
           .feature-hero-title {
-            font-size: clamp(42px, 12vw, 64px);
+            font-size: clamp(40px, 12vw, 64px);
+          }
+          .feature-hero-copy {
+            font-size: 16px;
+          }
+          .feature-mini-stat-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          .feature-btn-row {
+            flex-direction: column;
+          }
+          .feature-btn-row a {
+            text-align: center;
+            justify-content: center;
+          }
+          .feature-deep-grid {
+            grid-template-columns: 1fr;
+            gap: 40px;
+          }
+          .feature-deep-stats {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+        @media (max-width: 480px) {
+          .feature-hero-shell {
+            padding: 90px 5vw 56px;
+          }
+          .feature-hero-title {
+            font-size: clamp(36px, 13vw, 56px);
+          }
+          .feature-mini-stat-grid {
+            grid-template-columns: 1fr;
+          }
+          .feature-deep-stats {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
 
       <section className="feature-hero-shell">
-        <Squares
-          direction="diagonal"
-          speed={0.25}
-          squareSize={40}
-          borderColor="rgba(0, 82, 255, 0.03)"
-          hoverFillColor="rgba(0, 82, 255, 0.06)"
-        />
-
-        <div className="feature-hero-grid">
-          <div
-            className="feature-hero-blur"
-            style={{
-              top: "8%",
-              right: "-10%",
-              width: "32vw",
-              height: "32vw",
-              background:
-                "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.03) 38%, transparent 72%)",
-            }}
-          />
-          <div
-            className="feature-hero-blur"
-            style={{
-              top: "48%",
-              left: "-12%",
-              width: "30vw",
-              height: "30vw",
-              background:
-                "radial-gradient(circle, rgba(255, 107, 53, 0.05) 0%, rgba(255, 107, 53, 0.02) 40%, transparent 72%)",
-            }}
-          />
-        </div>
+        <Squares direction="diagonal" speed={0.25} squareSize={40} borderColor="rgba(0, 82, 255, 0.03)" hoverFillColor="rgba(0, 82, 255, 0.06)" />
+        <div style={{ position: "absolute", top: "8%", right: "-10%", width: "32vw", height: "32vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.03) 38%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "48%", left: "-12%", width: "30vw", height: "30vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.05) 0%, rgba(0, 82, 255, 0.02) 40%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1400, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(320px, 0.85fr)", gap: "56px", alignItems: "center" }}>
+          <div className="feature-hero-grid">
             <div>
               <span className="mkt-eyebrow">[PRODUCT_CAPABILITIES]</span>
               <h1 className="feature-hero-title" style={{ marginTop: 18, maxWidth: 760 }}>
@@ -232,16 +250,12 @@ export default function FeaturesPage() {
                 agent-level behaviors that drive outcomes before you commit.
               </p>
 
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 34 }}>
-                <Link href="/setup" className="btn-hero-primary">
-                  START SIMULATING →
-                </Link>
-                <Link href="/technology" className="btn-hero-ghost">
-                  SEE THE TECHNOLOGY
-                </Link>
+              <div className="feature-btn-row">
+                <Link href="/setup" className="btn-hero-primary">START SIMULATING →</Link>
+                <Link href="/technology" className="btn-hero-ghost">SEE THE TECHNOLOGY</Link>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginTop: 34 }}>
+              <div className="feature-mini-stat-grid">
                 <div className="feature-stat">
                   <span className="feature-stat-label">NETWORKS</span>
                   <div className="feature-stat-value">Small-world</div>
@@ -255,23 +269,14 @@ export default function FeaturesPage() {
                 <div className="feature-stat">
                   <span className="feature-stat-label">OUTPUT</span>
                   <div className="feature-stat-value">Reports</div>
-                  <div className="feature-stat-note">Adoption, resistance, and bottlenecks</div>
+                  <div className="feature-stat-note">Adoption, resistance, bottlenecks</div>
                 </div>
               </div>
             </div>
 
             <div style={{ display: "grid", gap: 16 }}>
-              <div
-                style={{
-                  padding: 24,
-                  border: "1px solid var(--border)",
-                  borderRadius: 24,
-                  background: "rgba(255, 255, 255, 0.58)",
-                  backdropFilter: "blur(18px)",
-                  boxShadow: "0 28px 70px rgba(0, 82, 255, 0.06)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <div style={{ padding: 24, border: "1px solid var(--border)", borderRadius: 24, background: "rgba(255, 255, 255, 0.58)", backdropFilter: "blur(18px)", boxShadow: "0 28px 70px rgba(0, 82, 255, 0.06)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
                   <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em", color: "var(--accent)" }}>// FEATURE_MAP</span>
                   <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--muted)" }}>LIVE_PREVIEW</span>
                 </div>
@@ -295,10 +300,10 @@ export default function FeaturesPage() {
                       }}
                     >
                       <div>
-                        <div style={{ fontFamily: "var(--heading)", fontSize: 16, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.03em" }}>{title}</div>
+                        <div style={{ fontFamily: "var(--heading)", fontSize: 15, fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.03em" }}>{title}</div>
                         <div style={{ marginTop: 4, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
                       </div>
-                      <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.16em", color: "var(--accent)", paddingTop: 2 }}>
+                      <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.16em", color: "var(--accent)", paddingTop: 2, flexShrink: 0 }}>
                         0{idx + 1}
                       </div>
                     </div>
@@ -310,12 +315,12 @@ export default function FeaturesPage() {
                 <div className="feature-stat">
                   <span className="feature-stat-label">MODES</span>
                   <div className="feature-stat-value">Explore</div>
-                  <div className="feature-stat-note">Browse capabilities by layer</div>
+                  <div className="feature-stat-note">Browse by layer</div>
                 </div>
                 <div className="feature-stat">
                   <span className="feature-stat-label">ACCESS</span>
                   <div className="feature-stat-value">Free</div>
-                  <div className="feature-stat-note">Start without a credit card</div>
+                  <div className="feature-stat-note">No credit card</div>
                 </div>
               </div>
             </div>
@@ -326,13 +331,8 @@ export default function FeaturesPage() {
       <section className="mkt-section" style={{ borderTop: "1px solid var(--border)" }}>
         <div className="mkt-section-header">
           <span className="mkt-eyebrow">[FULL_FEATURE_SET]</span>
-          <h2 className="mkt-h2">
-            Everything in
-            <br />
-            the Engine.
-          </h2>
+          <h2 className="mkt-h2">Everything in<br />the Engine.</h2>
         </div>
-
         <div className="features-grid-3">
           {ALL_FEATURES.map((f, i) => (
             <GlowCard key={i}>
@@ -349,123 +349,38 @@ export default function FeaturesPage() {
         <section
           key={i}
           style={{
-            padding: "120px 4vw",
+            padding: "100px 4vw",
             background: i % 2 === 1 ? "var(--bg-darker)" : "var(--bg)",
             borderTop: "1px solid var(--border)",
           }}
         >
-          <div
-            style={{
-              maxWidth: 1400,
-              margin: "0 auto",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "80px",
-              alignItems: "center",
-            }}
-          >
+          <div className="feature-deep-grid">
             <div style={{ order: i % 2 === 1 ? 1 : 0 }}>
               <span className="mkt-eyebrow">// {f.tag}</span>
-              <h2
-                style={{
-                  fontFamily: "var(--heading)",
-                  fontSize: "clamp(28px, 3.5vw, 48px)",
-                  fontWeight: 800,
-                  color: "var(--bright)",
-                  letterSpacing: "-0.04em",
-                  lineHeight: 1.05,
-                  margin: "16px 0 16px",
-                }}
-              >
+              <h2 style={{ fontFamily: "var(--heading)", fontSize: "clamp(26px, 3.5vw, 46px)", fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.04em", lineHeight: 1.05, margin: "16px 0" }}>
                 {f.title}
               </h2>
-              <p
-                style={{
-                  fontSize: "17px",
-                  fontWeight: 600,
-                  color: "var(--text)",
-                  marginBottom: 16,
-                  lineHeight: 1.5,
-                }}
-              >
+              <p style={{ fontSize: "17px", fontWeight: 600, color: "var(--text)", marginBottom: 16, lineHeight: 1.5 }}>
                 {f.headline}
               </p>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  fontSize: "15px",
-                  lineHeight: 1.8,
-                }}
-              >
+              <p style={{ color: "var(--muted)", fontSize: "15px", lineHeight: 1.8 }}>
                 {f.desc}
               </p>
             </div>
 
             <div style={{ order: i % 2 === 1 ? 0 : 1 }}>
-              <div
-                style={{
-                  padding: "48px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "12px",
-                  background: "var(--panel)",
-                  backdropFilter: "blur(12px)",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: 1,
-                    background:
-                      "linear-gradient(90deg, transparent, rgba(0, 82, 255, 0.4), transparent)",
-                  }}
-                />
-                <span
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: "9px",
-                    color: "var(--accent)",
-                    letterSpacing: "0.2em",
-                    display: "block",
-                    marginBottom: "36px",
-                  }}
-                >
+              <div style={{ padding: "40px", border: "1px solid var(--border)", borderRadius: "24px", background: "rgba(255,255,255,0.56)", backdropFilter: "blur(18px)", position: "relative", overflow: "hidden", boxShadow: "0 28px 70px rgba(0,82,255,0.06)" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(0, 82, 255, 0.4), transparent)" }} />
+                <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "var(--accent)", letterSpacing: "0.2em", display: "block", marginBottom: "32px" }}>
                   {f.icon} {f.tag}
                 </span>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "24px",
-                  }}
-                >
+                <div className="feature-deep-stats">
                   {f.stats.map((s, si) => (
                     <div key={si}>
-                      <div
-                        style={{
-                          fontFamily: "var(--heading)",
-                          fontSize: "34px",
-                          fontWeight: 800,
-                          color: "var(--bright)",
-                          letterSpacing: "-0.04em",
-                          marginBottom: "8px",
-                        }}
-                      >
+                      <div style={{ fontFamily: "var(--heading)", fontSize: "clamp(22px, 2.5vw, 34px)", fontWeight: 800, color: "var(--bright)", letterSpacing: "-0.04em", marginBottom: "8px" }}>
                         {s.val}
                       </div>
-                      <div
-                        style={{
-                          fontFamily: "var(--mono)",
-                          fontSize: "9px",
-                          color: "var(--muted)",
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                        }}
-                      >
+                      <div style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "var(--muted)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
                         {s.label}
                       </div>
                     </div>
@@ -480,20 +395,14 @@ export default function FeaturesPage() {
       <div className="pricing-cta-banner">
         <span className="mkt-eyebrow">[GET_STARTED]</span>
         <h2 className="pricing-cta-title">
-          Ready to Run Your
-          <br />
-          First Simulation?
+          Ready to Run Your<br />First Simulation?
         </h2>
         <p className="pricing-cta-sub">
           Start free. No credit card. Up to 100 agents on the Explorer tier.
         </p>
         <div style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/register" className="btn-hero-primary">
-            CREATE FREE ACCOUNT →
-          </Link>
-          <Link href="/pricing" className="btn-hero-ghost">
-            VIEW PRICING
-          </Link>
+          <Link href="/register" className="btn-hero-primary">CREATE FREE ACCOUNT →</Link>
+          <Link href="/pricing" className="btn-hero-ghost">VIEW PRICING</Link>
         </div>
       </div>
     </div>

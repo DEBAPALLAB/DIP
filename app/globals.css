@@ -4122,6 +4122,22 @@ body::before {
 }
 
 @media (max-width: 768px) {
+  .mkt-section {
+    padding: 72px 5vw;
+  }
+
+  .mkt-section-header {
+    margin-bottom: 48px;
+  }
+
+  .mkt-h2 {
+    font-size: clamp(32px, 9vw, 52px);
+  }
+
+  .pricing-cta-banner {
+    padding: 72px 5vw;
+  }
+
   .hamburger {
     display: flex !important;
   }

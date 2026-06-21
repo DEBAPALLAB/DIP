@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import Squares from "@/components/marketing/InteractiveBackground";
 
 const TIERS = [
   {
@@ -162,7 +163,7 @@ export default function PricingPage() {
   const [betaUseCases, setBetaUseCases] = useState("academic_research");
   const [betaStatus, setBetaStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
-  const handleCheckoutSubmit = async (e: React.FormEvent) => {
+  const handleCheckoutSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!checkoutTier || !user) return;
     
@@ -197,7 +198,7 @@ export default function PricingPage() {
     }
   };
 
-  const handleBetaSubmit = async (e: React.FormEvent) => {
+  const handleBetaSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setBetaStatus("submitting");
 
@@ -221,9 +222,6 @@ export default function PricingPage() {
   return (
     <div className="pricing-page" style={{ background: "var(--bg)", color: "var(--text)", paddingBottom: 120, position: "relative", overflowX: "hidden" }}>
       <style jsx>{`
-        .pricing-page > section:nth-of-type(2) {
-          display: none;
-        }
         .pricing-hero-shell {
           position: relative;
           min-height: 100vh;
@@ -268,21 +266,87 @@ export default function PricingPage() {
           border-radius: 18px;
           padding: 18px 20px;
         }
-        @media (max-width: 900px) {
+        .pricing-hero-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+          gap: 56px;
+          align-items: center;
+        }
+        .pricing-mini-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+          margin-top: 34px;
+        }
+        .pricing-btn-row {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-top: 34px;
+        }
+        .pricing-enterprise-layout {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 60px;
+          align-items: center;
+        }
+        .pricing-beta-layout {
+          display: grid;
+          grid-template-columns: 1fr 1.2fr;
+          gap: 60px;
+          align-items: start;
+        }
+        @media (max-width: 1024px) {
+          .pricing-hero-layout {
+            grid-template-columns: 1fr;
+          }
+          .pricing-enterprise-layout {
+            grid-template-columns: 1fr;
+          }
+          .pricing-enterprise-layout a {
+            align-self: flex-start;
+          }
+        }
+        @media (max-width: 768px) {
           .pricing-hero-shell {
             min-height: auto;
-            padding: 120px 4vw 72px;
+            padding: 100px 5vw 64px;
           }
           .pricing-hero-title {
-            font-size: clamp(42px, 12vw, 64px);
+            font-size: clamp(40px, 12vw, 64px);
+          }
+          .pricing-hero-copy {
+            font-size: 16px;
+          }
+          .pricing-mini-stat-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          .pricing-btn-row {
+            flex-direction: column;
+          }
+          .pricing-beta-layout {
+            grid-template-columns: 1fr;
+            gap: 32px;
+          }
+        }
+        @media (max-width: 480px) {
+          .pricing-hero-shell {
+            padding: 90px 5vw 56px;
+          }
+          .pricing-hero-title {
+            font-size: clamp(36px, 13vw, 56px);
+          }
+          .pricing-mini-stat-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
       <section className="pricing-hero-shell">
+        <Squares direction="diagonal" speed={0.25} squareSize={40} borderColor="rgba(0, 82, 255, 0.03)" hoverFillColor="rgba(0, 82, 255, 0.06)" />
         <div style={{ position: "absolute", top: "8%", right: "-12%", width: "32vw", height: "32vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.03) 40%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", top: "42%", left: "-12%", width: "30vw", height: "30vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(255, 107, 53, 0.05) 0%, rgba(255, 107, 53, 0.02) 42%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1400, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, 0.9fr)", gap: "56px", alignItems: "center" }}>
+          <div className="pricing-hero-layout">
             <div>
               <span className="mkt-eyebrow">[COMMERCIAL_MODELS_v3.0]</span>
               <h1 className="pricing-hero-title" style={{ marginTop: 18, maxWidth: 760 }}>
@@ -323,7 +387,7 @@ export default function PricingPage() {
                 })}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginTop: 34 }}>
+              <div className="pricing-mini-stat-grid">
                 {[
                   { label: "STARTER", value: "Explorer", note: "Free sandbox" },
                   { label: "BEST VALUE", value: "Strategic", note: "Popular scaling tier" },
@@ -361,79 +425,6 @@ export default function PricingPage() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-      {/* ── Hero ── */}
-      <section
-        style={{
-          textAlign: "center",
-          padding: "160px 4vw 80px",
-          position: "relative",
-          background:
-            "radial-gradient(ellipse at 50% 0%, rgba(0, 82, 255, 0.08) 0%, transparent 50%)",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 1,
-            background:
-              "linear-gradient(90deg, transparent, rgba(0, 82, 255, 0.3), transparent)",
-          }}
-        />
-        <span className="mkt-eyebrow">[COMMERCIAL_MODELS_v3.0]</span>
-        <h1
-          className="hero-h1"
-          style={{ marginTop: 20, textAlign: "center" }}
-        >
-          Priced for <span className="accent">Strategy.</span>
-        </h1>
-        <p className="mkt-sub" style={{ marginTop: 20 }}>
-          Move from static focus groups to dynamic population simulations.
-          Select the plan that matches your strategic scale.
-        </p>
-
-        {/* Toggle */}
-        <div
-          style={{
-            display: "inline-flex",
-            background: "var(--bg-darker)",
-            padding: "4px",
-            borderRadius: "6px",
-            border: "1px solid var(--border)",
-            marginTop: 40,
-            marginBottom: 80,
-            gap: 4,
-          }}
-        >
-          {["MONTHLY", "ANNUAL (SAVE 20%)"].map((label, i) => {
-            const active = i === 1 ? isAnnual : !isAnnual;
-            return (
-              <button
-                key={label}
-                onClick={() => setIsAnnual(i === 1)}
-                style={{
-                  padding: "10px 24px",
-                  background: active ? "var(--panel)" : "transparent",
-                  color: active ? "var(--bright)" : "var(--muted)",
-                  boxShadow: active ? "0 2px 8px rgba(0, 82, 255, 0.08)" : "none",
-                  border: active ? "1px solid var(--border)" : "1px solid transparent",
-                  fontFamily: "var(--mono)",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  borderRadius: "4px",
-                  transition: "all 0.2s ease",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
         </div>
       </section>
 
@@ -692,7 +683,7 @@ export default function PricingPage() {
               {checkoutStatus === "processing" && (
                 <div style={{ textAlign: "center", padding: "32px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
                   <div className="live-dot" style={{ width: 32, height: 32 }} />
-                  <div style={{ color: "var(--orange)", fontWeight: 700, letterSpacing: "0.15em" }}>AUTHORIZING_CREDIT_HANDSHAKE...</div>
+                  <div style={{ color: "var(--accent)", fontWeight: 700, letterSpacing: "0.15em" }}>AUTHORIZING_CREDIT_HANDSHAKE...</div>
                   <div style={{ color: "var(--muted)", fontSize: "9px" }}>Please wait while encrypting payment metadata...</div>
                 </div>
               )}
@@ -802,7 +793,7 @@ export default function PricingPage() {
             pointerEvents: "none"
           }} />
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "60px", alignItems: "start", position: "relative", zIndex: 2 }}>
+          <div className="pricing-beta-layout" style={{ position: "relative", zIndex: 2 }}>
             <div>
               <span className="mkt-eyebrow" style={{ textAlign: "left" }}>[BETA_TESTER_PROGRAM]</span>
               <h2 style={{
@@ -849,7 +840,7 @@ export default function PricingPage() {
             }}>
               {betaStatus === "idle" && (
                 <form onSubmit={handleBetaSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "16px" }}>
                     <div>
                       <label style={{ color: "var(--muted)", display: "block", marginBottom: "6px" }}>FULL_NAME</label>
                       <input 
@@ -926,7 +917,7 @@ export default function PricingPage() {
               {betaStatus === "submitting" && (
                 <div style={{ textAlign: "center", padding: "40px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
                   <div className="live-dot" style={{ width: 24, height: 24 }} />
-                  <div style={{ color: "var(--orange)", fontWeight: 700, letterSpacing: "0.15em" }}>PROCESSING_APPLICATION_TELEMETRY...</div>
+                  <div style={{ color: "var(--accent)", fontWeight: 700, letterSpacing: "0.15em" }}>PROCESSING_APPLICATION_TELEMETRY...</div>
                   <div style={{ color: "var(--muted)", fontSize: "9px" }}>Registering keys in the research sandbox database...</div>
                 </div>
               )}
@@ -963,17 +954,14 @@ export default function PricingPage() {
       {/* ── Enterprise CTA ── */}
       <section style={{ padding: "0 4vw" }}>
         <div
+          className="pricing-enterprise-layout"
           style={{
             maxWidth: 1400,
             margin: "0 auto",
-            padding: "80px",
+            padding: "80px 60px",
             background: "var(--bg-darker)",
             border: "1px solid var(--border)",
             borderRadius: "16px",
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: "60px",
-            alignItems: "center",
           }}
         >
           <div>
@@ -993,7 +981,7 @@ export default function PricingPage() {
             >
               Project-Based
               <br />
-              <span style={{ color: "var(--orange)" }}>Intelligence.</span>
+              <span style={{ color: "var(--accent)" }}>Intelligence.</span>
             </h2>
             <p
               style={{

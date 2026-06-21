@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import Squares from "@/components/marketing/InteractiveBackground";
 
@@ -31,11 +30,8 @@ const VALUES = [
 
 export default function AboutPage() {
   return (
-    <div className="about-page" style={{ background: "var(--bg)", color: "var(--text)", overflowX: "hidden" }}>
+    <div style={{ background: "var(--bg)", color: "var(--text)", overflowX: "hidden" }}>
       <style jsx>{`
-        .about-page > section:nth-of-type(2) {
-          display: none;
-        }
         .about-hero-shell {
           position: relative;
           min-height: 100vh;
@@ -43,7 +39,6 @@ export default function AboutPage() {
           align-items: center;
           padding: 140px 4vw 96px;
           overflow: hidden;
-          text-align: left;
         }
         .about-hero-title {
           font-family: var(--heading);
@@ -60,13 +55,6 @@ export default function AboutPage() {
           background-clip: text;
           color: transparent;
         }
-        .about-hero-copy {
-          max-width: 760px;
-          color: var(--text);
-          font-size: 18px;
-          line-height: 1.75;
-          margin: 0;
-        }
         .about-mini-card {
           border: 1px solid var(--border);
           background: rgba(255, 255, 255, 0.58);
@@ -81,16 +69,95 @@ export default function AboutPage() {
           border-radius: 24px;
           box-shadow: 0 28px 70px rgba(0, 82, 255, 0.06);
         }
-        @media (max-width: 900px) {
+        .about-hero-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+          gap: 56px;
+          align-items: center;
+        }
+        .about-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+          margin-top: 34px;
+        }
+        .about-btn-row {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-top: 34px;
+        }
+        .about-story-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 100px;
+          align-items: start;
+        }
+        .about-values-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+        }
+        .about-timeline-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0;
+          position: relative;
+        }
+        @media (max-width: 1024px) {
+          .about-hero-grid {
+            grid-template-columns: 1fr;
+          }
+          .about-values-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          .about-timeline-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+        @media (max-width: 768px) {
           .about-hero-shell {
             min-height: auto;
-            padding: 120px 4vw 72px;
+            padding: 100px 5vw 64px;
           }
           .about-hero-title {
-            font-size: clamp(42px, 12vw, 64px);
+            font-size: clamp(40px, 12vw, 64px);
+          }
+          .about-stat-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          .about-btn-row {
+            flex-direction: column;
+          }
+          .about-btn-row a {
+            text-align: center;
+            justify-content: center;
+          }
+          .about-story-grid {
+            grid-template-columns: 1fr;
+            gap: 40px;
+          }
+          .about-values-grid {
+            grid-template-columns: 1fr;
+          }
+          .about-timeline-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 480px) {
+          .about-hero-shell {
+            padding: 90px 5vw 56px;
+          }
+          .about-hero-title {
+            font-size: clamp(36px, 13vw, 56px);
+          }
+          .about-stat-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
+
+      {/* ── Hero ── */}
       <section className="about-hero-shell">
         <Squares
           direction="diagonal"
@@ -100,10 +167,10 @@ export default function AboutPage() {
           hoverFillColor="rgba(0, 82, 255, 0.06)"
         />
         <div style={{ position: "absolute", top: "8%", right: "-12%", width: "32vw", height: "32vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.08) 0%, rgba(0, 82, 255, 0.03) 40%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: "42%", left: "-12%", width: "30vw", height: "30vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(255, 107, 53, 0.05) 0%, rgba(255, 107, 53, 0.02) 42%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "42%", left: "-12%", width: "30vw", height: "30vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(0, 82, 255, 0.05) 0%, rgba(0, 82, 255, 0.02) 42%, transparent 72%)", filter: "blur(84px)", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1400, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(320px, 0.85fr)", gap: "56px", alignItems: "center" }}>
+          <div className="about-hero-grid">
             <div>
               <span className="mkt-eyebrow">[LUCIDE_TECH_MANIFESTO_v1.0]</span>
               <h1 className="about-hero-title" style={{ marginTop: 18, maxWidth: 780 }}>
@@ -111,12 +178,12 @@ export default function AboutPage() {
                 <br />
                 <span style={{ color: "var(--bright)" }}>Engineered Always.</span>
               </h1>
-              <p className="about-hero-copy" style={{ marginTop: 26 }}>
+              <p style={{ maxWidth: 560, color: "var(--muted)", fontSize: 18, lineHeight: 1.75, marginTop: 26 }}>
                 Lucide Tech sits at the intersection of aesthetic clarity and hard engineering.
                 We build digital experiences that feel premium, load fast, and actually help people make decisions.
               </p>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginTop: 34 }}>
+              <div className="about-stat-grid">
                 {[
                   { label: "ESTABLISHED", value: "2024 // DXB", note: "Studio roots" },
                   { label: "FOCUS", value: "HIGH_FIDELITY", note: "Design and system quality" },
@@ -124,7 +191,7 @@ export default function AboutPage() {
                 ].map((item) => (
                   <div key={item.label} className="about-mini-card">
                     <span className="mkt-eyebrow" style={{ marginBottom: 10 }}>{item.label}</span>
-                    <div style={{ fontFamily: "var(--heading)", fontSize: "clamp(24px, 2vw, 34px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--bright)", lineHeight: 1 }}>{item.value}</div>
+                    <div style={{ fontFamily: "var(--heading)", fontSize: "clamp(20px, 2vw, 28px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--bright)", lineHeight: 1 }}>{item.value}</div>
                     <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--accent)", marginTop: 8, textTransform: "uppercase" }}>{item.note}</div>
                   </div>
                 ))}
@@ -155,154 +222,22 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section
-        style={{
-          minHeight: "88vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          padding: "160px 4vw 80px",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Glow */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(circle at 50% 40%, rgba(255,107,53,0.06), transparent 55%)",
-            pointerEvents: "none",
-          }}
-        />
 
-        <span
-          className="mkt-eyebrow"
-          style={{ letterSpacing: "0.5em", opacity: 0.7 }}
-        >
-          [LUCIDE_TECH_MANIFESTO_v1.0]
-        </span>
-
-        <h1
-          className="hero-h1"
-          style={{ marginTop: 24, maxWidth: 900, textAlign: "center" }}
-        >
-          Design <span className="accent">First.</span>
-          <br />
-          <span className="hero-dim">Engineered Always.</span>
-        </h1>
-
-        <p
-          style={{
-            color: "var(--muted)",
-            maxWidth: "780px",
-            margin: "24px auto 60px",
-            lineHeight: 1.75,
-            fontSize: "18px",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Lucide Tech is a boutique digital product studio. We operate at the
-          intersection of aesthetic luxury and hard-core engineering. We don't
-          just build tools; we craft digital experiences that feel premium and
-          drive outcomes.
-        </p>
-
-        {/* Stats row */}
-        <div
-          style={{
-            display: "flex",
-            gap: "80px",
-            justifyContent: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          {[
-            { label: "ESTABLISHED", val: "2024 // DXB" },
-            { label: "FOCUS", val: "HIGH_FIDELITY" },
-            { label: "APPROACH", val: "SELECTIVE" },
-          ].map((s, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <span
-                style={{
-                  display: "block",
-                  fontFamily: "var(--mono)",
-                  fontSize: "9px",
-                  color: "var(--orange)",
-                  letterSpacing: "0.2em",
-                  marginBottom: "8px",
-                  textTransform: "uppercase",
-                }}
-              >
-                {s.label}
-              </span>
-              <span
-                style={{
-                  fontFamily: "var(--heading)",
-                  fontSize: "22px",
-                  color: "var(--bright)",
-                  fontWeight: 800,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                {s.val}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Story Section ─────────────────────────────────────────── */}
-      <section
-        style={{
-          padding: "120px 4vw",
-          borderTop: "1px solid var(--border)",
-          background: "var(--bg-darker)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1400,
-            margin: "0 auto",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "100px",
-            alignItems: "start",
-          }}
-        >
+      {/* ── Story Section ── */}
+      <section style={{ padding: "100px 4vw", borderTop: "1px solid var(--border)", background: "var(--bg-darker)" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto" }} className="about-story-grid">
           <div>
             <span className="mkt-eyebrow">[THE_STORY]</span>
-            <h2
-              className="mkt-h2"
-              style={{ marginTop: 16, textAlign: "left" }}
-            >
+            <h2 className="mkt-h2" style={{ marginTop: 16, textAlign: "left" }}>
               Why We
               <br />
-              <span style={{ color: "var(--orange)" }}>Built This.</span>
+              <span style={{ color: "var(--accent)" }}>Built This.</span>
             </h2>
-            <p
-              style={{
-                color: "var(--text)",
-                fontSize: "17px",
-                lineHeight: 1.8,
-                marginBottom: "24px",
-                marginTop: "24px",
-              }}
-            >
+            <p style={{ color: "var(--text)", fontSize: "17px", lineHeight: 1.8, marginBottom: "24px", marginTop: "24px" }}>
               The market is saturated with &quot;good enough.&quot; Generic templates,
               sluggish performance, and forgettable design have become the norm.
             </p>
-            <p
-              style={{
-                color: "var(--muted)",
-                fontSize: "17px",
-                lineHeight: 1.8,
-              }}
-            >
+            <p style={{ color: "var(--muted)", fontSize: "17px", lineHeight: 1.8 }}>
               Lucide Tech was born to bridge the gap between academic rigor and
               real-world strategic application. We believe that how a product{" "}
               <em style={{ color: "var(--text)" }}>feels</em> is as important
@@ -312,49 +247,10 @@ export default function AboutPage() {
           </div>
 
           {/* Capabilities card */}
-          <div
-            style={{
-              padding: "48px",
-              border: "1px solid var(--border)",
-              borderRadius: "12px",
-              background:
-                "linear-gradient(160deg, rgba(255,255,255,0.025), rgba(255,255,255,0.005))",
-              position: "relative",
-            }}
-          >
-            {/* Corner decorations */}
-            <div
-              style={{
-                position: "absolute",
-                top: -1,
-                left: -1,
-                width: 20,
-                height: 20,
-                borderTop: "1px solid var(--orange)",
-                borderLeft: "1px solid var(--orange)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: -1,
-                right: -1,
-                width: 20,
-                height: 20,
-                borderBottom: "1px solid var(--orange)",
-                borderRight: "1px solid var(--orange)",
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: "9px",
-                color: "var(--orange)",
-                letterSpacing: "0.2em",
-                display: "block",
-                marginBottom: "32px",
-              }}
-            >
+          <div style={{ padding: "48px", border: "1px solid var(--border)", borderRadius: "20px", background: "rgba(255,255,255,0.5)", backdropFilter: "blur(18px)", position: "relative", boxShadow: "0 28px 70px rgba(0, 82, 255, 0.04)" }}>
+            <div style={{ position: "absolute", top: -1, left: -1, width: 20, height: 20, borderTop: "1px solid var(--accent)", borderLeft: "1px solid var(--accent)" }} />
+            <div style={{ position: "absolute", bottom: -1, right: -1, width: 20, height: 20, borderBottom: "1px solid var(--accent)", borderRight: "1px solid var(--accent)" }} />
+            <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "var(--accent)", letterSpacing: "0.2em", display: "block", marginBottom: "32px" }}>
               [STUDIO_CAPABILITIES]
             </span>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 24 }}>
@@ -363,45 +259,10 @@ export default function AboutPage() {
                 { num: "02", title: "NEXT_JS_ENGINEERING", desc: "Server-side performance meets client-side fluidity. Zero-compromise UX." },
                 { num: "03", title: "INTELLIGENT_SYSTEMS", desc: "Integrating LLMs, graph algorithms, and AI inference layers." },
               ].map((c, i) => (
-                <li
-                  key={i}
-                  style={{
-                    borderBottom: i < 2 ? "1px solid var(--border)" : "none",
-                    paddingBottom: i < 2 ? "20px" : 0,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "var(--mono)",
-                      fontSize: "10px",
-                      color: "var(--orange)",
-                      display: "block",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    {c.num}
-                  </span>
-                  <strong
-                    style={{
-                      display: "block",
-                      color: "var(--bright)",
-                      fontSize: "15px",
-                      fontFamily: "var(--mono)",
-                      marginBottom: "6px",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    {c.title}
-                  </strong>
-                  <span
-                    style={{
-                      fontSize: "13px",
-                      color: "var(--muted)",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {c.desc}
-                  </span>
+                <li key={i} style={{ borderBottom: i < 2 ? "1px solid var(--border)" : "none", paddingBottom: i < 2 ? "20px" : 0 }}>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--accent)", display: "block", marginBottom: "8px" }}>{c.num}</span>
+                  <strong style={{ display: "block", color: "var(--bright)", fontSize: "15px", fontFamily: "var(--mono)", marginBottom: "6px", letterSpacing: "0.05em" }}>{c.title}</strong>
+                  <span style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>{c.desc}</span>
                 </li>
               ))}
             </ul>
@@ -409,7 +270,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ── Studio Values ─────────────────────────────────────────── */}
+      {/* ── Studio Values ── */}
       <section className="mkt-section">
         <div className="mkt-section-header">
           <span className="mkt-eyebrow">[OPERATING_PRINCIPLES]</span>
@@ -419,234 +280,80 @@ export default function AboutPage() {
             Believe In.
           </h2>
         </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "24px",
-          }}
-        >
+        <div className="about-values-grid">
           {VALUES.map((v, i) => (
             <div
               key={i}
               style={{
                 padding: "36px 28px",
                 border: "1px solid var(--border)",
-                borderRadius: "10px",
-                background:
-                  "linear-gradient(160deg, rgba(255,255,255,0.025), rgba(255,255,255,0.005))",
+                borderRadius: "20px",
+                background: "rgba(255, 255, 255, 0.55)",
+                backdropFilter: "blur(14px)",
                 transition: "all 0.3s ease",
+                boxShadow: "0 8px 32px rgba(0, 82, 255, 0.03)",
               }}
             >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 10,
-                  background: "rgba(255,107,53,0.1)",
-                  border: "1px solid rgba(255,107,53,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 18,
-                  marginBottom: 20,
-                }}
-              >
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(0, 82, 255, 0.06)", border: "1px solid rgba(0, 82, 255, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, marginBottom: 20, color: "var(--accent)" }}>
                 {v.icon}
               </div>
-              <h3
-                style={{
-                  fontFamily: "var(--heading)",
-                  fontSize: "18px",
-                  fontWeight: 700,
-                  color: "var(--bright)",
-                  letterSpacing: "-0.02em",
-                  marginBottom: "12px",
-                }}
-              >
+              <h3 style={{ fontFamily: "var(--heading)", fontSize: "18px", fontWeight: 700, color: "var(--bright)", letterSpacing: "-0.02em", marginBottom: "12px" }}>
                 {v.title}
               </h3>
-              <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.7 }}>
-                {v.desc}
-              </p>
+              <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.7 }}>{v.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Timeline ─────────────────────────────────────────────── */}
-      <section
-        style={{
-          padding: "80px 4vw 120px",
-          background: "var(--bg-darker)",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
+      {/* ── Timeline ── */}
+      <section style={{ padding: "80px 4vw 120px", background: "var(--bg-darker)", borderTop: "1px solid var(--border)" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
           <div className="mkt-section-header">
             <span className="mkt-eyebrow">[PRODUCT_TIMELINE]</span>
             <h2 className="mkt-h2">From Zero to Platform.</h2>
           </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 0,
-              position: "relative",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                top: 22,
-                left: "12.5%",
-                right: "12.5%",
-                height: 1,
-                background: "linear-gradient(90deg, transparent, var(--border) 10%, var(--border) 90%, transparent)",
-              }}
-            />
+          <div className="about-timeline-grid">
+            <div style={{ position: "absolute", top: 22, left: "12.5%", right: "12.5%", height: 1, background: "linear-gradient(90deg, transparent, var(--border) 10%, var(--border) 90%, transparent)" }} />
             {MILESTONES.map((m, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: "0 24px 40px",
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              >
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: "50%",
-                    background: "var(--bg-darker)",
-                    border: "1px solid var(--orange)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 24,
-                    boxShadow: "0 0 16px rgba(255,107,53,0.2)",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      background: "var(--orange)",
-                      display: "block",
-                    }}
-                  />
+              <div key={i} style={{ padding: "0 24px 40px", position: "relative", zIndex: 1 }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--bg-darker)", border: "1px solid rgba(0, 82, 255, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24, boxShadow: "0 0 18px rgba(0, 82, 255, 0.12)" }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--accent)", display: "block" }} />
                 </div>
-                <span
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: "9px",
-                    color: "var(--orange)",
-                    letterSpacing: "0.15em",
-                    display: "block",
-                    marginBottom: "8px",
-                  }}
-                >
-                  {m.year}
-                </span>
-                <h3
-                  style={{
-                    fontFamily: "var(--heading)",
-                    fontSize: "16px",
-                    fontWeight: 700,
-                    color: "var(--bright)",
-                    marginBottom: "10px",
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  {m.title}
-                </h3>
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: "var(--muted)",
-                    lineHeight: 1.65,
-                  }}
-                >
-                  {m.desc}
-                </p>
+                <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "var(--accent)", letterSpacing: "0.15em", display: "block", marginBottom: "8px" }}>{m.year}</span>
+                <h3 style={{ fontFamily: "var(--heading)", fontSize: "16px", fontWeight: 700, color: "var(--bright)", marginBottom: "10px", letterSpacing: "-0.02em" }}>{m.title}</h3>
+                <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.65 }}>{m.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Quote ─────────────────────────────────────────────────── */}
-      <section
-        style={{
-          padding: "120px 4vw",
-          borderTop: "1px solid var(--border)",
-          borderBottom: "1px solid var(--border)",
-          textAlign: "center",
-          position: "relative",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "100px",
-            color: "var(--orange)",
-            opacity: 0.12,
-            position: "absolute",
-            top: "80px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            fontFamily: "Georgia, serif",
-            lineHeight: 1,
-            userSelect: "none",
-          }}
-        >
-          "
+      {/* ── Quote ── */}
+      <section style={{ padding: "120px 4vw", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", textAlign: "center", position: "relative" }}>
+        <span style={{ fontSize: "100px", color: "var(--accent)", opacity: 0.08, position: "absolute", top: "80px", left: "50%", transform: "translateX(-50%)", fontFamily: "Georgia, serif", lineHeight: 1, userSelect: "none" }}>
+          &quot;
         </span>
-        <blockquote
-          style={{
-            maxWidth: 800,
-            margin: "0 auto",
-            fontSize: "clamp(20px, 2.5vw, 30px)",
-            lineHeight: 1.45,
-            color: "var(--bright)",
-            letterSpacing: "-0.01em",
-            fontStyle: "italic",
-            marginBottom: "40px",
-            position: "relative",
-            fontFamily: "var(--sans)",
-          }}
-        >
-          &ldquo;We don&apos;t build software. We craft digital artifacts for brands
-          that refuse to blend in.&rdquo;
+        <blockquote style={{ maxWidth: 800, margin: "0 auto", fontSize: "clamp(20px, 2.5vw, 30px)", lineHeight: 1.45, color: "var(--bright)", letterSpacing: "-0.01em", fontStyle: "italic", marginBottom: "40px", position: "relative", fontFamily: "var(--sans)" }}>
+          &ldquo;We don&apos;t build software. We craft digital artifacts for brands that refuse to blend in.&rdquo;
         </blockquote>
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            color: "var(--orange)",
-            fontSize: "11px",
-            fontWeight: 700,
-            letterSpacing: "0.2em",
-          }}
-        >
+        <span style={{ fontFamily: "var(--mono)", color: "var(--accent)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.2em" }}>
           [LUCIDE_TECH_TEAM]
         </span>
       </section>
 
-      {/* ── CTA ─────────────────────────────────────────────────── */}
+      {/* ── CTA ── */}
       <div className="pricing-cta-banner">
         <span className="mkt-eyebrow">[START_EXPERIMENTING]</span>
         <h2 className="pricing-cta-title">
           Ready to
           <br />
-          <span style={{ color: "var(--orange)" }}>Experiment?</span>
+          <span style={{ color: "var(--accent)" }}>Experiment?</span>
         </h2>
         <p className="pricing-cta-sub">
           Build your first simulation free. No credit card required.
         </p>
-        <div
-          style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}
-        >
+        <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
           <Link href="/register" className="btn-hero-primary">
             START FREE SIMULATION →
           </Link>

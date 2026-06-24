@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SCENARIOS, getScenario } from "@/lib/scenarios";
+import { apiFetch } from "@/lib/apiClient";
 import { buildSnapshot } from "@/lib/simulation";
 import { generateAgents, buildWattsStrogatz } from "@/lib/agentGeneration";
 import { useSimulation } from "@/lib/SimulationContext";
@@ -547,7 +548,7 @@ export default function SimulatePage() {
 
                 while (retries >= 0) {
                     try {
-                        const res = await fetch("/api/run-step", {
+                        const res = await apiFetch("/api/run-step", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify(payload),
@@ -845,7 +846,7 @@ export default function SimulatePage() {
         if (step === 0 || isAnalyzing) return;
         setIsAnalyzing(true);
         try {
-            const res = await fetch("/api/analyze-resistance", {
+            const res = await apiFetch("/api/analyze-resistance", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

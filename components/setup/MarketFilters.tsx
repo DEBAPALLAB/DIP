@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { MarketFilters as MF } from "@/lib/SimulationContext";
+import { apiFetch } from "@/lib/apiClient";
 import type { GSSRespondent } from "@/lib/agentGeneration";
 import { classifyPersona, PERSONA_COLORS } from "@/lib/agentGeneration";
 import type { PersonaType } from "@/lib/types";
@@ -87,7 +88,7 @@ export default function MarketFilters({ value, onChange, onNext, onBack }: Marke
         if (!product) return;
         setIsDetecting(true);
         try {
-            const res = await fetch("/api/auto-params", {
+            const res = await apiFetch("/api/auto-params", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

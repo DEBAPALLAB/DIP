@@ -1,18 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { generateChatCompletion } from "@/lib/ai";
+import { guard, safeText } from "@/lib/apiGuard";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const gate = await guard(req);
+  if (!gate.ok) return gate.response;
+
   try {
-    const { prompt } = await req.json();
+    const body = await req.json();
+    const prompt = safeText(body?.prompt, 4000);
 
     if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+      return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
     }
 
     if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
       return NextResponse.json(
-        { error: "AI API Key not configured." },
-        { status: 500 }
+        { error: "Service temporarily unavailable." },
+        { status: 503 }
       );
     }
 

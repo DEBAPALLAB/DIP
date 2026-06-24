@@ -26,7 +26,7 @@ function decisionColor(state?: AgentState): string {
     if (!state?.decision) return "var(--neutral, #444855)"; // pending/neutral background
     if (state.decision === "support") return "var(--support, #C8F135)"; // Neon lime in dark, blue in light
     if (state.decision === "oppose") return "var(--oppose, #ff4444)"; // Crimson red
-    if (state.decision === "neutral") return "var(--orange, #ff6b35)"; // Early partner orange
+    if (state.decision === "neutral") return "var(--neutral, #f0b429)"; // Neutral color
     return "var(--neutral, #444855)";
 }
 

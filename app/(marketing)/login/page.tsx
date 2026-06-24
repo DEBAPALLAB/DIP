@@ -115,13 +115,31 @@ function LoginForm() {
         </div>
  
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
-          <h1 
-            style={{ 
-              fontFamily: "var(--sans)", 
-              fontSize: "22px", 
-              fontWeight: 700, 
-              color: "#0f172a", 
-              letterSpacing: "-0.01em" 
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "7px",
+            padding: "5px 12px",
+            borderRadius: "999px",
+            background: "rgba(0, 82, 255, 0.06)",
+            border: "1px solid rgba(0, 82, 255, 0.16)",
+            fontFamily: "var(--mono)",
+            fontSize: "9.5px",
+            letterSpacing: "0.16em",
+            color: "#0052ff",
+            fontWeight: 700,
+            marginBottom: "16px",
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0052ff", boxShadow: "0 0 8px rgba(0,82,255,0.5)" }} />
+            PRIVATE BETA
+          </span>
+          <h1
+            style={{
+              fontFamily: "var(--sans)",
+              fontSize: "22px",
+              fontWeight: 700,
+              color: "#0f172a",
+              letterSpacing: "-0.01em"
             }}
           >
             Sign in with email
@@ -135,7 +153,7 @@ function LoginForm() {
               maxWidth: "310px" 
             }}
           >
-            Make a new simulation to bring your strategies, network, and teams together. For free
+            Sign in to your approved beta account to run simulations across your strategies, network, and teams.
           </p>
         </div>
  
@@ -269,9 +287,9 @@ function LoginForm() {
 
           
           <div style={{ textAlign: "center", marginTop: "12px", width: "100%" }}>
-            <span style={{ fontSize: "13px", color: "#64748b" }}>Don't have an account? </span>
+            <span style={{ fontSize: "13px", color: "#64748b" }}>Don't have access yet? </span>
             <Link href="/register" style={{ fontSize: "13px", color: "#0f172a", textDecoration: "none", fontWeight: 600 }}>
-              Create one here
+              Request beta access
             </Link>
           </div>
         </form>

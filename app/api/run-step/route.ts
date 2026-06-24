@@ -3,16 +3,26 @@ import { getScenario } from "@/lib/scenarios";
 import { calculateDecision } from "@/lib/prompts";
 import type { RunStepBatchRequest, RunStepBatchResponse, RunStepResponse, AgentState } from "@/lib/types";
 import { generateChatCompletion } from "@/lib/ai";
+import { guard } from "@/lib/apiGuard";
 
 let keyRotationIndex = 0;
 
+const MAX_BATCH = 50;
+
 export async function POST(req: NextRequest) {
+    const gate = await guard(req);
+    if (!gate.ok) return gate.response;
+
     try {
         const body: RunStepBatchRequest = await req.json();
         const { batch, scenarioId, customScenario: bodyCustomScenario, previousParams } = body;
 
         if (!batch || !Array.isArray(batch) || batch.length === 0) {
             return NextResponse.json({ error: "Empty or invalid batch" }, { status: 400 });
+        }
+
+        if (batch.length > MAX_BATCH) {
+            return NextResponse.json({ error: "Batch too large." }, { status: 400 });
         }
 
         const scenario = bodyCustomScenario ?? getScenario(scenarioId);
@@ -90,8 +100,8 @@ Output format: [{"id": agentId, "reasoning": "ONE concise sentence matching Arch
             }
         } catch (e: any) {
             console.error(`[API_ROUTE] API execution failed: ${e.message}`);
-            return NextResponse.json({ 
-                error: `All authorized models failed or rate-limited. Last error: ${e.message}` 
+            return NextResponse.json({
+                error: "Simulation service is busy. Please retry shortly."
             }, { status: 504 });
         }
 

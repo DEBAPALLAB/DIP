@@ -141,7 +141,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 }
 
 export default function PricingPage() {
-  const { isAuthenticated, user, refreshUser } = useAuth();
+  const { isAuthenticated, user, refreshUser, joinWaitlist } = useAuth();
   const router = useRouter();
 
   const [isAnnual, setIsAnnual] = useState(true);
@@ -202,14 +202,27 @@ export default function PricingPage() {
     e.preventDefault();
     setBetaStatus("submitting");
 
-    // Simulate database write / application processing delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
     try {
-      // If user is logged in, optionally elevate their tier to Research/Strategic as a gesture of beta enrollment!
+      // Persist the application to the shared beta_waitlist table so it shows
+      // up in Supabase → Table Editor → beta_waitlist alongside /register signups.
+      const [firstName, ...rest] = betaName.trim().split(" ");
+      const { error } = await joinWaitlist(betaEmail, {
+        first_name: firstName || betaName,
+        last_name: rest.join(" "),
+        role: betaUseCases,
+        use_case: betaFocus,
+        source: "pricing_beta",
+      });
+
+      if (error) {
+        setBetaStatus("error");
+        return;
+      }
+
+      // Courtesy: if a logged-in user applies, flag them as applied.
       if (user) {
         await supabase.auth.updateUser({
-          data: { tier: "research", beta_status: "applied" }
+          data: { beta_status: "applied" }
         });
         await refreshUser();
       }
@@ -295,6 +308,18 @@ export default function PricingPage() {
           grid-template-columns: 1fr 1.2fr;
           gap: 60px;
           align-items: start;
+        }
+        .beta-top-banner:hover {
+          border-color: rgba(0, 82, 255, 0.35);
+          box-shadow: 0 12px 30px rgba(0, 82, 255, 0.08);
+          transform: translateY(-1px);
+        }
+        @media (max-width: 700px) {
+          .beta-top-banner {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 14px !important;
+          }
         }
         @media (max-width: 1024px) {
           .pricing-hero-layout {
@@ -427,6 +452,73 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Private Beta banner (top of pricing) ── */}
+      <div style={{ padding: "0 4vw 56px" }}>
+        <a
+          href="#beta-access"
+          className="beta-top-banner"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "20px",
+            maxWidth: 1400,
+            margin: "0 auto",
+            padding: "20px 28px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, rgba(0,82,255,0.06) 0%, rgba(0,82,255,0.02) 100%)",
+            border: "1px solid rgba(0, 82, 255, 0.18)",
+            textDecoration: "none",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+        >
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "7px 14px",
+            borderRadius: "999px",
+            background: "rgba(0, 82, 255, 0.08)",
+            border: "1px solid rgba(0, 82, 255, 0.22)",
+            fontFamily: "var(--mono)",
+            fontSize: "10.5px",
+            letterSpacing: "0.16em",
+            color: "var(--accent)",
+            fontWeight: 700,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}>
+            <span className="live-dot" style={{ width: 8, height: 8 }} />
+            PRIVATE BETA
+          </span>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--bright)", marginBottom: "2px" }}>
+              We&apos;re onboarding founders, agencies &amp; researchers first — free Pro access.
+            </div>
+            <div style={{ fontSize: "13px", color: "var(--muted)" }}>
+              Tell us what you&apos;d run first and we&apos;ll fast-track you in.
+            </div>
+          </div>
+
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "11px 20px",
+            borderRadius: "10px",
+            background: "var(--accent)",
+            color: "#fff",
+            fontSize: "13px",
+            fontWeight: 700,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}>
+            Apply for access →
+          </span>
+        </a>
+      </div>
 
       {/* ── Pricing Cards ── */}
       <div style={{ padding: "0 4vw 80px" }}>
@@ -771,7 +863,7 @@ export default function PricingPage() {
       </section>
 
       {/* ── Beta Tester / Research Sponsor Form ── */}
-      <section style={{ padding: "0 4vw 80px" }}>
+      <section id="beta-access" style={{ padding: "0 4vw 80px", scrollMarginTop: "100px" }}>
         <div style={{
           maxWidth: 1400,
           margin: "0 auto",
@@ -793,29 +885,102 @@ export default function PricingPage() {
             pointerEvents: "none"
           }} />
 
+          {/* ── Centered "who it's for" beta callout header ── */}
+          <div style={{
+            position: "relative",
+            zIndex: 2,
+            textAlign: "center",
+            maxWidth: 720,
+            margin: "0 auto 52px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}>
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "7px 16px",
+              borderRadius: "999px",
+              background: "rgba(0, 82, 255, 0.06)",
+              border: "1px solid rgba(0, 82, 255, 0.18)",
+              fontFamily: "var(--mono)",
+              fontSize: "11px",
+              letterSpacing: "0.16em",
+              color: "var(--accent)",
+              fontWeight: 700,
+              marginBottom: "22px",
+            }}>
+              <span className="live-dot" style={{ width: 8, height: 8 }} />
+              NOW IN PRIVATE BETA
+            </span>
+
+            <h2 style={{
+              fontFamily: "var(--heading)",
+              fontSize: "clamp(30px, 4.5vw, 52px)",
+              fontWeight: 800,
+              color: "var(--bright)",
+              letterSpacing: "-0.04em",
+              lineHeight: 1.05,
+              margin: "0 0 18px",
+            }}>
+              Get early access. <span style={{ color: "var(--accent)" }}>Free Pro level.</span>
+            </h2>
+
+            <p style={{
+              color: "var(--muted)",
+              fontSize: "16px",
+              lineHeight: 1.6,
+              maxWidth: 580,
+              margin: "0 0 28px",
+            }}>
+              We&apos;re onboarding the first wave by hand. If you&apos;re shipping something real and want
+              to stress-test it against a live social-contagion simulation, this is for you.
+            </p>
+
+            {/* Who it's for — explicit audience chips */}
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: "10px",
+            }}>
+              {[
+                { label: "Founders", hint: "pre-launch validation" },
+                { label: "Agencies", hint: "client go-to-market" },
+                { label: "Researchers", hint: "agent-based modeling" },
+                { label: "Strategists", hint: "market intelligence" },
+              ].map((a) => (
+                <div key={a.label} style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: "2px",
+                  padding: "10px 16px",
+                  borderRadius: "10px",
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  textAlign: "left",
+                }}>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--bright)" }}>{a.label}</span>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: "9.5px", letterSpacing: "0.04em", color: "var(--muted)" }}>{a.hint}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="pricing-beta-layout" style={{ position: "relative", zIndex: 2 }}>
             <div>
-              <span className="mkt-eyebrow" style={{ textAlign: "left" }}>[BETA_TESTER_PROGRAM]</span>
-              <h2 style={{
-                fontFamily: "var(--heading)",
-                fontSize: "clamp(24px, 3vw, 38px)",
-                fontWeight: 800,
-                color: "var(--bright)",
-                letterSpacing: "-0.04em",
-                lineHeight: 1.1,
-                margin: "16px 0"
-              }}>
-                Accelerate Your Research.
-                <br />
-                <span style={{ color: "var(--accent)" }}>Get Free Pro Level.</span>
-              </h2>
+              <span className="mkt-eyebrow" style={{ textAlign: "left" }}>[WHAT_YOU_GET]</span>
               <p style={{
                 color: "var(--muted)",
                 fontSize: "14px",
                 lineHeight: 1.6,
-                marginBottom: "24px"
+                margin: "16px 0 24px"
               }}>
-                We are actively looking for researchers, economists, and strategic planners to stress-test our custom Watts-Strogatz social structures and agent reasoning. 
+                Approved beta members get the full Research Tier unlocked at no cost, plus a direct
+                line to the people building the engine. Tell us what you&apos;d run first and we&apos;ll
+                fast-track your access.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "11px", fontFamily: "var(--mono)" }}>
@@ -826,6 +991,9 @@ export default function PricingPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "11px", fontFamily: "var(--mono)" }}>
                   <span style={{ color: "var(--accent)" }}>[✔]</span> Direct feedback loops with core engineering
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "11px", fontFamily: "var(--mono)" }}>
+                  <span style={{ color: "var(--accent)" }}>[✔]</span> Priority onboarding for founders &amp; agencies
                 </div>
               </div>
             </div>

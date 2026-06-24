@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateChatCompletion } from "@/lib/ai";
+import { guard, safeText } from "@/lib/apiGuard";
 
 export async function POST(req: NextRequest) {
+    const gate = await guard(req);
+    if (!gate.ok) return gate.response;
+
     try {
-        const { logs, currentStep, scenarioLabel } = await req.json();
+        const body = await req.json();
+        const { logs, currentStep } = body;
+        const scenarioLabel = safeText(body?.scenarioLabel, 200) || "this product";
+
         if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
-            return NextResponse.json({ error: "AI API Key not configured." }, { status: 500 });
+            return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
+        }
+
+        if (!Array.isArray(logs)) {
+            return NextResponse.json({ error: "Invalid logs." }, { status: 400 });
         }
 
         // Filter for opposition in the current step

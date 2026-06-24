@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSimulation, type ProductInput } from "@/lib/SimulationContext";
+import { apiFetch } from "@/lib/apiClient";
 import { buildProductBrief, buildScenarioFromProduct } from "@/lib/productParams";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ export default function InterventionPanel() {
             let branchProduct = localProduct;
 
             try {
-                const res = await fetch("/api/auto-params", {
+                const res = await apiFetch("/api/auto-params", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ brief: buildProductBrief(localProduct) }),

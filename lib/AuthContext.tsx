@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "./supabase";
+import { sendToWaitlistWebhook } from "./waitlistWebhook";
 
 export type SubscriptionTier = "explorer" | "research" | "strategic" | "agency";
 
@@ -47,17 +48,24 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { 
-    id: string; 
-    email?: string; 
+  user: {
+    id: string;
+    email?: string;
     tier: SubscriptionTier;
     metadata?: any;
   } | null;
   login: (email: string, pass: string) => Promise<{ error: string | null }>;
   register: (email: string, pass: string, metadata?: any) => Promise<{ error: string | null }>;
+  joinWaitlist: (email: string, metadata?: any) => Promise<{ error: string | null }>;
   logout: () => void;
   isLoading: boolean;
   refreshUser: () => Promise<void>;
+}
+
+/** A user is allowed into the app only once beta-approved. */
+function isBetaApproved(supabaseUser: any): boolean {
+  const meta = supabaseUser?.user_metadata || {};
+  return meta.beta_approved === true || meta.beta_status === "approved";
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -124,33 +132,102 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password: pass,
     });
-    
-    if (!error && data.session) {
-      syncUser(data.session.user);
-      return { error: null };
+
+    if (error || !data.session) {
+      return { error: error?.message || "Invalid login credentials." };
     }
-    
-    return { error: error?.message || "Invalid login credentials." };
+
+    // Beta gate: only approved accounts may enter the app.
+    if (!isBetaApproved(data.session.user)) {
+      await supabase.auth.signOut();
+      return {
+        error:
+          "You're on the beta waitlist. We'll email you the moment your access is approved.",
+      };
+    }
+
+    syncUser(data.session.user);
+    return { error: null };
   };
 
+  /**
+   * Waitlist signup — captures interest. Creates NO logged-in session and NO
+   * credentials. The person cannot access the app or any paid API until an
+   * admin approves them (or they redeem an invite code via `register`).
+   */
+  const joinWaitlist = async (email: string, metadata: any) => {
+    const normalizedEmail = email.toLowerCase().trim();
+    const payload = {
+      email: normalizedEmail,
+      first_name: metadata?.first_name ?? null,
+      last_name: metadata?.last_name ?? null,
+      company: metadata?.company ?? null,
+      role: metadata?.role ?? null,
+      use_case: metadata?.use_case ?? null,
+      source: metadata?.source ?? "waitlist",
+    };
+
+    const { error } = await supabase
+      .from("beta_waitlist")
+      .insert({ ...payload, status: "pending" });
+
+    // Mirror to the Superforms webhook (best-effort, never blocks).
+    void sendToWaitlistWebhook(payload);
+
+    if (error) {
+      // 23505 = unique violation (already on the list) — treat as success.
+      if ((error as any).code === "23505") return { error: null };
+      return { error: error.message || "Could not join the waitlist." };
+    }
+    return { error: null };
+  };
+
+  /**
+   * Invite-code registration — for founders/agencies given direct access.
+   * Validates the code via the `redeem_invite_code` RPC, which (server-side,
+   * SECURITY DEFINER) checks the code is valid/unused and returns the tier to
+   * grant. Only on success do we create an approved account.
+   */
   const register = async (email: string, pass: string, metadata: any) => {
-    // Default tier is explorer
-    const finalMetadata = { ...metadata, tier: "explorer" };
-    
+    const code = (metadata?.invite_code || "").trim().toUpperCase();
+    if (!code) {
+      return { error: "An invite code is required for direct access." };
+    }
+
+    const { data: redeem, error: redeemError } = await supabase.rpc(
+      "redeem_invite_code",
+      { p_code: code, p_email: email.toLowerCase().trim() }
+    );
+
+    if (redeemError || !redeem || redeem.valid !== true) {
+      return { error: redeemError?.message || "Invalid or already-used invite code." };
+    }
+
+    const grantedTier: SubscriptionTier = (redeem.tier as SubscriptionTier) || "research";
+
+    const finalMetadata = {
+      ...metadata,
+      invite_code: undefined, // don't persist the raw code in user metadata
+      tier: grantedTier,
+      beta_approved: true,
+      beta_status: "approved",
+    };
+
     const { error, data } = await supabase.auth.signUp({
       email,
       password: pass,
-      options: {
-        data: finalMetadata
-      }
+      options: { data: finalMetadata },
     });
 
-    if (!error) {
-      if (data.user) syncUser(data.user);
-      return { error: null };
+    if (error) {
+      return { error: error.message || "Failed to create account." };
     }
-    
-    return { error: error?.message || "Failed to register account." };
+
+    if (data.session && data.user) {
+      // Email confirmation disabled → immediate session.
+      syncUser(data.user);
+    }
+    return { error: null };
   };
 
   const logout = async () => {
@@ -159,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, register, logout, isLoading, refreshUser }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, register, joinWaitlist, logout, isLoading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

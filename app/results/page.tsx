@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSimulation } from "@/lib/SimulationContext";
+import { apiFetch } from "@/lib/apiClient";
 import { supabase } from "@/lib/supabase";
 import AdoptionCurveSection from "@/components/results/AdoptionCurveSection";
 import PersonaBreakdownSection from "@/components/results/PersonaBreakdownSection";
@@ -98,7 +99,7 @@ export default function ResultsPage() {
                 .sort((a, b) => b.influence_score - a.influence_score)
                 .slice(0, 3);
 
-            const res = await fetch("/api/generate-insights", {
+            const res = await apiFetch("/api/generate-insights", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -544,7 +545,7 @@ export default function ResultsPage() {
                                 className="btn-v2-ghost"
                                 style={{ textDecoration: "none", height: "42px", padding: "0 18px", borderRadius: "8px", fontSize: "12px", textTransform: "none", letterSpacing: 0, fontWeight: 700, display: "inline-flex", alignItems: "center" }}
                             >
-                                ← Retry
+                                ← Back to Workbench
                             </Link>
                         </div>
                     </section>

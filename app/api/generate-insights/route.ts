@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateChatCompletion } from "@/lib/ai";
+import { guard, safeText } from "@/lib/apiGuard";
 
 export async function POST(req: NextRequest) {
+    const gate = await guard(req);
+    if (!gate.ok) return gate.response;
+
     try {
         const body = await req.json();
-        const { productName, productBrief, adoptionPct, consensusScore, personaBreakdown, topSupportQuotes, topOpposeQuotes } = body;
+        const productName = safeText(body?.productName, 200) || "the product";
+        const productBrief = safeText(body?.productBrief, 4000) || "";
+        const { adoptionPct, consensusScore, personaBreakdown, topSupportQuotes, topOpposeQuotes } = body;
 
         if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
-            return NextResponse.json({ error: "AI API Key not configured." }, { status: 500 });
+            return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
         }
 
         const insightPrompt = `You are a high-level strategic advisor.
@@ -50,7 +56,7 @@ RECOMMENDATION: [One concrete, high-impact tactical shift]`;
         } catch (err: any) {
             console.error(`AI insights failed:`, err.message);
             return NextResponse.json(
-                { error: `AI error: ${err.message}` },
+                { error: "Insight service is busy. Please retry." },
                 { status: 502 }
             );
         }

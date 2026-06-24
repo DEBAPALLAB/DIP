@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Scenario } from "@/lib/types";
+import { apiFetch } from "@/lib/apiClient";
 import { useSimulation } from "@/lib/SimulationContext";
 
 interface ProductBriefProps {
@@ -15,7 +16,7 @@ export default function ProductBrief({ scenario }: ProductBriefProps) {
     const handleResynthesize = async () => {
         setIsSynthesizing(true);
         try {
-            const res = await fetch("/api/auto-params", {
+            const res = await apiFetch("/api/auto-params", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ brief: scenario.brief }),

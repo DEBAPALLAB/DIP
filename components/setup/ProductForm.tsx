@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ProductInput } from "@/lib/SimulationContext";
+import { apiFetch } from "@/lib/apiClient";
 import type { ScenarioParams } from "@/lib/types";
 import { SCENARIOS } from "@/lib/scenarios";
 
@@ -126,7 +127,7 @@ export default function ProductForm({ value, onChange, onNext }: ProductFormProp
                 ...benefits.filter((b) => b.trim().length > 0).map((b) => `- ${b}`),
             ].join("\n");
 
-            const res = await fetch("/api/auto-params", {
+            const res = await apiFetch("/api/auto-params", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ brief }),

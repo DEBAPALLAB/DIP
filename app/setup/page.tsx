@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useSimulation, type ProductInput, type MarketFilters } from "@/lib/SimulationContext";
+import { apiFetch } from "@/lib/apiClient";
 import { buildScenarioFromProduct } from "@/lib/productParams";
 import { generateAgents, buildWattsStrogatz, type GSSRespondent } from "@/lib/agentGeneration";
 import Link from "next/link";
@@ -132,7 +133,7 @@ export default function SetupPage() {
         if (!aiPrompt) return;
         setIsAiLoading(true);
         try {
-            const res = await fetch("/api/parse-scenario", {
+            const res = await apiFetch("/api/parse-scenario", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ prompt: aiPrompt })
@@ -146,7 +147,7 @@ export default function SetupPage() {
                 setProduct(parsedProduct);
                 sim.setProduct(parsedProduct);
 
-                const precisionRes = await fetch("/api/auto-params", {
+                const precisionRes = await apiFetch("/api/auto-params", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -198,7 +199,7 @@ export default function SetupPage() {
         if (!product.name) return;
         setIsAiLoading(true);
         try {
-            const res = await fetch("/api/auto-params", {
+            const res = await apiFetch("/api/auto-params", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

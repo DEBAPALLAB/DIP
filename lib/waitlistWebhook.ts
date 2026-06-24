@@ -19,13 +19,20 @@ export interface WaitlistSubmission {
 
 export async function sendToWaitlistWebhook(data: WaitlistSubmission): Promise<void> {
     try {
+        const params = new URLSearchParams();
+        params.append("email", data.email);
+        if (data.first_name) params.append("first_name", data.first_name);
+        if (data.last_name) params.append("last_name", data.last_name);
+        if (data.company) params.append("company", data.company);
+        if (data.role) params.append("role", data.role);
+        if (data.use_case) params.append("use_case", data.use_case);
+        if (data.source) params.append("source", data.source);
+        params.append("submitted_at", new Date().toISOString());
+
         await fetch(WEBHOOK_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                ...data,
-                submitted_at: new Date().toISOString(),
-            }),
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: params.toString(),
         });
     } catch (err) {
         // eslint-disable-next-line no-console

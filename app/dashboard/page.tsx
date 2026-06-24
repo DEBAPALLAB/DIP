@@ -394,7 +394,7 @@ export default function DashboardPage() {
                               <button type="button" onClick={() => router.push(`/results?id=${sim.id}`)}>
                                 View Report
                               </button>
-                              <button type="button" onClick={() => router.push(`/simulate?scenario=${encodeURIComponent(sim.scenario_id)}&count=${launchCount}`)}>
+                              <button type="button" onClick={() => router.push(`/simulate?id=${sim.id}`)}>
                                 Retry
                               </button>
                               <button

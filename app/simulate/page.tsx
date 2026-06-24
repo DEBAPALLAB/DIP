@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { SCENARIOS, getScenario } from "@/lib/scenarios";
 import { apiFetch } from "@/lib/apiClient";
 import { buildSnapshot } from "@/lib/simulation";
 import { generateAgents, buildWattsStrogatz } from "@/lib/agentGeneration";
 import { useSimulation } from "@/lib/SimulationContext";
+import { useAuth, useEntitlements, TIER_LIMITS } from "@/lib/AuthContext";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import InterventionPanel from "@/components/dashboard/InterventionPanel";
@@ -97,6 +98,25 @@ interface ConsoleMessage {
 export default function SimulatePage() {
     const simCtx = useSimulation();
     const router = useRouter();
+    const pathname = usePathname();
+    const { user, logout } = useAuth();
+    const { tier } = useEntitlements();
+
+    // Real, logged-in identity for the sidebar footer.
+    const displayName =
+        user?.metadata?.first_name
+            ? `${user.metadata.first_name}${user.metadata.last_name ? " " + user.metadata.last_name : ""}`
+            : user?.email?.split("@")[0] || "Your account";
+    const displayEmail = user?.email || "";
+    const userInitials = (
+        user?.metadata?.first_name
+            ? `${user.metadata.first_name[0] ?? ""}${user.metadata.last_name?.[0] ?? ""}`
+            : (user?.email?.[0] ?? "U")
+    ).toUpperCase();
+    const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+    const maxAgents = TIER_LIMITS[tier]?.maxAgents ?? 0;
+    const canUpgrade = tier === "explorer" || tier === "research";
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
     const [phase, setPhase] = useState<SimPhase>("UNCONFIGURED");
     const [isGenerating, setIsGenerating] = useState(false);
@@ -105,6 +125,24 @@ export default function SimulatePage() {
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    // Close the user menu on any outside click / Escape.
+    useEffect(() => {
+        if (!isUserMenuOpen) return;
+        const onPointer = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest(".user-menu-wrap")) setIsUserMenuOpen(false);
+        };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setIsUserMenuOpen(false);
+        };
+        document.addEventListener("mousedown", onPointer);
+        document.addEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("mousedown", onPointer);
+            document.removeEventListener("keydown", onKey);
+        };
+    }, [isUserMenuOpen]);
 
     // Redundant local states replaced by context:
     const agents = simCtx.agents;
@@ -1097,19 +1135,12 @@ export default function SimulatePage() {
                                 </div>
                             </div>
 
-                            {/* General Navigation Menu */}
+                            {/* Primary workspace navigation */}
                             <div className="navigation-section">
-                                <span className="drawer-section-title">General</span>
+                                <span className="drawer-section-title">Workspace</span>
                                 <div className="drawer-menu-group">
-                                    <Link href="/" className="drawer-menu-item">
-                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                                            <polyline points="9 22 9 12 15 12 15 22" />
-                                        </svg>
-                                        <span className="menu-label">Home</span>
-                                    </Link>
-                                    <Link href="/dashboard" className="drawer-menu-item">
-                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <Link href="/dashboard" className={`drawer-menu-item ${pathname === "/dashboard" ? "active" : ""}`}>
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                             <rect width="7" height="9" x="3" y="3" rx="1" />
                                             <rect width="7" height="5" x="14" y="3" rx="1" />
                                             <rect width="7" height="9" x="14" y="12" rx="1" />
@@ -1117,47 +1148,55 @@ export default function SimulatePage() {
                                         </svg>
                                         <span className="menu-label">Dashboard</span>
                                     </Link>
-                                    <Link href="/setup" className="drawer-menu-item">
-                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <Link href="/simulate" className={`drawer-menu-item ${pathname === "/simulate" ? "active" : ""}`}>
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M12 2v4" />
+                                            <path d="M12 18v4" />
+                                            <path d="m4.93 4.93 2.83 2.83" />
+                                            <path d="m16.24 16.24 2.83 2.83" />
+                                            <path d="M2 12h4" />
+                                            <path d="M18 12h4" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                        <span className="menu-label">Live Simulation</span>
+                                    </Link>
+                                    <Link href="/setup" className={`drawer-menu-item ${pathname === "/setup" ? "active" : ""}`}>
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
                                             <circle cx="12" cy="12" r="3" />
                                         </svg>
-                                        <span className="menu-label">Setup Settings</span>
+                                        <span className="menu-label">Configure Setup</span>
+                                    </Link>
+                                    <Link href={simCtx.dbSimulationId ? `/results?id=${simCtx.dbSimulationId}` : "/results"} className={`drawer-menu-item ${pathname === "/results" ? "active" : ""}`}>
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+                                            <path d="m19 9-5 5-4-4-3 3" />
+                                        </svg>
+                                        <span className="menu-label">Results &amp; Report</span>
                                     </Link>
                                 </div>
                             </div>
 
-                            {/* Tools section */}
+                            {/* Roadmap / coming-soon tooling */}
                             <div className="tools-section">
-                                <span className="drawer-section-title">Tools</span>
+                                <span className="drawer-section-title">Coming soon</span>
                                 <div className="drawer-menu-group">
                                     <div className="drawer-menu-item disabled">
-                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+                                            <rect x="7" y="11" width="3" height="6" rx="0.5" />
+                                            <rect x="12" y="7" width="3" height="10" rx="0.5" />
+                                            <rect x="17" y="4" width="3" height="13" rx="0.5" />
                                         </svg>
-                                        <span className="menu-label">Analytics</span>
+                                        <span className="menu-label">Cross-run Analytics</span>
+                                        <span className="menu-soon-tag">Soon</span>
                                     </div>
                                     <div className="drawer-menu-item disabled">
-                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                                         </svg>
                                         <span className="menu-label">Market Dynamics</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Recents list */}
-                            <div className="recents-section">
-                                <span className="drawer-section-title">Recents</span>
-                                <div className="drawer-menu-group">
-                                    <div className="drawer-menu-item disabled">
-                                        <svg className="menu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <circle cx="12" cy="12" r="10" />
-                                            <polyline points="12 6 12 12 16 14" />
-                                        </svg>
-                                        <span className="menu-label">{scenario.label}</span>
+                                        <span className="menu-soon-tag">Soon</span>
                                     </div>
                                 </div>
                             </div>
@@ -1165,31 +1204,65 @@ export default function SimulatePage() {
 
                         {/* Footer Section */}
                         <div className="drawer-footer">
-                            <div className="upgrade-promo-card">
-                                <div className="promo-info">
-                                    <div className="promo-title">Upgrade to Pro</div>
-                                    <div className="promo-subtitle">Unlock larger population sizes</div>
-                                </div>
-                                <div className="promo-icon-btn">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10" />
+                            {canUpgrade && (
+                                <Link href="/pricing" className="upgrade-promo-card">
+                                    <div className="promo-icon-btn">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z" />
+                                        </svg>
+                                    </div>
+                                    <div className="promo-info">
+                                        <div className="promo-title">Upgrade plan</div>
+                                        <div className="promo-subtitle">More agents &amp; parallel scenarios</div>
+                                    </div>
+                                    <svg className="promo-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M5 12h14" />
+                                        <path d="m12 5 7 7-7 7" />
                                     </svg>
-                                </div>
-                            </div>
+                                </Link>
+                            )}
 
-                            <div className="user-profile-row-ref">
-                                <div className="user-avatar-ref">
-                                    <span>DG</span>
-                                </div>
-                                <div className="user-info-ref">
-                                    <div className="user-name-ref">Developer Account</div>
-                                    <div className="user-email-ref">admin@strawberry.ai</div>
-                                </div>
-                                <div className="user-chevron-ref">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="6 9 12 15 18 9" />
-                                    </svg>
-                                </div>
+                            <div className="user-menu-wrap">
+                                {isUserMenuOpen && (
+                                    <div className="user-menu-popover">
+                                        <Link href="/setup" className="user-menu-action" onClick={() => setIsUserMenuOpen(false)}>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                <circle cx="12" cy="12" r="3" />
+                                                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                            </svg>
+                                            Account settings
+                                        </Link>
+                                        <button type="button" className="user-menu-action danger" onClick={() => { setIsUserMenuOpen(false); logout(); }}>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                                <polyline points="16 17 21 12 16 7" />
+                                                <line x1="21" y1="12" x2="9" y2="12" />
+                                            </svg>
+                                            Sign out
+                                        </button>
+                                    </div>
+                                )}
+                                <button
+                                    type="button"
+                                    className={`user-profile-row-ref ${isUserMenuOpen ? "menu-open" : ""}`}
+                                    onClick={() => setIsUserMenuOpen((v) => !v)}
+                                >
+                                    <div className="user-avatar-ref">
+                                        <span>{userInitials}</span>
+                                    </div>
+                                    <div className="user-info-ref">
+                                        <div className="user-name-ref">{displayName}</div>
+                                        <div className="user-email-ref">
+                                            <span className="user-tier-badge">{tierLabel}</span>
+                                            {displayEmail}
+                                        </div>
+                                    </div>
+                                    <div className="user-chevron-ref">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="18 15 12 9 6 15" />
+                                        </svg>
+                                    </div>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1885,28 +1958,27 @@ export default function SimulatePage() {
                 }
 
                 .drawer-section-title {
-                    font-size: 10px;
-                    font-weight: 700;
-                    font-family: var(--mono);
+                    font-size: 11px;
+                    font-weight: 600;
+                    font-family: var(--sans);
                     color: #94a3b8;
-                    text-transform: uppercase;
-                    letter-spacing: 0.08em;
-                    padding: 0 4px;
+                    letter-spacing: 0.01em;
+                    padding: 0 6px;
                     margin-bottom: 6px;
                 }
 
                 .drawer-menu-group {
                     display: flex;
                     flex-direction: column;
-                    gap: 4px;
+                    gap: 2px;
                 }
 
                 .drawer-menu-item {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    gap: 11px;
+                    padding: 9px 12px;
+                    border-radius: 9px;
                     color: #475569;
                     background: transparent;
                     border: 0;
@@ -1914,10 +1986,11 @@ export default function SimulatePage() {
                     text-align: left;
                     font-size: 13px;
                     font-family: var(--sans);
-                    font-weight: 600;
+                    font-weight: 500;
                     cursor: pointer;
                     text-decoration: none;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    position: relative;
+                    transition: background 0.15s ease, color 0.15s ease;
                 }
 
                 .drawer-menu-item:hover:not(.disabled) {
@@ -1927,24 +2000,53 @@ export default function SimulatePage() {
 
                 .drawer-menu-item.active {
                     color: #0052ff;
-                    background: rgba(0, 82, 255, 0.06);
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                    background: rgba(0, 82, 255, 0.07);
+                    font-weight: 600;
+                }
+
+                .drawer-menu-item.active::before {
+                    content: "";
+                    position: absolute;
+                    left: 0;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 3px;
+                    height: 16px;
+                    border-radius: 0 3px 3px 0;
+                    background: #0052ff;
                 }
 
                 .drawer-menu-item.disabled {
-                    opacity: 0.45;
-                    cursor: not-allowed;
+                    color: #94a3b8;
+                    cursor: default;
+                }
+
+                .drawer-menu-item .menu-label {
+                    flex: 1;
+                }
+
+                .menu-soon-tag {
+                    font-size: 9px;
+                    font-weight: 600;
+                    font-family: var(--sans);
+                    color: #0052ff;
+                    background: rgba(0, 82, 255, 0.08);
+                    border: 1px solid rgba(0, 82, 255, 0.12);
+                    padding: 2px 6px;
+                    border-radius: 999px;
+                    letter-spacing: 0.02em;
                 }
 
                 .drawer-menu-item .menu-icon-svg {
                     color: currentColor;
-                    opacity: 0.75;
-                    transition: transform 0.2s ease, opacity 0.2s ease;
+                    opacity: 0.7;
+                    flex-shrink: 0;
+                    transition: opacity 0.15s ease;
                 }
 
-                .drawer-menu-item:hover .menu-icon-svg {
+                .drawer-menu-item.active .menu-icon-svg,
+                .drawer-menu-item:hover:not(.disabled) .menu-icon-svg {
                     opacity: 1;
-                    transform: scale(1.05);
                 }
 
                 .drawer-footer {
@@ -1960,37 +2062,34 @@ export default function SimulatePage() {
                 .upgrade-promo-card {
                     display: flex;
                     align-items: center;
-                    justify-content: space-between;
-                    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
-                    border: 1px solid rgba(168, 85, 247, 0.12);
-                    border-radius: 10px;
+                    gap: 11px;
+                    background: linear-gradient(135deg, rgba(0, 82, 255, 0.06) 0%, rgba(0, 82, 255, 0.03) 100%);
+                    border: 1px solid rgba(0, 82, 255, 0.14);
+                    border-radius: 12px;
                     padding: 12px;
                     position: relative;
                     overflow: hidden;
+                    text-decoration: none;
+                    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
                 }
 
-                .upgrade-promo-card::before {
-                    content: "";
-                    position: absolute;
-                    inset: 0;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-                    transform: translateX(-100%);
-                    transition: transform 0.6s ease;
-                }
-
-                .upgrade-promo-card:hover::before {
-                    transform: translateX(100%);
+                .upgrade-promo-card:hover {
+                    border-color: rgba(0, 82, 255, 0.28);
+                    background: linear-gradient(135deg, rgba(0, 82, 255, 0.09) 0%, rgba(0, 82, 255, 0.04) 100%);
+                    transform: translateY(-1px);
                 }
 
                 .promo-info {
                     display: flex;
                     flex-direction: column;
+                    flex: 1;
+                    min-width: 0;
                 }
 
                 .promo-title {
-                    font-size: 12px;
+                    font-size: 12.5px;
                     font-weight: 700;
-                    color: #1e293b;
+                    color: #0f172a;
                     font-family: var(--sans);
                 }
 
@@ -1998,6 +2097,19 @@ export default function SimulatePage() {
                     font-size: 10px;
                     color: #64748b;
                     font-family: var(--sans);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .promo-arrow {
+                    color: #0052ff;
+                    flex-shrink: 0;
+                    transition: transform 0.18s ease;
+                }
+
+                .upgrade-promo-card:hover .promo-arrow {
+                    transform: translateX(2px);
                 }
 
                 .chat-wrapper {
@@ -2111,17 +2223,20 @@ export default function SimulatePage() {
                 }
 
                 .promo-icon-btn {
-                    width: 20px;
-                    height: 20px;
-                    background: #f59e0b;
-                    color: #000;
-                    font-size: 9px;
-                    font-weight: 800;
+                    width: 30px;
+                    height: 30px;
+                    background: linear-gradient(135deg, #0052ff 0%, #003dbb 100%);
+                    color: #ffffff;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    border-radius: 50%;
-                    box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
+                    border-radius: 8px;
+                    flex-shrink: 0;
+                    box-shadow: 0 2px 8px rgba(0, 82, 255, 0.25);
+                }
+
+                .user-menu-wrap {
+                    position: relative;
                 }
 
                 .user-profile-row-ref {
@@ -2129,13 +2244,26 @@ export default function SimulatePage() {
                     align-items: center;
                     gap: 10px;
                     width: 100%;
-                    padding: 4px 0;
+                    padding: 7px 8px;
+                    border-radius: 11px;
+                    border: 1px solid transparent;
+                    background: transparent;
+                    cursor: pointer;
+                    text-align: left;
+                    font-family: var(--sans);
+                    transition: background 0.15s ease, border-color 0.15s ease;
+                }
+
+                .user-profile-row-ref:hover,
+                .user-profile-row-ref.menu-open {
+                    background: rgba(15, 23, 42, 0.03);
+                    border-color: rgba(15, 23, 42, 0.06);
                 }
 
                 .user-avatar-ref {
                     width: 34px;
                     height: 34px;
-                    border-radius: 50%;
+                    border-radius: 9px;
                     background: linear-gradient(135deg, #0052ff 0%, #003dbb 100%);
                     color: white;
                     font-size: 12.5px;
@@ -2151,7 +2279,7 @@ export default function SimulatePage() {
                 .user-info-ref {
                     display: flex;
                     flex-direction: column;
-                    gap: 1px;
+                    gap: 2px;
                     flex: 1;
                     min-width: 0;
                 }
@@ -2167,6 +2295,9 @@ export default function SimulatePage() {
                 }
 
                 .user-email-ref {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
                     font-size: 10.5px;
                     color: #64748b;
                     font-family: var(--sans);
@@ -2175,11 +2306,73 @@ export default function SimulatePage() {
                     text-overflow: ellipsis;
                 }
 
+                .user-tier-badge {
+                    flex-shrink: 0;
+                    font-size: 9px;
+                    font-weight: 700;
+                    color: #0052ff;
+                    background: rgba(0, 82, 255, 0.08);
+                    padding: 1px 6px;
+                    border-radius: 999px;
+                    letter-spacing: 0.02em;
+                }
+
                 .user-chevron-ref {
                     color: #94a3b8;
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    flex-shrink: 0;
+                }
+
+                .user-menu-popover {
+                    position: absolute;
+                    bottom: calc(100% + 8px);
+                    left: 0;
+                    right: 0;
+                    background: #ffffff;
+                    border: 1px solid rgba(15, 23, 42, 0.08);
+                    border-radius: 12px;
+                    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+                    padding: 6px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                    z-index: 140;
+                    animation: slideUpIn 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+
+                .user-menu-action {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    width: 100%;
+                    padding: 9px 11px;
+                    border-radius: 8px;
+                    border: 0;
+                    background: transparent;
+                    font-family: var(--sans);
+                    font-size: 12.5px;
+                    font-weight: 600;
+                    color: #334155;
+                    cursor: pointer;
+                    text-align: left;
+                    text-decoration: none;
+                    transition: background 0.15s ease, color 0.15s ease;
+                }
+
+                .user-menu-action:hover {
+                    background: rgba(15, 23, 42, 0.04);
+                    color: #0f172a;
+                }
+
+                .user-menu-action.danger {
+                    color: #dc2626;
+                }
+
+                .user-menu-action.danger:hover {
+                    background: rgba(220, 38, 38, 0.06);
+                    color: #b91c1c;
                 }
 
                 /* Floating Collapse Restore Button */

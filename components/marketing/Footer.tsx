@@ -2,9 +2,10 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer style={{ padding: "0 4vw 40px 40px", background: "transparent" }}>
+    <footer className="marketing-footer" style={{ padding: "0 4vw 40px 40px", background: "transparent" }}>
       {/* Curved Capsule Container (Premium Light-glass panel) */}
       <div
+        className="marketing-footer-shell"
         style={{
           background: "var(--panel)",
           backdropFilter: "blur(24px)",
@@ -16,10 +17,10 @@ export function Footer() {
         }}
       >
         {/* Footer Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.6fr 0.6fr 0.6fr", gap: "40px", marginBottom: "80px", position: "relative", zIndex: 10 }}>
+        <div className="marketing-footer-grid" style={{ display: "grid", gridTemplateColumns: "1.2fr 0.6fr 0.6fr 0.6fr", gap: "40px", marginBottom: "80px", position: "relative", zIndex: 10 }}>
           
           {/* Newsletter Column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <div className="marketing-footer-brand" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ color: "var(--accent)", fontSize: "20px" }}>◉</span>
               <span style={{ fontFamily: "var(--mono)", fontSize: "15px", fontWeight: 800, color: "var(--bright)", letterSpacing: "0.15em" }}>NOTAPROMPT</span>
@@ -27,7 +28,7 @@ export function Footer() {
             <h3 style={{ fontSize: "24px", fontWeight: 700, color: "var(--bright)", letterSpacing: "-0.02em" }}>Stay updated</h3>
             
             {/* Capsule Input Field */}
-            <div style={{ display: "flex", width: "100%", maxWidth: "340px", background: "rgba(0,0,0,0.02)", border: "1px solid var(--border)", borderRadius: "999px", padding: "4px 4px 4px 20px", alignItems: "center", justifyContent: "space-between" }}>
+            <div className="marketing-footer-input" style={{ display: "flex", width: "100%", maxWidth: "340px", background: "rgba(0,0,0,0.02)", border: "1px solid var(--border)", borderRadius: "999px", padding: "4px 4px 4px 20px", alignItems: "center", justifyContent: "space-between" }}>
               <input
                 type="email"
                 placeholder="Enter email"
@@ -39,7 +40,7 @@ export function Footer() {
             </div>
 
             {/* Social Icon Strip */}
-            <div style={{ display: "flex", gap: "16px", opacity: 0.6, marginTop: "12px" }}>
+            <div className="marketing-footer-social" style={{ display: "flex", gap: "16px", opacity: 0.6, marginTop: "12px" }}>
               <span style={{ fontSize: "13px", fontFamily: "var(--mono)", cursor: "pointer", color: "var(--text)" }}>TWITTER</span>
               <span style={{ fontSize: "13px", fontFamily: "var(--mono)", cursor: "pointer", color: "var(--text)" }}>LINKEDIN</span>
               <span style={{ fontSize: "13px", fontFamily: "var(--mono)", cursor: "pointer", color: "var(--text)" }}>GITHUB</span>
@@ -48,7 +49,7 @@ export function Footer() {
           </div>
 
           {/* Links Columns */}
-          <div>
+          <div className="marketing-footer-col">
             <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "20px" }}>FEATURES</span>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontFamily: "var(--sans)", fontSize: "13px" }}>
               <Link href="/features" style={{ color: "var(--text)", textDecoration: "none" }}>Cascade Simulators</Link>
@@ -59,7 +60,7 @@ export function Footer() {
           </div>
 
           {/* Company Column */}
-          <div>
+          <div className="marketing-footer-col">
             <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "20px" }}>COMPANY</span>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontFamily: "var(--sans)", fontSize: "13px" }}>
               <Link href="/about" style={{ color: "var(--text)", textDecoration: "none" }}>About Lucide Tech</Link>
@@ -70,7 +71,7 @@ export function Footer() {
           </div>
 
           {/* Resources Column */}
-          <div>
+          <div className="marketing-footer-col">
             <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "20px" }}>RESOURCES</span>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontFamily: "var(--sans)", fontSize: "13px" }}>
               <Link href="/technology" style={{ color: "var(--text)", textDecoration: "none" }}>Documentation</Link>
@@ -83,7 +84,7 @@ export function Footer() {
         </div>
 
         {/* Copyright Line */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "24px", position: "relative", zIndex: 10 }}>
+        <div className="marketing-footer-bottom" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "24px", position: "relative", zIndex: 10 }}>
           <span style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--muted)" }}>© 2026 NOTAPROMPT · BUILT BY LUCIDE TECH</span>
           <span style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--muted)" }}>PRIVACY · TERMS · SECURITY</span>
         </div>

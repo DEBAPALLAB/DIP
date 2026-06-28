@@ -26,7 +26,14 @@ export default function LandingPage() {
 
   // Scroll listener for Macbook mockup zoom animation
   useEffect(() => {
+    const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
     const handleScroll = () => {
+      if (isMobile()) {
+        if (mockupRef.current) {
+          mockupRef.current.style.transform = "scale(1) translateY(0px)";
+        }
+        return;
+      }
       const progress = Math.min(window.scrollY / 650, 1);
       if (mockupRef.current) {
         mockupRef.current.style.transform = `scale(${1 + progress * 0.06}) translateY(${-progress * 25}px)`;
@@ -108,6 +115,7 @@ export default function LandingPage() {
 
       {/* ══ 1. HERO SECTION ════════════════ */}
       <section
+        className="mkt-hero mkt-home-hero"
         style={{
           position: "relative",
           minHeight: "115vh",
@@ -167,7 +175,7 @@ export default function LandingPage() {
         </p>
 
         {/* Centered Actions Capsule */}
-        <div className="reveal-on-scroll reveal-delay-3" style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap", marginBottom: "72px", zIndex: 10 }}>
+        <div className="reveal-on-scroll reveal-delay-3 mkt-home-hero-actions" style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap", marginBottom: "72px", zIndex: 10 }}>
           <Link href="/setup" className="btn-getstarted-capsule" style={{ padding: "14px 36px", fontSize: "14px" }}>
             Launch Simulator Free
           </Link>
@@ -177,7 +185,7 @@ export default function LandingPage() {
         </div>
 
         {/* Centered SaaS Dashboard Mockup Outer Container */}
-        <div className="reveal-on-scroll reveal-delay-4" style={{ position: "relative", width: "100%", maxWidth: "1160px", zIndex: 10, margin: "0 auto" }}>
+        <div className="reveal-on-scroll reveal-delay-4 mkt-home-hero-mockup-shell" style={{ position: "relative", width: "100%", maxWidth: "1160px", zIndex: 10, margin: "0 auto" }}>
 
           {/* Accent glow washing behind the dashboard mockup */}
           <div style={{
@@ -195,6 +203,7 @@ export default function LandingPage() {
           {/* SaaS Frame (Premium Light-glass Container / Browser Mockup) with dynamic scroll zoom */}
           <div
             ref={mockupRef}
+            className="mkt-home-hero-mockup"
             style={{
               width: "100%",
               height: "580px",
@@ -212,7 +221,7 @@ export default function LandingPage() {
             }}
           >
             {/* Dashboard Inner App Header */}
-            <div style={{
+            <div className="mkt-home-hero-mockup-header" style={{
               height: "56px",
               borderBottom: "1px solid rgba(0, 82, 255, 0.06)",
               padding: "0 24px",
@@ -234,7 +243,7 @@ export default function LandingPage() {
                   <span style={{ fontFamily: "var(--mono)", fontSize: "9px", letterSpacing: "0.2em", color: "var(--text)" }}>NOTAPROMPT_v4.2 // ONLINE</span>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "20px", fontFamily: "var(--mono)", fontSize: "9px", color: "var(--muted)", letterSpacing: "0.08em" }}>
+              <div className="mkt-home-hero-mockup-nav" style={{ display: "flex", gap: "20px", fontFamily: "var(--mono)", fontSize: "9px", color: "var(--muted)", letterSpacing: "0.08em" }}>
                 <span>OVERVIEW</span>
                 <span style={{ color: "#0052ff", fontWeight: 700 }}>NETWORK_GRAPH</span>
                 <span>DEMOGRAPHICS</span>
@@ -265,7 +274,7 @@ export default function LandingPage() {
         </div>
 
         {/* Bottom Partner Grayscale Strip */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px", borderTop: "1px solid var(--border)", paddingTop: "32px", width: "100%", maxWidth: "1160px", zIndex: 5, marginTop: "80px" }}>
+        <div className="mkt-home-partner-strip" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px", borderTop: "1px solid var(--border)", paddingTop: "32px", width: "100%", maxWidth: "1160px", zIndex: 5, marginTop: "80px" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: "22px", fontWeight: 800, color: "var(--bright)", fontFamily: "var(--mono)", letterSpacing: "-0.02em" }}>3,572,401,988</span>
             <span style={{ fontSize: "9px", color: "var(--muted)", fontFamily: "var(--mono)", letterSpacing: "0.08em", marginTop: "4px" }}>DEMOGRAPHIC DATA POINTS FITTED IN CURRENT COMPILED RUNS</span>
@@ -282,6 +291,7 @@ export default function LandingPage() {
       {/* ══ 2. THE MANIFESTO SECTION ════════════════ */}
       <section
         id="manifesto"
+        className="mkt-manifesto mkt-home-manifesto"
         style={{
           padding: "12vh 6vw",
           borderBottom: "1px solid var(--border)",
@@ -310,6 +320,7 @@ export default function LandingPage() {
 
       {/* ══ 3. ACCENTED NETWORK GRAPH FEATURE SECTIONS ════════════════ */}
       <section
+        className="mkt-section-pad mkt-home-network"
         style={{
           padding: "10vh 6vw",
           borderBottom: "1px solid var(--border)",
@@ -320,7 +331,7 @@ export default function LandingPage() {
         <div style={{ position: "absolute", top: 0, right: "6vw", width: "1px", height: "100%", background: "rgba(0, 82, 255, 0.015)", pointerEvents: "none" }} />
 
         {/* Section Header */}
-        <div className="reveal-on-scroll" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "24px", marginBottom: "64px" }}>
+        <div className="reveal-on-scroll mkt-home-section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "24px", marginBottom: "64px" }}>
           <div>
             <span style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--accent)", letterSpacing: "0.2em", display: "block", marginBottom: "12px" }}>[COGNITIVE_ARCHITECTURE]</span>
             <h2 style={{ fontSize: "clamp(32px, 4vw, 54px)", fontWeight: 800, letterSpacing: "-0.04em", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", color: "var(--bright)", lineHeight: 1.05 }}>
@@ -334,10 +345,10 @@ export default function LandingPage() {
         </div>
 
         {/* Dynamic Accented Layout Cards Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "24px" }}>
+        <div className="mkt-grid-network mkt-home-network-grid" style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "24px" }}>
 
           {/* Card 1: Network Graph framed in premium card */}
-          <div className="reveal-on-scroll" style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "24px", padding: "32px", display: "flex", flexDirection: "column", gap: "24px", height: "580px", position: "relative", overflow: "hidden" }}>
+          <div className="reveal-on-scroll mkt-home-network-card" style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "24px", padding: "32px", display: "flex", flexDirection: "column", gap: "24px", height: "580px", position: "relative", overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
               <div>
                 <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "var(--muted)" }}>01 / SYSTEM_VISUALIZATION</span>
@@ -347,13 +358,13 @@ export default function LandingPage() {
             </div>
 
             {/* The Accented 3D Graph embedded as focal point */}
-            <div style={{ flex: 1, position: "relative", border: "1px dashed var(--border)", borderRadius: "16px", background: "rgba(0,0,0,0.02)", overflow: "hidden" }}>
+            <div className="mkt-home-network-viz" style={{ flex: 1, position: "relative", border: "1px dashed var(--border)", borderRadius: "16px", background: "rgba(0,0,0,0.02)", overflow: "hidden" }}>
               <HeroNetwork3D />
             </div>
           </div>
 
           {/* Card 2: Interactive metrics & metadata panels */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <div className="mkt-home-network-stack" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
 
             {/* Sub-Card 1: Barcode Metric */}
             <div className="reveal-on-scroll reveal-delay-1" style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "24px", padding: "32px", display: "flex", flexDirection: "column", gap: "16px", flex: 1 }}>
@@ -419,6 +430,7 @@ export default function LandingPage() {
 
       {/* ══ 4. A/B COMPARISON ENGINE ════════════════ */}
       <section
+        className="mkt-section-pad mkt-home-comparison"
         style={{
           padding: "10vh 6vw",
           borderBottom: "1px solid var(--border)",
@@ -448,6 +460,7 @@ export default function LandingPage() {
 
       {/* ══ 5. DYNAMIC STEPS / HOW IT WORKS ════════════════ */}
       <section
+        className="mkt-section-pad mkt-home-process"
         style={{
           padding: "10vh 6vw",
           borderBottom: "1px solid var(--border)",
@@ -478,7 +491,7 @@ export default function LandingPage() {
               key={idx}
               onMouseEnter={() => setHoveredStep(idx)}
               onMouseLeave={() => setHoveredStep(null)}
-              className={`reveal-on-scroll reveal-delay-${idx}`}
+              className={`reveal-on-scroll reveal-delay-${idx} mkt-home-step`}
               style={{
                 display: "grid",
                 gridTemplateColumns: "0.15fr 0.25fr 0.8fr 0.8fr 0.1fr",
@@ -504,6 +517,7 @@ export default function LandingPage() {
 
       {/* ══ 6. ACCESS COMMAND CENTER ════════════════ */}
       <section
+        className="mkt-home-access"
         style={{
           padding: "10vh 6vw",
           borderBottom: "1px solid var(--border)",
@@ -513,8 +527,8 @@ export default function LandingPage() {
         <div style={{ position: "absolute", top: 0, left: "6vw", width: "1px", height: "100%", background: "rgba(0, 82, 255, 0.015)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", top: 0, right: "6vw", width: "1px", height: "100%", background: "rgba(0, 82, 255, 0.015)", pointerEvents: "none" }} />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "center" }}>
-          <div className="reveal-on-scroll">
+        <div className="mkt-home-access-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "center" }}>
+          <div className="reveal-on-scroll mkt-home-access-copy">
             <span style={{ fontFamily: "var(--mono)", fontSize: "10px", color: "var(--accent)", letterSpacing: "0.2em", display: "block", marginBottom: "12px" }}>[SECURE_ACCESS_PORTAL]</span>
             <h2 style={{ fontSize: "clamp(32px, 3.5vw, 48px)", fontWeight: 800, letterSpacing: "-0.04em", fontFamily: "var(--sans)", color: "var(--bright)", lineHeight: 1.05, marginBottom: "20px" }}>
               Access the Command Center.
@@ -526,11 +540,190 @@ export default function LandingPage() {
               VIEW SUBSCRIPTION TIERS & NODES →
             </Link>
           </div>
-          <div className="reveal-on-scroll reveal-delay-2" style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "24px", padding: "40px" }}>
+          <div className="reveal-on-scroll reveal-delay-2 mkt-home-login-panel" style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "24px", padding: "40px" }}>
             <InlineLogin />
           </div>
         </div>
       </section>
+
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .mkt-home-hero {
+            min-height: auto !important;
+            padding: 92px 5vw 48px !important;
+          }
+
+          .mkt-home-hero h1 {
+            font-size: clamp(32px, 11vw, 52px) !important;
+            line-height: 1.02 !important;
+          }
+
+          .mkt-home-hero p {
+            font-size: 15px !important;
+            line-height: 1.6 !important;
+            max-width: 100% !important;
+          }
+
+          .mkt-home-hero-actions {
+            width: 100% !important;
+            margin-bottom: 36px !important;
+          }
+
+          .mkt-home-hero-actions a {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .mkt-home-hero-mockup-shell {
+            max-width: 100% !important;
+          }
+
+          .mkt-home-hero-mockup {
+            height: 420px !important;
+            border-radius: 18px !important;
+          }
+
+          .mkt-home-hero-mockup-header {
+            height: auto !important;
+            gap: 12px !important;
+            padding: 14px 16px !important;
+            align-items: flex-start !important;
+            flex-wrap: wrap;
+          }
+
+          .mkt-home-hero-mockup-nav {
+            display: none !important;
+          }
+
+          .mkt-home-partner-strip {
+            margin-top: 44px !important;
+            padding-top: 20px !important;
+            gap: 14px !important;
+            align-items: flex-start !important;
+          }
+
+          .mkt-home-partner-strip > div:last-child {
+            gap: 12px !important;
+          }
+
+          .mkt-home-partner-strip span {
+            line-height: 1.35;
+          }
+
+          .mkt-home-manifesto {
+            padding: 72px 5vw !important;
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+
+          .mkt-home-network,
+          .mkt-home-comparison,
+          .mkt-home-process,
+          .mkt-home-access {
+            padding: 72px 5vw !important;
+          }
+
+          .mkt-home-section-head {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            margin-bottom: 32px !important;
+          }
+
+          .mkt-home-network-grid {
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+          }
+
+          .mkt-home-network-card {
+            height: auto !important;
+            min-height: 420px !important;
+            padding: 20px !important;
+            gap: 18px !important;
+          }
+
+          .mkt-home-network-card h3 {
+            font-size: 18px !important;
+          }
+
+          .mkt-home-network-stack {
+            gap: 18px !important;
+          }
+
+          .mkt-home-network-stack > div {
+            padding: 20px !important;
+          }
+
+          .mkt-home-network-stack span,
+          .mkt-home-network-stack p {
+            line-height: 1.5 !important;
+          }
+
+          .mkt-home-network-stack div[style*="align-items: baseline"] {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 6px !important;
+          }
+
+          .mkt-home-network-stack div[style*="justify-content: space-between"][style*="font-family: var(--mono)"] {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+
+          .mkt-home-comparison > div:first-child {
+            margin-bottom: 28px !important;
+          }
+
+          .mkt-home-process .mkt-home-step {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+            padding: 24px 0 !important;
+          }
+
+          .mkt-home-process .mkt-home-step p {
+            padding-right: 0 !important;
+          }
+
+          .mkt-home-process .mkt-home-step span:last-child {
+            text-align: left !important;
+          }
+
+          .mkt-home-access-grid {
+            grid-template-columns: 1fr !important;
+            gap: 28px !important;
+          }
+
+          .mkt-home-login-panel {
+            padding: 24px !important;
+          }
+
+          .mkt-home-access-copy p {
+            font-size: 15px !important;
+            line-height: 1.6 !important;
+          }
+
+          .mkt-home-access-copy h2 {
+            font-size: clamp(28px, 9vw, 42px) !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .mkt-home-hero {
+            padding-top: 84px !important;
+          }
+
+          .mkt-home-hero-mockup {
+            height: 360px !important;
+          }
+
+          .mkt-home-network-card {
+            min-height: 360px !important;
+          }
+
+          .mkt-home-login-panel {
+            padding: 18px !important;
+          }
+        }
+      `}</style>
 
     </div>
   );

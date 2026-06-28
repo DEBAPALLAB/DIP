@@ -876,6 +876,169 @@ export function PromptComparison() {
             border-bottom: 1px solid rgba(0, 82, 255, 0.06);
           }
         }
+        @media (max-width: 768px) {
+          .ab-playground-window {
+            border-radius: 18px !important;
+          }
+
+          .ab-playground-header {
+            height: auto !important;
+            padding: 14px 16px !important;
+            gap: 10px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .window-title,
+          .window-meta {
+            line-height: 1.3;
+          }
+
+          .ab-playground-control-pane {
+            overflow: hidden;
+          }
+
+          .control-pane-header {
+            height: auto !important;
+            padding: 14px 16px !important;
+            gap: 12px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .editor-tab-row {
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+          }
+
+          .editor-tab-row::-webkit-scrollbar {
+            display: none;
+          }
+
+          .editor-tab {
+            white-space: nowrap;
+            flex: 0 0 auto;
+          }
+
+          .editor-body {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+            padding: 16px !important;
+          }
+
+          .editor-line-numbers {
+            display: none !important;
+          }
+
+          .editor-content {
+            font-size: 14px !important;
+            line-height: 1.7 !important;
+          }
+
+          .editor-token-pill-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            max-width: 100%;
+          }
+
+          .editor-token-btn {
+            padding: 8px 12px !important;
+          }
+
+          .ab-playground-workspace {
+            grid-template-columns: 1fr !important;
+          }
+
+          .workspace-column {
+            min-width: 0;
+          }
+
+          .workspace-column.side-a {
+            border-right: none !important;
+            border-bottom: 1px solid var(--border) !important;
+          }
+
+          .workspace-column .column-header {
+            padding: 14px 16px !important;
+            gap: 10px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .workspace-column .column-body {
+            padding: 16px !important;
+          }
+
+          .chatbot-avatar-row {
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+
+          .chatbot-avatar {
+            width: 40px !important;
+            height: 40px !important;
+            flex: 0 0 40px !important;
+          }
+
+          .chatbot-meta {
+            min-width: 0;
+          }
+
+          .chatbot-name {
+            font-size: 12px !important;
+            line-height: 1.35;
+          }
+
+          .chatbot-status {
+            font-size: 9px !important;
+          }
+
+          .ab-playground-workspace .column-body > div[style*="flex-direction: column"] {
+            gap: 12px !important;
+          }
+
+          .ab-playground-workspace .column-body > div[style*="flex-direction: column"] > div {
+            max-width: 100% !important;
+            font-size: 14px !important;
+          }
+
+          .simulator-viz-panel svg {
+            height: 190px !important;
+          }
+
+          .sim-controls {
+            flex-direction: column !important;
+          }
+
+          .insight-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .sim-hud-overlay {
+            position: static !important;
+            margin-bottom: 12px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .ab-playground-header,
+          .control-pane-header,
+          .workspace-column .column-header,
+          .workspace-column .column-body {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+          }
+
+          .ab-playground-workspace .column-body > div[style*="flex-direction: column"] > div {
+            padding: 12px 14px !important;
+          }
+
+          .a-footer-alert {
+            padding: 12px 14px !important;
+          }
+        }
       ` }} />
       
       {/* Unified IDE Workspace Window */}

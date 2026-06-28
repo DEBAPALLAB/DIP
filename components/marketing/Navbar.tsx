@@ -82,6 +82,40 @@ export function Navbar() {
         .marketing-theme .btn-getstarted-capsule {
           border: 1px solid rgba(0, 82, 255, 0.15) !important;
         }
+        @media (max-width: 768px) {
+          .nav-wrapper-floating {
+            left: 0 !important;
+            right: 0 !important;
+            top: 8px !important;
+            transform: none !important;
+            width: auto !important;
+            padding: 0 12px !important;
+          }
+          .nav-wrapper-floating.scrolled {
+            top: 8px !important;
+          }
+          .floating-navbar {
+            padding: 10px 16px !important;
+            border-radius: 24px !important;
+            width: 100% !important;
+          }
+          .floating-logo {
+            gap: 8px !important;
+          }
+          .logo-text-bold {
+            font-size: 13px !important;
+            letter-spacing: 0.08em !important;
+          }
+          .floating-mobile-drawer {
+            padding: 96px 24px 24px !important;
+          }
+          .drawer-links {
+            gap: 18px !important;
+          }
+          .drawer-links a {
+            font-size: 18px !important;
+          }
+        }
       `}} />
       <div className={`nav-wrapper-floating ${scrolled ? "scrolled" : ""}`}>
         <nav className="floating-navbar">

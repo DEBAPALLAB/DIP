@@ -4827,4 +4827,224 @@ html.lenis body {
 
 .lenis.lenis-smooth iframe {
   pointer-events: none;
+}/* Responsive Marketing Layout Classes added for mobile */
+.mkt-hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 100px 24px 60px 24px;
+}
+.mkt-manifesto {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+  padding: 8vh 24px;
+  position: relative;
+}
+.mkt-section-pad {
+  padding: 8vh 24px;
+  position: relative;
+}
+.mkt-grid-network {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+.mkt-grid-steps {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  padding: 32px 0;
+  gap: 16px;
+}
+.mkt-grid-login {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .mkt-hero {
+    min-height: 115vh;
+    padding: 120px 6vw 60px 6vw;
+  }
+  .mkt-manifesto {
+    grid-template-columns: 0.3fr 1.7fr;
+    padding: 12vh 6vw;
+  }
+  .mkt-section-pad {
+    padding: 10vh 6vw;
+  }
+  .mkt-grid-network {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+  .mkt-grid-steps {
+    grid-template-columns: 0.15fr 0.25fr 0.8fr 0.8fr 0.1fr;
+    gap: 0;
+    padding: 36px 0;
+  }
+  .mkt-grid-login {
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-wrapper-floating {
+    left: 8px !important;
+    right: 8px !important;
+    top: 8px !important;
+    width: auto !important;
+  }
+
+  .nav-wrapper-floating.scrolled {
+    top: 8px !important;
+  }
+
+  .floating-navbar {
+    padding: 10px 14px !important;
+    border-radius: 22px !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-height: 54px;
+  }
+
+  .floating-logo {
+    gap: 8px !important;
+    min-width: 0;
+  }
+
+  .logo-icon-blue {
+    font-size: 18px !important;
+  }
+
+  .logo-text-bold {
+    font-size: 12px !important;
+    letter-spacing: 0.08em !important;
+    white-space: nowrap;
+  }
+
+  .floating-mobile-drawer {
+    padding: 88px 20px 24px !important;
+    overflow-y: auto;
+    align-items: flex-start !important;
+  }
+
+  .drawer-links {
+    align-items: stretch !important;
+    gap: 18px !important;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .drawer-links a {
+    font-size: 18px !important;
+    text-align: center;
+  }
+
+  .drawer-divider {
+    width: 100% !important;
+    max-width: 160px;
+    margin: 8px auto !important;
+  }
+
+  .drawer-login-btn,
+  .drawer-signup-btn {
+    width: 100%;
+  }
+
+  .marketing-footer {
+    padding: 0 4vw 24px !important;
+  }
+
+  .marketing-footer-shell {
+    border-radius: 24px 24px 0 0 !important;
+    padding: 40px 18px 24px !important;
+  }
+
+  .marketing-footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    margin-bottom: 28px !important;
+  }
+
+  .marketing-footer-brand {
+    gap: 16px !important;
+  }
+
+  .marketing-footer-input {
+    max-width: 100% !important;
+    padding-left: 16px !important;
+  }
+
+  .marketing-footer-input input {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .marketing-footer-social {
+    flex-wrap: wrap !important;
+    gap: 8px 12px !important;
+  }
+
+  .marketing-footer-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .marketing-footer-bottom {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .marketing-footer-shell > div:last-child {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-wrapper-floating {
+    left: 6px !important;
+    right: 6px !important;
+  }
+
+  .floating-navbar {
+    padding: 9px 12px !important;
+    min-height: 50px;
+  }
+
+  .logo-text-bold {
+    letter-spacing: 0.06em !important;
+  }
+
+  .floating-hamburger {
+    width: 18px;
+    height: 12px;
+  }
+
+  .drawer-links {
+    gap: 16px !important;
+  }
+
+  .marketing-footer-shell {
+    padding: 36px 14px 20px !important;
+  }
+
+  .marketing-footer-input {
+    padding-right: 4px !important;
+  }
+
+  .marketing-footer-input input {
+    font-size: 12px;
+  }
+
+  .marketing-footer-bottom span {
+    font-size: 9px !important;
+  }
 }

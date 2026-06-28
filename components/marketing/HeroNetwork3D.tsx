@@ -65,6 +65,7 @@ function HeroNetworkCanvas() {
 
     const W = el.clientWidth || 560;
     const H = el.clientHeight || 560;
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
 
     const isLightTheme = document.body.classList.contains("marketing-theme") || 
                           !!document.querySelector(".marketing-theme");
@@ -82,7 +83,7 @@ function HeroNetworkCanvas() {
     /* ── Renderer ──────────────────────────────────────────────── */
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 1.5));
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
 
@@ -132,7 +133,7 @@ function HeroNetworkCanvas() {
     scene.add(waveGrid);
 
     /* ── Stars / Dust Particles Background ─────────────────────── */
-    const starCount = 180;
+    const starCount = isMobile ? 96 : 180;
     const starPositions = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount * 3; i += 3) {
       const r = 5 + Math.random() * 9;
@@ -157,7 +158,7 @@ function HeroNetworkCanvas() {
     const sharedGeo = new THREE.SphereGeometry(1, 8, 8);
 
     /* ── Nodes ─────────────────────────────────────────────────── */
-    const NODE_COUNT = 65;
+    const NODE_COUNT = isMobile ? 42 : 65;
     const nodeData: NodeData[] = [];
     const positions: THREE.Vector3[] = [];
     const nodeMeshes: THREE.Mesh[] = [];

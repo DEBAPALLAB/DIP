@@ -33,7 +33,7 @@ const USER_WINDOW_MS = 60_000; // per minute per approved user
 
 function allowedOrigins(): string[] {
     const site = process.env.NEXT_PUBLIC_SITE_URL || "https://notaprompt.in";
-    const list = [site];
+    const list = [site, "https://notaprompt.in", "https://www.notaprompt.in"];
     if (process.env.NODE_ENV !== "production") {
         list.push("http://localhost:3000", "http://127.0.0.1:3000");
     }

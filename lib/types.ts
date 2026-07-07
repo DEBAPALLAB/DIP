@@ -43,6 +43,7 @@ export interface AgentState {
   pending: boolean;
   isSeeded?: boolean;
   model?: string;
+  conviction?: number; // [0,1] decisiveness of this decision; low = flip/churn candidate
 }
 
 export type SimulationStates = Record<number, AgentState>;
@@ -122,6 +123,7 @@ export interface RunStepResponse {
   decision: DecisionType;
   reasoning: string;
   model?: string;
+  conviction?: number; // [0,1] decisiveness of this decision; low = flip/churn candidate
 }
 
 export interface RunBatchItem {

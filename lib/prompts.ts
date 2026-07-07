@@ -14,7 +14,7 @@ export function calculateDecision(
     neighborStates: Record<number, AgentState>, 
     neighborAgents: Agent[],
     previousParams?: ScenarioParams
-): { decision: DecisionType, utility: number, socialPressure: number, threshold: number, effRisk: number, effBudget: number, shockBonus: number } {
+): { decision: DecisionType, utility: number, socialPressure: number, threshold: number, effRisk: number, effBudget: number, shockBonus: number, conviction: number } {
     
     // 1. Derive Effective Traits (simulation_v3.py logic)
     const ageFactor = Math.max(0, (agent.age - 40) * 0.003);
@@ -91,14 +91,25 @@ export function calculateDecision(
     if (stance > decisionThreshold) decision = "support";
     else if (stance < -decisionThreshold) decision = "oppose";
 
-    return { 
-        decision, 
-        utility: Math.round(utility * 100), 
+    // ─── Conviction Scoring ───
+    // How decisively the agent landed on their side of the boundary, in [0, 1].
+    // It's the margin by which |stance| clears the neutral band, normalized by the
+    // maximum possible margin (1 - threshold). Neutral agents (inside the band)
+    // score 0. Low conviction (< 0.3) supporters are churn/flip candidates; high
+    // conviction supporters are sticky. This is what makes the ratchet a market.
+    const headroom = Math.max(1e-6, 1 - decisionThreshold);
+    const margin = Math.abs(stance) - decisionThreshold;
+    const conviction = Math.min(1, Math.max(0, margin / headroom));
+
+    return {
+        decision,
+        utility: Math.round(utility * 100),
         socialPressure: Math.round(socialSignal * 100),
         threshold: Math.round(decisionThreshold * 100),
         effRisk,
         effBudget,
-        shockBonus: Math.round(shockBonus * 100)
+        shockBonus: Math.round(shockBonus * 100),
+        conviction: Math.round(conviction * 100) / 100
     };
 }
 

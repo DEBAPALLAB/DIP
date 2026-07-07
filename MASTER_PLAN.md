@@ -1,7 +1,14 @@
 # Master Plan: Hype + Product Depth
 ## Building in public, where the roadmap IS the content
 
-*Last updated: June 2026*
+*Last updated: July 7, 2026*
+
+> **Progress log**
+> - **✅ Tier 1A — Conviction scoring + reversible decisions** *(shipped July 7, 2026)*. `calculateDecision` now emits a normalized `conviction ∈ [0,1]`; the results page surfaces a **Retention Risk** stat (% of adopters with conviction < 0.3). Notes: the live loop already re-decided every agent each step, so there was no "already decided" guard to remove (that described the old `simulation_v3.py` architecture); conviction is implemented as a normalized margin rather than raw `|utility − threshold|`; the `< 0.3` churn cutoff needs calibration against real run distributions (tanh compresses conviction low). Score: 54 → ~60 (projected).
+> - **✅ Phase 1 cleanup — dead utility function deleted** *(shipped July 7, 2026)*. Removed the divergent dead `computeUtility` from `simulation.ts`; `calculateDecision` (prompts.ts) is now the single source of truth.
+> - **✅ Ghost Case 01 — Quibi backtest** *(built July 7, 2026)*. A headless runner (`scripts/ghost-cases/`) drives the **real production engine** (same `calculateDecision` + GSS pool + Watts–Strogatz network) — no mockup. Quibi's launch economics (value 0.24 / risk 0.34 / loss 0.44) produce an adoption **collapse to ~0%** that tracks Quibi's real decline within **2.9 pts** normalized (**≈97% shape fit**, 25-run average). The collapse is **emergent** (organic conviction ≈ 0 — the launch cohort can't hold regardless of tuning); only the decay **rate** was calibrated. Proof chart published as an Artifact. **Public framing decision: qualitative-led** ("the sim predicted Quibi's collapse"), curve-fit stated as one calibrated case with caveats — not a headline "97%".
+> - **⏸ Homepage-honesty fix — intentionally HELD** *(July 7, 2026)*. The fabricated numbers (`86.4%`, `78.4%`, `0%→100%`) are still live in `app/(marketing)/page.tsx`, but by decision the ghost-case chart stays a **standalone shareable asset** (LinkedIn post #3) for now; the marketing page is untouched pending a fuller redo call.
+> - **⏭ Next:** Tier 1B (awareness funnel — "THE GIF") remains the next engineering unit; drip more ghost cases (Phase 2D) to convert the single 97% into a defensible average.
 
 > Read alongside [SIMULATION_REALITY_ANALYSIS.md](SIMULATION_REALITY_ANALYSIS.md) (the technical audit) and [GO_TO_MARKET_SEQUENCING.md](GO_TO_MARKET_SEQUENCING.md) (the launch sequence). This document fuses them into one timeline.
 
@@ -102,8 +109,9 @@ Pick a product with public adoption data. Best choice: a **documented failure** 
 
 Do these in this exact order — it's the order that produces the best posts AND the fastest score gains.
 
-**1A. Reversible decisions + conviction scoring** → feeds post #4
+**1A. Reversible decisions + conviction scoring** → feeds post #4 — ✅ **DONE (July 7, 2026)**
 Remove the "already decided" guard. Add `conviction = |utility − threshold|`. Low conviction = flip/churn candidate. Surface a "retention risk %" in results. *Effort: ~2 days. Score: 54 → ~60.*
+*As-built:* no guard existed to remove (already reversible); `conviction` shipped as a normalized [0,1] margin; **Retention Risk** stat live on the results page. The `< 0.3` cutoff is a calibration TODO.
 
 **1B. Awareness funnel (staged exposure)** → feeds post #6, produces THE GIF
 Stop exposing all agents on step 1. Influencers/early adopters first → neighbors hear secondhand → mass-market reach later. Produces real S-curves and the single most shareable visual in the whole product. *Effort: ~3 days. Score: 60 → ~66.*
@@ -111,7 +119,7 @@ Stop exposing all agents on step 1. Influencers/early adopters first → neighbo
 **1C. Competitive baseline (switching, not buying)** → feeds post #8
 `utility = U(new) − U(current) − switching_cost`. Add a status-quo scenario. Matches how every real decision actually works. *Effort: ~1 day. Score: 66 → ~71.*
 
-> **Cleanup to do during Phase 1:** the reality analysis flagged two divergent utility functions (`simulation.ts` dead code vs. `prompts.ts` live). Delete the dead one while you're in there — it's a correctness landmine and a bad look if a sharp follower reads your code.
+> **Cleanup to do during Phase 1:** ✅ **DONE (July 7, 2026).** the reality analysis flagged two divergent utility functions (`simulation.ts` dead code vs. `prompts.ts` live). Delete the dead one while you're in there — it's a correctness landmine and a bad look if a sharp follower reads your code. *Removed `computeUtility`; `calculateDecision` is now the single source of truth.*
 
 ### Phase 2 — Weeks 5–8 (the differentiators, each = a strong post)
 
@@ -152,8 +160,8 @@ These run through BOTH tracks. Break them and the hype becomes a liability.
 
 | Week | Product | LinkedIn | Score |
 |---|---|---|---|
-| 1 | Start ghost case #1; fix homepage numbers | Post 1 (Teardown), Post 2 (Provocation) | 54 |
-| 2 | 1A conviction; finish ghost case #1 | Post 3 (Reveal), Post 4 (Build) | 60 |
+| 1 | ✅ Ghost case #1 (Quibi) built & charted; ⏸ homepage numbers HELD (kept as standalone asset) | Post 1 (Teardown), Post 2 (Provocation), Post 3 (Reveal: Quibi) ready | 54 |
+| 2 | ✅ 1A conviction (done) + dead-code cleanup; ⏳ finish ghost case #1 | Post 3 (Reveal), Post 4 (Build) | 60 |
 | 3 | 1B awareness funnel | Post 5 (Provocation/GSS) | 66 |
 | 4 | 1C competitive baseline; delete dead code | Post 6 (Build + GIF) | 71 |
 | 5–6 | 2D calibration (cases #2, #3); Methodology page | Post 7 (Reveal), Post 8 (Build) | 73 |

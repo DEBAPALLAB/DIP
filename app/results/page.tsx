@@ -171,6 +171,18 @@ export default function ResultsPage() {
     const undecidedPct = total > 0 ? Math.max(100 - adoptionPct - oppositionPct, 0) : 0;
     const consensusScore = total > 0 ? (supportCount - opposeCount) / total : 0;
 
+    // ─── Retention Risk (conviction scoring) ───
+    // Supporters whose decision barely cleared the threshold (conviction < 0.3) are
+    // flip/churn candidates — soft adopters who can defect as the market moves.
+    const supportStates = Object.values(sim.agentStates).filter((s) => s.decision === "support");
+    const flipRiskCount = supportStates.filter(
+        (s) => typeof s.conviction === "number" && s.conviction < 0.3
+    ).length;
+    const hasConvictionData = supportStates.some((s) => typeof s.conviction === "number");
+    const retentionRiskPct = supportStates.length > 0
+        ? Math.round((flipRiskCount / supportStates.length) * 100)
+        : 0;
+
     const latestSnapshot = sim.adoptionCurve[sim.adoptionCurve.length - 1];
     const previousSnapshot = sim.adoptionCurve[sim.adoptionCurve.length - 2];
     const supportDelta = latestSnapshot && previousSnapshot ? latestSnapshot.support - previousSnapshot.support : 0;
@@ -644,6 +656,19 @@ export default function ResultsPage() {
                                 <div className="results-side-copy">Score: {consensusScore.toFixed(2)}</div>
                                 <div className="results-side-copy">Neutral count: {neutralCount}</div>
                                 <div className="results-side-copy">Support streak: {supportStreak} step{supportStreak === 1 ? "" : "s"}</div>
+                            </section>
+
+                            <section className="results-side-card results-card">
+                                <div className="results-side-label">RETENTION RISK</div>
+                                {hasConvictionData ? (
+                                    <>
+                                        <div className="results-side-value">{retentionRiskPct}%</div>
+                                        <div className="results-side-sub">{flipRiskCount} of {supportStates.length} adopters at risk of churn</div>
+                                        <div className="results-side-copy">Low-conviction supporters (conviction &lt; 0.3) who can defect as the market shifts.</div>
+                                    </>
+                                ) : (
+                                    <div className="results-side-copy">Run a step to compute conviction-based churn risk.</div>
+                                )}
                             </section>
                         </aside>
                     </div>

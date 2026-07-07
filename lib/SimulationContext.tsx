@@ -483,6 +483,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
                         pending: Boolean(value?.pending),
                         isSeeded: value?.isSeeded,
                         model: value?.model,
+                        conviction: value?.conviction,
                     };
                 });
             } else {

@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<!-- saved from url=(0042)https://fam-app-casestudy-a589.vercel.app/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The 18-Cliff · A FamApp Product Case Study</title>
+<meta name="description" content="Turning FamApp&#39;s biggest structural problem, users aging out at 18, into the largest origination funnel in Indian fintech.">
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+<link href="./The 18-Cliff · A FamApp Product Case Study_files/css2" rel="stylesheet">
+<style>
+/* ============================================================
+   FamApp design system, reverse-engineered from famapp.in
+   production CSS. Yellow #FFC107 on near-black #1E1E1E,
+   Metropolis (→ Poppins), gold card gradient, soft glow.
+   ============================================================ */
+:root{
+  --yellow:#FFC107; --gold:#F5A623; --amber:#FBAF03; --soft-yellow:#FFDF7E;
+  --ink:#2B2B2D; --ink-2:#222224; --panel:#323235; --panel-2:#3A3A3D; --black:#111;
+  --body-ink:#212529; --muted:#A1A1A1; --muted-2:#7d7d82; --hairline:#5E5E5E;
+  --white:#FFFFFF; --jade:#02B377; --coral:#E4572E; --sky:#4C9AFF;
+  --shadow-tint:26,27,35;
+  --glow:0 8px 32px rgba(var(--shadow-tint),.42);
+  --lift:0 4px 7px rgba(0,0,0,.25), 0 10px 40px rgba(0,0,0,.35);
+  --card-gold:linear-gradient(135deg,#EEA602 0%,#F79223 52%,#C56D09 100%);
+  --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px;
+  --maxw:1320px;
+  --font:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --hand:'Caveat',cursive;
+  --doodle:'Permanent Marker',cursive;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font); background:var(--ink); color:var(--white);
+  line-height:1.6; font-size:16px; -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+::selection{background:var(--yellow);color:var(--black)}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+
+/* ambient background */
+.bg-fx{position:fixed;inset:0;z-index:-1;overflow:hidden;background:
+  radial-gradient(900px 600px at 82% -5%, rgba(255,193,7,.12), transparent 60%),
+  radial-gradient(800px 700px at -8% 30%, rgba(2,179,119,.08), transparent 55%),
+  linear-gradient(180deg,#2a2a2d 0%, #242426 40%, #1c1c1e 100%);}
+.bg-fx::after{content:"";position:absolute;inset:0;opacity:.4;background-image:
+  radial-gradient(rgba(255,255,255,.025) 1px, transparent 1px);background-size:26px 26px;}
+
+/* ---------- layout helpers ---------- */
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 40px}
+.section{padding:96px 0;position:relative}
+.section.tight{padding:64px 0}
+.grid{display:grid;gap:24px}
+.center{text-align:center}
+.muted{color:var(--muted)}
+.hl{color:var(--yellow)}
+.hl-jade{color:var(--jade)}
+.mono-num{font-variant-numeric:tabular-nums}
+
+/* ---------- kickers & headings ---------- */
+.kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--yellow);
+  background:rgba(255,193,7,.09);border:1px solid rgba(255,193,7,.22);
+  padding:7px 14px;border-radius:50rem;margin-bottom:22px}
+.kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 4px rgba(255,193,7,.18)}
+h1,h2,h3{font-weight:700;letter-spacing:-.02em;line-height:1.08}
+h2.sec{font-size:clamp(30px,4vw,50px);margin-bottom:18px}
+.lead{font-size:clamp(17px,1.5vw,20px);color:#d7d7db;max-width:760px;line-height:1.65}
+.eyebrow-num{font-family:var(--font);font-weight:800;color:rgba(255,255,255,.10);
+  font-size:clamp(48px,8vw,110px);line-height:.8;letter-spacing:-.04em;position:absolute;
+  top:38px;right:40px;pointer-events:none;user-select:none}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:var(--font);font-weight:600;
+  font-size:15px;padding:13px 22px;border-radius:50rem;border:1.5px solid transparent;cursor:pointer;
+  transition:transform .2s ease, box-shadow .25s ease, background .2s;}
+.btn-fam{background:var(--yellow);color:#181818;box-shadow:0 6px 22px rgba(255,193,7,.28)}
+.btn-fam:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(255,193,7,.42)}
+.btn-ghost{background:transparent;color:var(--yellow);border-color:rgba(255,193,7,.45)}
+.btn-ghost:hover{background:rgba(255,193,7,.10)}
+
+/* ---------- top nav ---------- */
+.nav{position:sticky;top:0;z-index:80;backdrop-filter:blur(14px);
+  background:rgba(18,18,19,.78);border-bottom:1px solid rgba(255,255,255,.06)}
+.nav .row{display:flex;align-items:center;gap:26px;height:66px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.brand .bird{width:30px;height:30px;border-radius:9px;background:var(--yellow);display:grid;place-items:center;
+  color:#111;font-weight:800;box-shadow:0 4px 14px rgba(255,193,7,.35)}
+.brand .tag{font-size:11px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.06);
+  padding:3px 8px;border-radius:50rem;letter-spacing:.02em}
+.nav .links{display:flex;gap:4px;margin-left:14px}
+.nav .links a{font-size:14px;font-weight:500;color:#c8c8cd;padding:8px 13px;border-radius:50rem;transition:.2s}
+.nav .links a:hover{color:#fff;background:rgba(255,255,255,.06)}
+.nav .links a.active{color:var(--yellow)}
+.nav .right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.nav .who{font-size:12.5px;color:var(--muted);text-align:right;line-height:1.3}
+.nav .who b{color:#fff;font-weight:600}
+.nav .pill{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:#181818;background:var(--yellow);padding:6px 12px;border-radius:50rem}
+@media(max-width:960px){.nav .links,.nav .who{display:none}}
+
+/* ---------- HERO ---------- */
+.hero{position:relative;padding:70px 0 40px}
+.hero .grid{grid-template-columns:1.15fr .85fr;align-items:center;gap:48px}
+.hero h1{font-size:clamp(40px,5.6vw,74px);letter-spacing:-.035em;margin:18px 0 20px}
+.hero h1 .u{position:relative;white-space:nowrap;color:var(--yellow)}
+.hero h1 .u svg{position:absolute;left:0;bottom:-14px;width:100%}
+.hero .sub{font-size:clamp(17px,1.6vw,20.5px);color:#d3d3d8;max-width:620px;line-height:1.6}
+.hero .cta-row{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+.hero .stats{display:flex;gap:14px;margin-top:40px;flex-wrap:wrap}
+.stat-chip{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);
+  border-radius:var(--r-md);padding:14px 18px;min-width:120px}
+.stat-chip .n{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.stat-chip .l{font-size:11.5px;color:var(--muted);margin-top:2px;letter-spacing:.02em}
+@media(max-width:880px){.hero .grid{grid-template-columns:1fr}}
+
+/* ---------- the FamCard (signature numberless doodle card) ---------- */
+@keyframes floatCard { 0%, 100% { transform: translateY(0px) rotate(-6deg); } 50% { transform: translateY(-12px) rotate(-4deg); } }
+@keyframes spinStar { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.3); } 100% { transform: rotate(360deg) scale(1); } }
+@keyframes popHeart { 0%, 100% { transform: scale(1) rotate(8deg); } 50% { transform: scale(1.5) rotate(20deg); } }
+@keyframes bounceBall { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-15px) rotate(25deg); } }
+
+.card-stage{position:relative;display:grid;place-items:center;min-height:400px; perspective:1000px;}
+.famcard{position:relative;width:360px;aspect-ratio:1.585;border-radius:20px;
+  background:var(--card-gold);box-shadow:var(--glow), 0 30px 60px rgba(0,0,0,.5);
+  transform:rotate(-6deg);overflow:hidden;color:#231a06;
+  transition:all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: floatCard 4s ease-in-out infinite;}
+.card-stage:hover .famcard{
+  animation: none;
+  transform:scale(1.15) rotate(4deg) translateY(-10px) rotateX(10deg) rotateY(-10deg) !important;
+  box-shadow: -20px 30px 60px rgba(255,193,7,0.3), 0 40px 100px rgba(0,0,0,0.8);}
+.d-star { animation: spinStar 5s linear infinite; display:inline-block; }
+.d-heart { animation: popHeart 2s ease-in-out infinite; display:inline-block; }
+.d-ball { animation: bounceBall 1.5s ease-in-out infinite; display:inline-block; }
+.c-note { transition:all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.card-stage:hover .c-note { transform: translate(30px, -30px) rotate(15deg) scale(1.1) !important; color:#fff !important; text-shadow: 0 4px 20px rgba(255,193,7,0.5); }
+.card-stage:hover .c-cap { transform: translate(-30px, 20px) rotate(-10deg) scale(1.1) !important; color:#fff !important; }
+.famcard.dark{background:linear-gradient(150deg,#232326 0%,#0c0c0d 60%,#000 100%);color:#fff}
+.famcard .sheen{position:absolute;inset:0;background:linear-gradient(45deg,transparent 40%,rgba(255,255,255,.18) 50%,transparent 60%)}
+.famcard .top{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:center}
+.famcard .fbird{width:34px;height:34px;border-radius:9px;background:rgba(0,0,0,.14);display:grid;place-items:center;font-weight:800;font-size:18px}
+.famcard.dark .fbird{background:var(--yellow);color:#111}
+.famcard .nfc{font-size:18px;opacity:.7}
+.famcard .sig{position:absolute;bottom:46px;left:22px;font-family:var(--hand);font-size:38px;font-weight:700;line-height:.9}
+.famcard .brandline{position:absolute;bottom:18px;left:22px;font-size:11px;font-weight:700;letter-spacing:.04em;opacity:.85}
+.famcard .visa{position:absolute;bottom:16px;right:20px;font-style:italic;font-weight:800;font-size:22px;letter-spacing:-.02em}
+.famcard .doodle{position:absolute;font-family:var(--doodle);font-size:20px;opacity:.9;user-select:none}
+.card-cap{position:absolute;bottom:6px;font-family:var(--hand);font-size:20px;color:var(--muted);transform:rotate(-3deg)}
+.card-note{position:absolute;font-family:var(--hand);font-size:22px;color:var(--soft-yellow)}
+
+/* ---------- generic content cards ---------- */
+.card{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:var(--r-lg);padding:26px}
+.card.soft{background:rgba(255,255,255,.03)}
+.card h3{font-size:19px;margin-bottom:8px}
+.card p{color:#c3c3c8;font-size:14.5px;line-height:1.6}
+.cards-3{grid-template-columns:repeat(3,1fr)}
+.cards-4{grid-template-columns:repeat(4,1fr)}
+.cards-2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:900px){.cards-3,.cards-4{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.cards-3,.cards-4,.cards-2{grid-template-columns:1fr}}
+
+.ico{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;
+  background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.2);margin-bottom:16px}
+.ico.jade{background:rgba(2,179,119,.12);border-color:rgba(2,179,119,.25)}
+.ico.coral{background:rgba(228,87,46,.12);border-color:rgba(228,87,46,.25)}
+
+/* pull quote */
+.pquote{font-size:clamp(26px,3.6vw,46px);font-weight:700;letter-spacing:-.025em;line-height:1.18;max-width:1000px}
+.pquote .hl{color:var(--yellow)}
+
+/* stat big row */
+.bigstats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.bigstats .s .n{font-size:clamp(30px,4vw,46px);font-weight:800;letter-spacing:-.03em;color:var(--yellow)}
+.bigstats .s .l{color:var(--muted);font-size:14px;margin-top:4px}
+@media(max-width:820px){.bigstats{grid-template-columns:1fr 1fr}}
+
+/* evidence chips */
+.evrow{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.ev{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.08);border-radius:var(--r-md);padding:16px 18px;flex:1;min-width:230px}
+.ev .e-ico{font-size:20px;flex-shrink:0}
+.ev b{display:block;font-size:14.5px;margin-bottom:3px}
+.ev span{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* defection map */
+.defect{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:10px}
+.defect .d{background:var(--panel);border:1px solid rgba(255,255,255,.07);border-radius:var(--r-md);
+  padding:18px;position:relative;overflow:hidden}
+.defect .d .arrow{color:var(--coral);font-weight:700;font-size:13px}
+.defect .d h4{font-size:14px;color:var(--muted);font-weight:600;margin-bottom:10px}
+.defect .d .to{font-size:16px;font-weight:700;margin-top:4px}
+@media(max-width:820px){.defect{grid-template-columns:1fr 1fr}}
+
+/* ---------- retention cliff chart ---------- */
+.chart-card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));
+  border:1px solid rgba(255,255,255,.08);border-radius:var(--r-xl);padding:30px 30px 20px}
+.chart-title{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.chart-title h3{font-size:19px}
+.chart-title .note{font-size:12px;color:var(--muted-2);font-style:italic}
+.legend{display:flex;gap:18px;font-size:12.5px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+
+/* ---------- ARPU sizing ---------- */
+.arpu{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:end;margin-top:8px}
+.arpu .col{text-align:center}
+.arpu .bar{border-radius:12px 12px 4px 4px;margin:0 auto 12px;width:78%;position:relative;
+  background:linear-gradient(180deg,var(--yellow),var(--gold));display:flex;align-items:flex-start;justify-content:center;color:#181818;font-weight:800;padding-top:10px}
+.arpu .b1{height:60px} .arpu .b2{height:150px} .arpu .b3{height:260px;background:linear-gradient(180deg,#FFD84D,var(--amber))}
+.arpu .lbl{font-size:14px;font-weight:600} .arpu .cap{font-size:12px;color:var(--muted);margin-top:3px}
+.multi{display:inline-block;font-size:12px;font-weight:700;color:var(--jade);background:rgba(2,179,119,.12);padding:3px 9px;border-radius:50rem;margin-top:8px}
+
+/* ---------- impact-effort matrix ---------- */
+.matrix{position:relative;aspect-ratio:1.35;background:
+  linear-gradient(180deg,rgba(2,179,119,.05),rgba(255,255,255,.01));
+  border:1px solid rgba(255,255,255,.09);border-radius:var(--r-lg);margin-top:20px}
+.matrix .axis-x,.matrix .axis-y{position:absolute;color:var(--muted-2);font-size:12px;font-weight:600;letter-spacing:.04em}
+.matrix .axis-x{bottom:10px;left:50%;transform:translateX(-50%)}
+.matrix .axis-y{left:12px;top:50%;transform:translateY(-50%) rotate(-90deg);transform-origin:left}
+.matrix .qlab{position:absolute;font-size:11px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.1em}
+.matrix .gl{position:absolute;background:rgba(255,255,255,.07)}
+.matrix .bub{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.matrix .bub .dot{width:var(--sz,58px);height:var(--sz,58px);border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:15px;
+  background:radial-gradient(circle at 35% 30%,var(--yellow),var(--gold));color:#181818;box-shadow:0 6px 20px rgba(255,193,7,.3);border:2px solid rgba(255,255,255,.2)}
+.matrix .bub.b-jade .dot{background:radial-gradient(circle at 35% 30%,#2fe0a8,var(--jade));color:#04231a;box-shadow:0 6px 20px rgba(2,179,119,.3)}
+.matrix .bub .cap{font-size:12px;font-weight:600;max-width:120px}
+
+/* ============================================================
+   SOLUTIONS
+   ============================================================ */
+.sol-intro-grid{grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+@media(max-width:900px){.sol-intro-grid{grid-template-columns:1fr}}
+.northstar{background:linear-gradient(135deg,rgba(255,193,7,.13),rgba(255,193,7,.03));
+  border:1px solid rgba(255,193,7,.28);border-radius:var(--r-lg);padding:26px}
+.northstar .tag{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow)}
+.northstar .metric{font-size:21px;font-weight:700;line-height:1.35;margin-top:10px}
+.guardrail{display:flex;gap:14px;align-items:flex-start;background:rgba(228,87,46,.08);
+  border:1px solid rgba(228,87,46,.28);border-radius:var(--r-md);padding:18px 20px;margin-top:20px}
+.guardrail .g-ico{font-size:22px}
+.guardrail b{color:#ffb59e}
+
+/* solution block */
+.solution{position:relative;padding-top:70px;border-top:1px solid rgba(255,255,255,.07);margin-top:70px}
+.sol-head{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+.sol-num{width:54px;height:54px;border-radius:15px;background:var(--yellow);color:#181818;
+  display:grid;place-items:center;font-weight:800;font-size:24px;box-shadow:0 6px 20px rgba(255,193,7,.3)}
+.sol-badge{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--jade);background:rgba(2,179,119,.12);border:1px solid rgba(2,179,119,.25);padding:5px 11px;border-radius:50rem}
+.sol-badge.deepen{color:var(--sky);background:rgba(76,154,255,.12);border-color:rgba(76,154,255,.25)}
+.sol-head h3{font-size:clamp(26px,3vw,38px)}
+.sol-tagline{font-family:var(--hand);font-size:24px;color:var(--soft-yellow);margin:2px 0 26px}
+.jtbd{background:rgba(255,255,255,.035);border-left:3px solid var(--yellow);border-radius:0 var(--r-md) var(--r-md) 0;
+  padding:18px 22px;margin:22px 0;font-size:16px;line-height:1.6;color:#dcdce0}
+.jtbd b{color:var(--yellow);font-weight:600}
+
+.sol-body{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:start}
+@media(max-width:980px){.sol-body{grid-template-columns:1fr}}
+.sol-col h4{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--yellow);margin:26px 0 12px;font-weight:700}
+.sol-col h4:first-child{margin-top:0}
+.sol-col p{color:#c6c6cb;font-size:15px;line-height:1.68}
+
+/* flow steps */
+.flow{list-style:none;counter-reset:f}
+.flow li{counter-increment:f;position:relative;padding:0 0 18px 44px;font-size:14.5px;color:#cecec3;line-height:1.5}
+.flow li::before{content:counter(f);position:absolute;left:0;top:-2px;width:28px;height:28px;border-radius:50%;
+  background:rgba(255,193,7,.14);border:1px solid rgba(255,193,7,.3);color:var(--yellow);font-weight:700;font-size:13px;display:grid;place-items:center}
+.flow li::after{content:"";position:absolute;left:13.5px;top:28px;bottom:2px;width:1px;background:rgba(255,193,7,.18)}
+.flow li:last-child::after{display:none}
+.flow li b{color:#fff;font-weight:600}
+
+/* state pills */
+.states{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.states{grid-template-columns:1fr}}
+.state{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 14px}
+.state .sn{font-size:12.5px;font-weight:700;color:var(--white);display:flex;align-items:center;gap:7px}
+.state .sn .d{width:8px;height:8px;border-radius:50%}
+.state p{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+
+/* impact ribbons */
+.impacts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+@media(max-width:560px){.impacts{grid-template-columns:1fr}}
+.impact{border-radius:var(--r-md);padding:16px 18px;border:1px solid rgba(255,255,255,.08)}
+.impact.rev{background:rgba(255,193,7,.06)} .impact.user{background:rgba(2,179,119,.06)}
+.impact.trade{background:rgba(228,87,46,.06)} .impact.biz{background:rgba(76,154,255,.06)}
+.impact .t{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}
+.impact.rev .t{color:var(--yellow)} .impact.user .t{color:#3fe0a8}
+.impact.trade .t{color:#ff9e85} .impact.biz .t{color:#8fc0ff}
+.impact p{font-size:13px;color:#c6c6cb;line-height:1.55}
+.impact .est{font-size:10.5px;font-weight:700;color:var(--muted-2);border:1px solid rgba(255,255,255,.15);padding:2px 7px;border-radius:50rem;margin-left:6px}
+
+/* metrics table */
+.mtable{width:100%;border-collapse:collapse;margin-top:6px;font-size:13.5px}
+.mtable td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
+.mtable tr td:first-child{width:40%;color:#fff;font-weight:600}
+.mtable td.k{color:var(--muted)}
+.mtable .ns td:first-child{color:var(--yellow)}
+.tagm{font-size:10px;font-weight:700;padding:2px 8px;border-radius:50rem;text-transform:uppercase;letter-spacing:.06em}
+.tagm.n{background:rgba(255,193,7,.16);color:var(--yellow)}
+.tagm.g{background:rgba(228,87,46,.14);color:#ff9e85}
+
+/* ============================================================
+   PHONE MOCKUPS
+   ============================================================ */
+.phones{display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
+.phone-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;margin:0 -16px}
+.phone-cap{font-size:12.5px;color:var(--muted);text-align:center;max-width:280px;line-height:1.45;z-index:2}
+.phone-cap b{color:#fff;font-weight:600;display:block;margin-bottom:3px}
+.phone{width:290px;background:#0a0a0b;border-radius:44px;padding:9px;
+  box-shadow:var(--glow),0 40px 80px rgba(0,0,0,.55);border:1px solid #29292e;flex-shrink:0;
+  transform:scale(0.82);transform-origin:top center;margin-bottom:-116px}
+.screen{background:#141416;border-radius:36px;overflow:hidden;height:624px;position:relative;display:flex;flex-direction:column}
+.pfoot{padding:0 18px 14px}
+.screen.dk{background:#0d0d0f}
+/* status bar */
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:14px 22px 8px;font-size:13px;font-weight:700;color:#fff;z-index:5}
+.sbar .r{display:flex;gap:6px;align-items:center;font-size:11px}
+.sbar .notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:22px;background:#0a0a0b;border-radius:0 0 16px 16px}
+/* app bar */
+.abar{display:flex;align-items:center;gap:12px;padding:6px 18px 12px}
+.abar .bk{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;font-size:15px;color:#fff}
+.abar .ti{font-size:15px;font-weight:600}
+.abar .rt{margin-left:auto;display:flex;gap:9px;align-items:center}
+.abar .av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--yellow),var(--gold));display:grid;place-items:center;color:#181818;font-weight:700;font-size:13px}
+.abar .bell{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;position:relative;font-size:14px}
+.abar .bell .bd{position:absolute;top:6px;right:7px;width:7px;height:7px;background:var(--coral);border-radius:50%;border:1.5px solid #141416}
+/* screen body */
+.sbody{flex:1;overflow:hidden;padding:4px 18px 14px;position:relative}
+.sbody.pad0{padding:0}
+.scr-h{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.scr-sub{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+/* progress dots */
+.pdots{display:flex;gap:6px;padding:0 18px 8px}
+.pdots i{height:4px;border-radius:2px;background:rgba(255,255,255,.14);flex:1}
+.pdots i.on{background:var(--yellow)}
+/* ui cards inside phone */
+.ucard{background:#1f1f22;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;margin-bottom:10px}
+.ucard.y{background:linear-gradient(135deg,rgba(255,193,7,.16),rgba(255,193,7,.04));border-color:rgba(255,193,7,.3)}
+.ucard.lock{opacity:.55}
+.u-row{display:flex;align-items:center;gap:11px}
+.u-ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;background:rgba(255,255,255,.07);flex-shrink:0}
+.u-ico.y{background:var(--yellow);color:#181818}.u-ico.j{background:rgba(2,179,119,.16);color:#3fe0a8}
+.u-tx{flex:1;min-width:0}
+.u-tx .t1{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-tx .t2{font-size:11.5px;color:var(--muted);margin-top:2px}
+.u-amt{font-size:14px;font-weight:700;text-align:right}
+.u-amt.up{color:var(--jade)} .u-amt.dn{color:#ff8a6b}
+.chevr{color:var(--muted);font-size:15px}
+/* buttons in phone */
+.pbtn{display:block;width:100%;text-align:center;background:var(--yellow);color:#181818;font-weight:700;
+  font-size:15px;padding:15px;border-radius:15px;border:none;font-family:var(--font)}
+.pbtn.ghost{background:transparent;color:var(--yellow);border:1.5px solid rgba(255,193,7,.4)}
+.pbtn.sm{padding:11px;font-size:13px;border-radius:12px}
+.pbtn-sticky{position:absolute;left:18px;right:18px;bottom:14px}
+.reassure{text-align:center;font-size:11.5px;color:var(--muted);margin-top:10px}
+/* chips */
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{font-size:11.5px;font-weight:600;padding:7px 12px;border-radius:50rem;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09)}
+.chip.on{background:var(--yellow);color:#181818;border-color:var(--yellow)}
+.chip.amb{background:rgba(251,175,3,.14);color:var(--amber);border-color:rgba(251,175,3,.3)}
+.chip.j{background:rgba(2,179,119,.14);color:#3fe0a8;border-color:rgba(2,179,119,.3)}
+/* tab bar */
+.tbar{display:flex;justify-content:space-around;padding:11px 8px 16px;background:#101012;border-top:1px solid rgba(255,255,255,.06)}
+.tbar .tb{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;color:var(--muted-2);font-weight:600}
+.tbar .tb .ic{font-size:17px}
+.tbar .tb.on{color:var(--yellow)}
+/* toast */
+.toast{position:absolute;left:16px;right:16px;bottom:74px;background:#26262b;border:1px solid rgba(255,255,255,.1);
+  border-radius:13px;padding:12px 14px;display:flex;gap:10px;align-items:center;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:6}
+.toast .tk{width:26px;height:26px;border-radius:8px;background:var(--jade);display:grid;place-items:center;flex-shrink:0;color:#fff}
+/* takeover / confetti */
+.screen.takeover{background:radial-gradient(125% 85% at 50% 0%,#2a2410 0%,#131311 45%,#0d0d0f 75%)}
+.confetti{position:absolute;top:0;left:0;right:0;height:230px;overflow:hidden;pointer-events:none}
+.confetti i{position:absolute;width:8px;height:12px;border-radius:2px;opacity:.9}
+/* milestone strip */
+.mstrip{display:flex;gap:8px;margin:14px 0}
+.mstrip .m{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 8px;text-align:center}
+.mstrip .m .mn{font-size:15px;font-weight:800;color:var(--yellow)}
+.mstrip .m .ml{font-size:9.5px;color:var(--muted);margin-top:2px}
+/* score dial */
+.dialwrap{text-align:center;padding:6px 0 2px}
+.dial{position:relative;width:170px;height:110px;margin:0 auto}
+.dial .num{position:absolute;left:0;right:0;top:52px;font-size:34px;font-weight:800;letter-spacing:-.02em}
+.dial .dl{position:absolute;left:0;right:0;top:90px;font-size:11px;color:var(--muted)}
+.trend{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--jade);
+  background:rgba(2,179,119,.12);padding:3px 10px;border-radius:50rem}
+/* streak dots */
+.streak{display:flex;gap:5px;justify-content:center;margin:6px 0}
+.streak i{width:17px;height:17px;border-radius:5px;background:rgba(2,179,119,.85);display:grid;place-items:center;font-size:9px;color:#04231a}
+.streak i.off{background:rgba(255,255,255,.08)}
+/* limit count widget */
+.limitw{text-align:center;padding:10px 0}
+.limitw .from{font-size:15px;color:var(--muted);text-decoration:line-through}
+.limitw .to{font-size:40px;font-weight:800;color:var(--yellow);letter-spacing:-.02em;line-height:1.1}
+.limitw .ar{font-size:20px;color:var(--muted)}
+/* push notification */
+.push{background:rgba(255,255,255,.07);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;padding:12px 14px;display:flex;gap:11px;align-items:flex-start;margin:8px 0}
+.push .pi{width:32px;height:32px;border-radius:9px;background:var(--yellow);display:grid;place-items:center;color:#181818;font-weight:800;flex-shrink:0}
+.push .pt{flex:1}
+.push .pt .ph{font-size:12.5px;font-weight:700;display:flex;justify-content:space-between}
+.push .pt .ph span{font-weight:500;color:var(--muted-2);font-size:10.5px}
+.push .pt .pb{font-size:12px;color:#d2d2d6;margin-top:3px;line-height:1.4}
+/* quiz card */
+.quizq{background:linear-gradient(160deg,#26262b,#1a1a1d);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:22px 18px;min-height:150px;display:flex;flex-direction:column;justify-content:center;margin-bottom:14px}
+.quizq .q{font-size:17px;font-weight:600;line-height:1.35}
+/* amount chips row */
+.amtrow{display:flex;gap:8px;margin:12px 0}
+.amtchip{flex:1;text-align:center;padding:13px 4px;border-radius:13px;font-weight:700;font-size:15px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.08)}
+.amtchip.on{background:rgba(255,193,7,.16);border-color:var(--yellow);color:var(--yellow)}
+.amtchip small{display:block;font-size:9px;color:var(--muted);font-weight:500;margin-top:2px}
+/* sparkline area */
+.spark{height:66px;border-radius:12px;background:linear-gradient(180deg,rgba(2,179,119,.14),transparent);position:relative;overflow:hidden;margin:10px 0}
+/* badge */
+.gbadge{display:inline-flex;align-items:center;gap:9px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.3);
+  border-radius:50rem;padding:9px 15px;font-size:12.5px;font-weight:700;color:var(--yellow)}
+/* family / identity */
+.idcard{background:var(--card-gold);border-radius:18px;padding:18px;color:#231a06;position:relative;overflow:hidden;margin-bottom:12px}
+.idcard .il{font-size:11px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.08em}
+.idcard .iv{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+.idcard .ir{display:flex;gap:14px;margin-top:12px;font-size:11px;font-weight:600}
+.stays{background:rgba(2,179,119,.08);border:1px solid rgba(2,179,119,.22);border-radius:13px;padding:13px 15px;margin:8px 0}
+.stays .sh{font-size:12px;font-weight:700;color:#3fe0a8;margin-bottom:7px}
+.stays .li{font-size:12.5px;color:#d2d2d6;padding:3px 0;display:flex;gap:8px}
+.loses{background:rgba(228,87,46,.08);border:1px solid rgba(228,87,46,.22);border-radius:13px;padding:13px 15px}
+.loses .sh{font-size:12px;font-weight:700;color:#ff9e85;margin-bottom:5px}
+.fam-member{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.fam-member:last-child{border:none}
+.fam-av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;flex-shrink:0}
+.progress-ring{width:60px;height:60px}
+
+/* ---------- roadmap ---------- */
+.road{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:24px;position:relative}
+.road .ph{padding:0 18px;position:relative}
+.road .ph .node{width:20px;height:20px;border-radius:50%;background:var(--yellow);border:4px solid #1a1a1b;position:relative;z-index:2;box-shadow:0 0 0 4px rgba(255,193,7,.15)}
+.road .ph .line{position:absolute;top:8px;left:50%;right:-50%;height:3px;background:rgba(255,193,7,.25);z-index:1}
+.road .ph:last-child .line{display:none}
+.road .ph .pnm{font-size:12px;font-weight:700;color:var(--yellow);margin:16px 0 4px;letter-spacing:.06em;text-transform:uppercase}
+.road .ph h4{font-size:16px;margin-bottom:6px}
+.road .ph p{font-size:13px;color:var(--muted);line-height:1.5}
+@media(max-width:820px){.road{grid-template-columns:1fr 1fr;gap:30px 0}}
+
+/* ---------- footer ---------- */
+.foot{border-top:1px solid rgba(255,255,255,.08);padding:56px 0 40px;margin-top:40px}
+.foot .honest{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:var(--r-md);
+  padding:18px 22px;font-size:13px;color:var(--muted);line-height:1.6;max-width:900px}
+.foot .honest b{color:#d7d7db}
+.foot .fbot{display:flex;justify-content:space-between;align-items:center;margin-top:34px;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted)}
+.foot .made{font-family:var(--hand);font-size:19px;color:var(--soft-yellow)}
+.srcs{font-size:11.5px;color:var(--muted-2);margin-top:14px;line-height:1.7}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease}
+.rv.in{opacity:1;transform:none}
+
+/* misc */
+.divider{height:1px;background:rgba(255,255,255,.07);margin:8px 0}
+.tiny{font-size:12px;color:var(--muted-2)}
+.arrow-in{color:var(--yellow)}
+</style>
+<style id="serp-auth-theme-vars">:root{
+        --brand-accent:#625df5;
+        --brand-accent-hover:#5144d8;
+        --bg-dark:#1b1b1b;
+        --bg-darker:#2a2a2a;
+        --border-dark:#333333;
+        --input-border:#555555;
+        --text-primary:#ffffff;
+        --text-muted:#999999;
+        --text-subtle:#cccccc;
+        --success:#4caf50;
+        --error:#f44336;
+        --info:#2196f3;
+        --light-bg:#ffffff;
+        --light-border:#e9ecef;
+        --light-muted-text:#6c757d;
+        --light-panel-bg:#f8f9fa;
+        --light-muted-text2:#95a5a6;
+        --dark-text-strong:#2c3e50;
+      }</style><style id="site-theme-vars">:root{
+        --brand-accent:#625df5;
+        --brand-accent-hover:#5144d8;
+        --bg-dark:#1b1b1b;
+        --bg-darker:#2a2a2a;
+        --border-dark:#333333;
+        --input-border:#555555;
+        --text-primary:#ffffff;
+        --text-muted:#999999;
+        --text-subtle:#cccccc;
+        --success:#4caf50;
+        --error:#f44336;
+        --info:#2196f3;
+        --light-bg:#ffffff;
+        --light-border:#e9ecef;
+        --light-muted-text:#6c757d;
+        --light-panel-bg:#f8f9fa;
+        --light-muted-text2:#95a5a6;
+        --dark-text-strong:#2c3e50;
+      }</style><style>
+.simg-pop-btn {
+    position: absolute;
+    z-index: 2147483647;
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.simg-pop-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.simg-pop-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: #fff;
+}
+
+.simg-pop-btn-small {
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+}
+
+.simg-pop-btn-small svg {
+    width: 16px;
+    height: 16px;
+}
+</style></head>
+<body>
+<div class="bg-fx"></div>
+
+<!-- ================= NAV ================= -->
+<nav class="nav">
+  <div class="wrap row">
+    <div class="brand">
+      <span class="bird">F</span> FamApp <span class="tag">case study</span>
+    </div>
+    <div class="links">
+      <a href="https://fam-app-casestudy-a589.vercel.app/#problem" class="active">The Problem</a>
+      <a href="https://fam-app-casestudy-a589.vercel.app/#reframe">The Reframe</a>
+      <a href="https://fam-app-casestudy-a589.vercel.app/#sizing">The Prize</a>
+      <a href="https://fam-app-casestudy-a589.vercel.app/#solutions">Solutions</a>
+      <a href="https://fam-app-casestudy-a589.vercel.app/#roadmap">Roadmap</a>
+    </div>
+    <div class="right">
+      <div class="who"><b>Prakhar Beniwal</b><br>Product Analyst · Application</div>
+      <span class="pill">The 18-Cliff</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero section">
+  <div class="wrap">
+    <div class="grid">
+      <div class="rv in">
+        <span class="kicker"><span class="dot"></span> Product strategy · self-initiated</span>
+        <h1>FamApp's moat has an
+          <span class="u">expiry date.
+            <svg viewBox="0 0 320 24" fill="none"><path d="M4 16C60 6 140 4 210 8s90 8 106 6" stroke="#FFC107" stroke-width="5" stroke-linecap="round"></path></svg>
+          </span>
+        </h1>
+        <p class="sub">FamApp acquires users at <b>13</b> but loses them at <b>18</b> when real banks issue them cards. This case study turns that cliff into Indian fintech's biggest <span class="hl">origination funnel</span>.</p>
+        <div class="cta-row">
+          <a href="https://fam-app-casestudy-a589.vercel.app/#solutions" class="btn btn-fam">Jump to the solutions ↓</a>
+          <a href="https://fam-app-casestudy-a589.vercel.app/#problem" class="btn btn-ghost">Start with the problem</a>
+        </div>
+        
+        <a href="https://fam-app-casestudy-a589.vercel.app/New_PRD.docx" style="display:inline-flex; align-items:center; gap:16px; margin-top:28px; padding:16px 24px; background:rgba(2,179,119,.12); border:1.5px solid rgba(2,179,119,.4); border-radius:20px; font-size:17px; font-weight:700; color:#fff; text-decoration:none; transition:all 0.25s ease; box-shadow:0 10px 30px rgba(2,179,119,.15)" onmouseover="this.style.transform=&#39;translateY(-3px)&#39;; this.style.background=&#39;rgba(2,179,119,.2)&#39;; this.style.borderColor=&#39;var(--jade)&#39;" onmouseout="this.style.transform=&#39;none&#39;; this.style.background=&#39;rgba(2,179,119,.12)&#39;; this.style.borderColor=&#39;rgba(2,179,119,.4)&#39;">
+          <div style="width:48px; height:48px; border-radius:14px; background:var(--jade); display:grid; place-items:center; font-size:24px; box-shadow:0 6px 16px rgba(2,179,119,.3)">📄</div> 
+          <div style="line-height:1.3">
+            <span>Read the Official PRD</span>
+            <span style="display:block; font-size:13px; font-weight:500; color:#3fe0a8; margin-top:3px">Download the comprehensive spec document</span>
+          </div>
+          <span style="margin-left:14px; color:var(--jade); font-size:20px">→</span>
+        </a>
+        <div class="stats">
+          <div class="stat-chip"><div class="n">15M+</div><div class="l">registered users</div></div>
+          <div class="stat-chip"><div class="n">~₹90 to 100cr</div><div class="l">FY25 revenue</div></div>
+          <div class="stat-chip"><div class="n">First</div><div class="l">ever annual profit</div></div>
+          <div class="stat-chip"><div class="n">~4×</div><div class="l">revenue growth, 1 yr</div></div>
+        </div>
+      </div>
+      <div class="card-stage rv in">
+        <div class="famcard dark">
+          <div class="sheen"></div>
+          <div class="top"><span class="fbird">F</span><span class="nfc">››))</span></div>
+          <span class="doodle d-star" style="top:44%;left:24%;color:#FFC107">★</span>
+          <span class="doodle d-star" style="top:30%;left:40%;color:#4C9AFF;font-size:15px;animation-duration:3s">✧</span>
+          <div class="sig" style="color:#FFC107">Prakhar</div>
+          <div class="brandline">FamCard</div>
+          <div class="visa">VISA</div>
+        </div>
+        <div class="card-note c-note" style="top:8%;right:2%;transform:rotate(6deg)">no number = the flex ✨</div>
+        <div class="card-cap c-note c-cap" style="left:6%">numberless · doodled · yours</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= CONTEXT ================= -->
+<section class="section tight" id="context">
+  <div class="wrap rv in">
+    <span class="kicker"><span class="dot"></span> 20-second primer</span>
+    <h2 class="sec">What FamApp actually is</h2>
+    <p class="lead">India's teen neobank. A numberless Visa + UPI on an IDFC First prepaid (PPI) license.</p>
+    <div class="grid cards-3" style="margin-top:34px">
+      <div class="card soft">
+        <h3>The two-user model</h3>
+        <p><b>Teen spends, parent funds.</b> Must delight the kid while earning the parent's trust.</p>
+      </div>
+      <div class="card soft">
+        <h3>Prepaid, not a bank</h3>
+        <p>It's a wallet with a card on top. This makes the <b>18-year-old KYC transition</b> critical.</p>
+      </div>
+      <div class="card soft">
+        <h3>Monetization</h3>
+        <p>Interchange, subs, and action fees. FY25 was its first-ever profitable year.</p>
+      </div>
+    </div>
+    <div style="margin-top:32px; background:linear-gradient(90deg, rgba(255,255,255,.02) 0%, rgba(255,193,7,.05) 50%, rgba(255,255,255,.02) 100%); border:1px solid rgba(255,255,255,.08); border-radius:20px; display:flex; justify-content:space-between; align-items:center; padding:24px 40px; box-shadow:0 10px 30px -10px rgba(0,0,0,.5); backdrop-filter:blur(10px)">
+      
+      <div style="text-align:center">
+        <div style="font-size:28px; font-weight:800; color:#fff; letter-spacing:-.02em; margin-bottom:4px">2019</div>
+        <div style="font-size:13px; color:var(--muted); font-weight:500">Founded (YC-backed)</div>
+      </div>
+      
+      <div style="width:1px; height:40px; background:rgba(255,255,255,.08)"></div>
+
+      <div style="text-align:center">
+        <div style="font-size:28px; font-weight:800; color:#fff; letter-spacing:-.02em; margin-bottom:4px">Dec <span style="color:var(--yellow)">’24</span></div>
+        <div style="font-size:13px; color:var(--muted); font-weight:500">Rebrand to "FamApp"</div>
+      </div>
+      
+      <div style="width:1px; height:40px; background:rgba(255,255,255,.08)"></div>
+
+      <div style="text-align:center">
+        <div style="font-size:28px; font-weight:800; color:#fff; letter-spacing:-.02em; margin-bottom:4px">Sep <span style="color:var(--yellow)">’24</span></div>
+        <div style="font-size:13px; color:var(--muted); font-weight:500">Namaspay launched</div>
+      </div>
+      
+      <div style="width:1px; height:40px; background:rgba(255,255,255,.08)"></div>
+
+      <div style="text-align:center">
+        <div style="font-size:28px; font-weight:800; background:linear-gradient(90deg, #FFC107, #ff9e85); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:-.02em; margin-bottom:4px">~₹60-70</div>
+        <div style="font-size:13px; color:var(--muted); font-weight:500">Blended ARPU/yr <span style="opacity:0.6; font-size:11px">(est.)</span></div>
+      </div>
+      
+    </div>
+  </div>
+</section>
+
+<!-- ================= PROBLEM ================= -->
+<section class="section" id="problem">
+  <div class="wrap">
+    <div class="rv in">
+      <span class="eyebrow-num">01</span>
+      <span class="kicker" style="color:#ff9e85;background:rgba(228,87,46,.09);border-color:rgba(228,87,46,.25)"><span class="dot" style="background:#E4572E;box-shadow:0 0 0 4px rgba(228,87,46,.18)"></span> The problem</span>
+      <h2 class="sec">The moat is <span style="color:#ff9e85">rented</span>, and the lease ends at 18</h2>
+      <div style="margin-top:20px; padding:22px 24px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:16px; backdrop-filter:blur(12px);">
+        <p style="margin:0; font-size:18px; line-height:1.5; color:#fff;">
+          FamApp's moat is built on <b>regulatory arbitrage</b>: minors can't get bank-issued cards.
+          <span style="display:block; margin-top:8px; font-size:15px; color:#a1a1aa; line-height:1.6;">At 18, traditional banks can offer them the exact same product. The core advantage vanishes overnight, creating a built-in retention cliff, a <b style="color:#ff9e85">leaky bucket by design</b>.</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1.25fr .75fr;gap:30px;margin-top:40px;align-items:stretch">
+      <div class="chart-card rv in">
+        <div class="chart-title">
+          <h3>The retention cliff, by age</h3>
+          <span class="note">Illustrative of the mechanism, shape, not disclosed figures</span>
+        </div>
+        <svg viewBox="0 0 720 300" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Retention falling sharply after age 18">
+          <defs>
+            <lineargradient id="grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#FFC107" stop-opacity=".35"></stop>
+              <stop offset="1" stop-color="#FFC107" stop-opacity="0"></stop>
+            </lineargradient>
+            <lineargradient id="gradr" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#E4572E" stop-opacity=".28"></stop>
+              <stop offset="1" stop-color="#E4572E" stop-opacity="0"></stop>
+            </lineargradient>
+          </defs>
+          <!-- gridlines -->
+          <g stroke="rgba(255,255,255,.06)" stroke-width="1">
+            <line x1="60" y1="40" x2="700" y2="40"></line><line x1="60" y1="100" x2="700" y2="100"></line>
+            <line x1="60" y1="160" x2="700" y2="160"></line><line x1="60" y1="220" x2="700" y2="220"></line>
+          </g>
+          <!-- cliff zone -->
+          <rect x="470" y="20" width="90" height="240" fill="rgba(228,87,46,.07)"></rect>
+          <line x1="470" y1="20" x2="470" y2="260" stroke="#E4572E" stroke-width="1.5" stroke-dasharray="5 5"></line>
+          <!-- healthy area then drop -->
+          <path d="M60 150 C140 120,230 108,320 104 C400 101,450 100,470 100 L470 100 C500 100,520 160,545 200 C570 236,610 246,700 250 L700 260 L60 260 Z" fill="url(#grad)"></path>
+          <path d="M60 150 C140 120,230 108,320 104 C400 101,450 100,470 100" fill="none" stroke="#FFC107" stroke-width="3.5" stroke-linecap="round"></path>
+          <path d="M470 100 C500 100,520 160,545 200 C570 236,610 246,700 250" fill="none" stroke="#E4572E" stroke-width="3.5" stroke-linecap="round"></path>
+          <circle cx="470" cy="100" r="6" fill="#E4572E" stroke="#141416" stroke-width="2.5"></circle>
+          <!-- labels -->
+          <text x="486" y="52" fill="#ff9e85" font-size="15" font-weight="700" font-family="Poppins">18th birthday</text>
+          <text x="486" y="72" fill="#A1A1A1" font-size="12" font-family="Poppins">the cliff →</text>
+          <g fill="#7d7d82" font-size="12" font-family="Poppins">
+            <text x="86" y="282">13</text><text x="196" y="282">15</text><text x="330" y="282">17</text>
+            <text x="462" y="282">18</text><text x="590" y="282">20</text><text x="676" y="282">22</text>
+          </g>
+          <text x="60" y="34" fill="#7d7d82" font-size="11" font-family="Poppins">% still active</text>
+        </svg>
+        <div class="legend">
+          <span><i style="background:#FFC107"></i>Reason to stay intact</span>
+          <span><i style="background:#E4572E"></i>Reason evaporates → four-way defection</span>
+        </div>
+      </div>
+
+      <div class="rv in" style="display:flex;flex-direction:column;gap:14px">
+        <div class="card" style="padding:24px; background:rgba(255,255,255,.02); border-color:rgba(255,255,255,.06);">
+          <h3 style="font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:20px;">They already know. Watch the moves.</h3>
+          
+          <div style="display:flex; flex-direction:column; gap:18px;">
+            <div style="padding-left:14px; border-left:2px solid rgba(255,255,255,.15);">
+              <div style="font-size:14px; font-weight:600; color:#fff; margin-bottom:3px;">The "Trio" rebrand <span style="font-weight:400; color:#7d7d82; font-size:12px; margin-left:6px;">Dec ’24</span></div>
+              <div style="font-size:13px; color:#a1a1aa; line-height:1.4;">Quietly shedding the word "teen" from the master brand.</div>
+            </div>
+            
+            <div style="padding-left:14px; border-left:2px solid rgba(255,255,255,.15);">
+              <div style="font-size:14px; font-weight:600; color:#fff; margin-bottom:3px;">Namaspay <span style="font-weight:400; color:#7d7d82; font-size:12px; margin-left:6px;">Sep ’24</span></div>
+              <div style="font-size:13px; color:#a1a1aa; line-height:1.4;">A whole separate app for tourists, hunting brand-new TAM.</div>
+            </div>
+            
+            <div style="padding-left:14px; border-left:2px solid rgba(255,255,255,.15);">
+              <div style="font-size:14px; font-weight:600; color:#fff; margin-bottom:3px;">First profit via fees</div>
+              <div style="font-size:13px; color:#a1a1aa; line-height:1.4;">Monetising harder, on a base it may be quietly eroding.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rv" style="margin-top:34px">
+      <h3 style="font-size:18px;margin-bottom:6px">At 18, the user fans out four ways, to four different rivals</h3>
+      <p class="muted" style="font-size:14px;margin-bottom:18px">Each need that FamApp <em>can't</em> yet serve is a door to a competitor.</p>
+      <div class="defect">
+        <div class="d"><h4>Real bank account</h4><span class="arrow">defects to →</span><div class="to">Jupiter · Fi</div></div>
+        <div class="d"><h4>First credit card</h4><span class="arrow">defects to →</span><div class="to">slice · OneCard</div></div>
+        <div class="d"><h4>First investing</h4><span class="arrow">defects to →</span><div class="to">Groww · Zerodha</div></div>
+        <div class="d"><h4>UPI on any bank</h4><span class="arrow">defects to →</span><div class="to">GPay · PhonePe</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= REFRAME ================= -->
+<section class="section" id="reframe">
+  <div class="wrap center rv">
+    <span class="kicker"><span class="dot"></span> The reframe</span>
+    <p style="font-size:clamp(24px, 3.2vw, 38px); font-weight:700; letter-spacing:-.02em; line-height:1.2; max-width:860px; margin:16px auto 0; color:#e2e2e5">
+      The 18th birthday isn't a churn event.<br>It's the <span class="hl">single highest-intent upsell moment</span> in a user's entire financial life.
+    </p>
+    
+    <div style="margin:34px auto 0; max-width:800px; padding:24px 32px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); border-radius:16px; backdrop-filter:blur(10px)">
+      <p style="font-size:17.5px; line-height:1.6; color:#d2d2d6">
+        At 18, a user becomes eligible for a real account, a first credit card, and a first SIP. FamApp is the incumbent with 5 years of transaction data and an owned PPI license. Don't fight the cliff. <b style="color:var(--yellow)">Monetise it.</b>
+      </p>
+    </div>
+
+    <div class="grid cards-3" style="margin-top:48px; text-align:left; gap:24px">
+      <div style="padding-top:16px; border-top:2px solid rgba(255,193,7,.4)">
+        <h3 style="font-size:16.5px; margin-bottom:8px">1. The paid option</h3>
+        <p style="font-size:14.5px; color:var(--muted); line-height:1.55">The teen relationship is a call option on the adult one. FamApp holds <b style="color:#fff">15M of those options, for free.</b></p>
+      </div>
+      <div style="padding-top:16px; border-top:2px solid rgba(2,179,119,.4)">
+        <h3 style="font-size:16.5px; margin-bottom:8px">2. The trigger exists</h3>
+        <p style="font-size:14.5px; color:var(--muted); line-height:1.55">RBI's KYC jump from ₹10k to ₹2L already <b style="color:#fff">forces</b> an upgrade decision. We just have to instrument and convert it.</p>
+      </div>
+      <div style="padding-top:16px; border-top:2px solid rgba(76,154,255,.4)">
+        <h3 style="font-size:16.5px; margin-bottom:8px">3. The 2019 vision</h3>
+        <p style="font-size:14.5px; color:var(--muted); line-height:1.55">Graduating teens into credit and investments was FamApp's founding plan. The solutions below <b style="color:#fff">un-shelve it.</b></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SIZING / THE PRIZE ================= -->
+<section class="section" id="sizing">
+  <div class="wrap">
+    <details>
+      <summary style="list-style:none; cursor:pointer; outline:none; display:flex; justify-content:space-between; align-items:center" class="rv">
+        <div>
+          <span class="eyebrow-num">02</span>
+          <span class="kicker"><span class="dot"></span> The prize · sizing it</span>
+          <h2 class="sec" style="margin-bottom:0">One conversion is worth <span class="hl">5 to 30×</span> the ARPU</h2>
+        </div>
+        <div style="width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.05); display:grid; place-items:center; transition:transform 0.2s" class="details-chevron">▼</div>
+      </summary>
+      <style>details > summary::-webkit-details-marker { display:none; } details[open] .details-chevron { transform: rotate(180deg); }</style>
+      
+      <div style="padding-top:24px">
+        <p class="lead" style="margin-top:0">The cliff isn't just retained revenue, it's an <b>ARPU step-change</b>. A topped-up teen wallet is a low-value account. A graduated adult with a salary account, a first credit card, and a SIP is a different animal entirely.</p>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:40px;margin-top:36px;align-items:center">
+      <div class="chart-card rv">
+        <div class="chart-title"><h3>Annual ARPU by life-stage</h3><span class="note">Estimates, triangulated, not disclosed</span></div>
+        <div class="arpu">
+          <div class="col"><div class="bar b1">₹65</div><div class="lbl">Teen prepaid</div><div class="cap">interchange + store</div></div>
+          <div class="col"><div class="bar b2">₹300 to 600</div><div class="lbl">Graduated adult</div><div class="cap">+ salary float + Ultra</div><span class="multi">5 to 10×</span></div>
+          <div class="col"><div class="bar b3">₹800 to 2k+</div><div class="lbl">+ Credit user</div><div class="cap">+ credit interchange + interest</div><span class="multi">12 to 30×</span></div>
+        </div>
+      </div>
+      <div class="rv" style="display:flex; flex-direction:column; gap:24px">
+        <div>
+          <h3 style="font-size:18px; margin-bottom:8px">The compounding funnel</h3>
+          <p class="muted" style="font-size:14.5px; line-height:1.5">Convert an incremental <b style="color:#fff">10%</b> of 18-year-olds. The graduated account acts as the top of the funnel for high-margin products.</p>
+        </div>
+
+        <div style="background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:20px 24px; position:relative">
+           <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px">
+             <div style="width:36px; height:36px; background:var(--yellow); color:#000; border-radius:10px; display:grid; place-items:center; font-weight:700">18</div>
+             <div style="font-size:14px; font-weight:600">Retain at 18<br><span class="muted" style="font-weight:400; font-size:12.5px">Stop the churn cliff</span></div>
+           </div>
+           
+           <div style="width:2px; height:16px; background:linear-gradient(to bottom, rgba(255,193,7,.4), rgba(2,179,119,.4)); margin:-8px 0 4px 17px"></div>
+           
+           <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px">
+             <div style="width:36px; height:36px; background:rgba(2,179,119,.15); color:var(--jade); border:1px solid rgba(2,179,119,.3); border-radius:10px; display:grid; place-items:center; font-weight:700">₹</div>
+             <div style="font-size:14px; font-weight:600">Salary Account<br><span class="muted" style="font-weight:400; font-size:12.5px">Unlock float &amp; interchange</span></div>
+           </div>
+
+           <div style="width:2px; height:16px; background:linear-gradient(to bottom, rgba(2,179,119,.4), rgba(76,154,255,.4)); margin:-8px 0 4px 17px"></div>
+           
+           <div style="display:flex; align-items:center; gap:14px">
+             <div style="width:36px; height:36px; background:rgba(76,154,255,.15); color:#4C9AFF; border:1px solid rgba(76,154,255,.3); border-radius:10px; display:grid; place-items:center; font-weight:700">📈</div>
+             <div style="font-size:14px; font-weight:600">Credit &amp; Wealth<br><span class="muted" style="font-weight:400; font-size:12.5px">High-margin lending attach</span></div>
+           </div>
+        </div>
+
+        <div style="padding:14px 16px; background:rgba(228,87,46,.06); border:1px solid rgba(228,87,46,.15); border-radius:12px; font-size:13px; color:#d2d2d6; line-height:1.5">
+          <b style="color:#ff9e85">Guardrail,</b> Sizing models the <em>activated</em> 18-turning cohort, not the 15M registered base.
+        </div>
+      </div>
+    </div>
+    </div></details>
+  </div>
+</section>
+
+<!-- ================= SOLUTIONS INTRO ================= -->
+<section class="section" id="solutions">
+  <div class="wrap">
+    <details>
+      <summary style="list-style:none; cursor:pointer; outline:none; display:flex; justify-content:space-between; align-items:center; text-align:left" class="rv">
+        <div>
+          <span class="eyebrow-num">03</span>
+          <span class="kicker"><span class="dot"></span> The solutions · the core of this case</span>
+          <h2 class="sec" style="margin-bottom:0">Turn the cliff into an <span class="hl">origination funnel</span></h2>
+        </div>
+        <div style="width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.05); display:grid; place-items:center; transition:transform 0.2s" class="details-chevron">▼</div>
+      </summary>
+      
+      <div style="padding-top:24px">
+        <p class="lead" style="margin:0">Four products, one job: make 18 the moment a Fam teen <em>becomes</em> a Fam adult, instead of the moment they leave. Everything below is instrumented against one number.</p>
+
+    <div class="grid sol-intro-grid rv" style="margin-top:44px">
+      <div style="background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); border-radius:20px; padding:32px; height:100%; display:flex; flex-direction:column; justify-content:center">
+        
+        <div style="margin-bottom:28px">
+          <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(255,193,7,.15); padding:6px 12px; border-radius:50rem; border:1px solid rgba(255,193,7,.3); color:var(--yellow); font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:16px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            North Star Metric
+          </div>
+          <div style="font-size:23px; font-weight:700; line-height:1.2; letter-spacing:-.02em">
+            Convert teens to an <span style="color:var(--yellow)">adult product</span> within 30 days of turning 18.
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:16px">
+             <span style="font-size:11.5px; padding:5px 12px; background:rgba(255,255,255,.06); border-radius:8px; color:#d2d2d6; font-weight:600">Grown-Up Account</span>
+             <span style="font-size:11.5px; padding:5px 12px; background:rgba(255,255,255,.06); border-radius:8px; color:#d2d2d6; font-weight:600">Credit Card</span>
+             <span style="font-size:11.5px; padding:5px 12px; background:rgba(255,255,255,.06); border-radius:8px; color:#d2d2d6; font-weight:600">Investments</span>
+          </div>
+        </div>
+
+        <div style="height:1px; background:rgba(255,255,255,.08); margin-bottom:28px"></div>
+
+        <div>
+          <div style="display:inline-flex; align-items:center; gap:8px; color:#ff9e85; font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:12px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+            The Ironclad Rule
+          </div>
+          <p style="font-size:14.5px; color:#d2d2d6; line-height:1.5">
+            <b>No credit on prepaid wallets.</b> This violates RBI rules.
+          </p>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:14px">
+            <div style="flex:1; background:rgba(228,87,46,.1); border:1px dashed rgba(228,87,46,.4); padding:10px 8px; text-align:center; border-radius:10px; font-size:12px; color:#ff9e85; font-weight:600; line-height:1.3">No PPI<br>Credit</div>
+            <div style="color:rgba(255,255,255,.2)">→</div>
+            <div style="flex:1.2; background:rgba(2,179,119,.1); border:1px solid rgba(2,179,119,.3); padding:10px 8px; text-align:center; border-radius:10px; font-size:12px; color:var(--jade); font-weight:600; line-height:1.3">Bank co-branded<br>or NBFC</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="chart-card" style="padding:22px 22px 8px">
+          <div class="chart-title" style="margin-bottom:4px"><h3 style="font-size:16px">Impact × Effort, how they sequence</h3></div>
+          <div class="matrix">
+            <div class="gl" style="left:50%;top:8%;bottom:8%;width:1px"></div>
+            <div class="gl" style="top:50%;left:6%;right:6%;height:1px"></div>
+            <div class="qlab" style="left:9%;top:5%">quick wins</div>
+            <div class="qlab" style="right:7%;top:5%">big bets</div>
+            <div class="qlab" style="left:9%;bottom:34px">fill-ins</div>
+            <div class="qlab" style="right:7%;bottom:34px">hard slogs</div>
+            <div class="axis-x">Effort →</div>
+            <div class="axis-y">Impact →</div>
+            <div class="bub" style="left:34%;top:22%;--sz:60px"><div class="dot">1</div><div class="cap">Grown-Up <span class="muted">· P0</span></div></div>
+            <div class="bub" style="left:30%;top:42%;--sz:52px"><div class="dot">2</div><div class="cap">Independence</div></div>
+            <div class="bub" style="left:76%;top:16%;--sz:66px"><div class="dot">3</div><div class="cap">Credit at 18</div></div>
+            <div class="bub" style="left:60%;top:44%;--sz:52px"><div class="dot">4</div><div class="cap">Invest</div></div>
+          </div>
+          <p class="tiny" style="margin:12px 4px 4px">Sequence: <b style="color:#FFC107">Grown-Up</b> supplies the full-KYC base + <b style="color:#FFC107">Independence</b> gives adults privacy → <b style="color:#FFC107">Credit</b> &amp; <b style="color:#FFC107">Invest</b> attach on top.</p>
+        </div>
+      </div>
+    </div>
+    </div></details>
+  </div>
+</section>
+
+<!-- ================= SOLUTION DEEP-DIVES (appended below) ================= -->
+<section class="section" style="padding-top:0" id="sol-container">
+  <div class="wrap">
+    
+    <div style="margin-bottom:60px">
+      <h2 class="sec">Solutions</h2>
+    </div>
+
+<!-- ========== SOLUTION 1 · FamApp Grown-Up ========== -->
+<div class="solution rv" id="sol-1">
+  <div class="sol-head">
+    <span class="sol-num">1</span>
+    <h3>FamApp Grown-Up</h3>
+  </div>
+  <div class="sol-tagline">your first account becomes your forever account, no goodbye at 18, a graduation.</div>
+  <div class="jtbd">
+    <b>JTBD:</b> When I turn 18, I want my account to <b>level up in place</b> so I get real bank limits without re-onboarding into a stranger's app like Jupiter or Fi.
+  </div>
+
+  <!-- MOCKUPS -->
+  <div class="phones" style="margin:34px 0 10px">
+    <!-- Phone A: Birthday takeover -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen takeover">
+        <div class="confetti">
+          <i style="left:12%;top:10px;background:#FFC107;transform:rotate(20deg)"></i>
+          <i style="left:28%;top:34px;background:#02B377;transform:rotate(-15deg)"></i>
+          <i style="left:44%;top:6px;background:#E4572E;transform:rotate(40deg)"></i>
+          <i style="left:60%;top:40px;background:#FFC107;transform:rotate(10deg)"></i>
+          <i style="left:74%;top:14px;background:#4C9AFF;transform:rotate(-30deg)"></i>
+          <i style="left:86%;top:48px;background:#FFDF7E;transform:rotate(25deg)"></i>
+          <i style="left:20%;top:70px;background:#E4572E;transform:rotate(-10deg)"></i>
+          <i style="left:66%;top:78px;background:#02B377;transform:rotate(35deg)"></i>
+        </div>
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="sbody" style="padding-top:2px">
+          <div style="width:50px;height:50px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;font-size:25px;margin:2px auto 8px;box-shadow:0 8px 24px rgba(255,193,7,.4)">🕊️</div>
+          <div class="scr-h center" style="font-size:23px">Happy 18th, Prakhar 🎉</div>
+          <p class="scr-sub center" style="padding:0 8px"><b style="color:#fff">5 years</b> in, now you unlock the grown-up stuff.</p>
+          <div class="mstrip" style="margin:10px 0">
+            <div class="m"><div class="mn">₹3.84L</div><div class="ml">moved</div></div>
+            <div class="m"><div class="mn">5-yr</div><div class="ml">streak</div></div>
+            <div class="m"><div class="mn">0</div><div class="ml">reset</div></div>
+          </div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:2px 0 8px">You've unlocked</div>
+          <div class="ucard y" style="padding:11px 13px;margin-bottom:8px"><div class="u-row"><div class="u-ico y">🏦</div><div class="u-tx"><div class="t1">Grown-Up Account</div><div class="t2">limits jump ₹10k → ₹2L</div></div><span style="font-size:15px">🔓</span></div></div>
+          <div class="ucard" style="padding:11px 13px;margin-bottom:8px"><div class="u-row"><div class="u-ico">💳</div><div class="u-tx"><div class="t1">Credit at 18</div><div class="t2">first card · pre-approved ₹15,000</div></div><span style="font-size:15px">🔓</span></div></div>
+          <div class="ucard" style="padding:11px 13px;margin-bottom:0"><div class="u-row"><div class="u-ico j">📈</div><div class="u-tx"><div class="t1">Investing</div><div class="t2">start a SIP from ₹100</div></div><span style="font-size:15px">🔓</span></div></div>
+        </div>
+        <div class="pfoot">
+          <button class="pbtn">Claim my Grown-Up account</button>
+          <div class="reassure">Same card. Same coins. Just more powerful.</div>
+        </div>
+      </div></div>
+      <div class="phone-cap"><b>Birthday Unlock · T-0</b>The cliff, reframed as a graduation. One emotional moment → one primary tap into the funnel.</div>
+    </div>
+
+    <!-- Phone B: Delta KYC -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="abar"><div class="bk">‹</div><div class="ti">Claim your account</div><div class="rt"><span class="tiny" style="color:var(--muted)">Step 2 of 5</span></div></div>
+        <div class="pdots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+        <div class="sbody">
+          <div class="scr-h" style="font-size:19px">Quick check, no re-typing</div>
+          <p class="scr-sub" style="margin-bottom:14px">We pulled your details from your Fam profile. Just confirm.</p>
+
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">PAN</div>
+          <div style="display:flex;align-items:center;gap:8px;background:#1f1f22;border:1.5px solid rgba(255,193,7,.35);border-radius:12px;padding:12px 14px;margin-bottom:6px">
+            <span style="font-size:16px;font-weight:700;letter-spacing:.14em;flex:1">BXXPA4521K</span>
+            <span style="font-size:16px">📷</span>
+          </div>
+          <div class="chip amb" style="margin-bottom:14px">ⓘ RBI requires PAN for any real credit line. Yours stays encrypted.</div>
+
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Aadhaar OTP</div>
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <span style="flex:1;text-align:center;background:#1f1f22;border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:11px 0;font-weight:700">4</span>
+            <span style="flex:1;text-align:center;background:#1f1f22;border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:11px 0;font-weight:700">1</span>
+            <span style="flex:1;text-align:center;background:#1f1f22;border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:11px 0;font-weight:700">9</span>
+            <span style="flex:1;text-align:center;background:#1f1f22;border:1.5px solid var(--yellow);border-radius:9px;padding:11px 0;font-weight:700;color:var(--yellow)">|</span>
+            <span style="flex:1;text-align:center;background:#1f1f22;border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:11px 0"></span>
+            <span style="flex:1;text-align:center;background:#1f1f22;border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:11px 0"></span>
+          </div>
+          <div class="tiny" style="margin-bottom:14px">We never see your full Aadhaar number · Resend in 0:24</div>
+
+          <div class="ucard" style="padding:12px 14px;margin-bottom:0">
+            <div style="display:flex;justify-content:space-between"><div><div class="t2" style="font-size:10px;color:var(--muted)">Name · DOB</div><div style="font-size:13.5px;font-weight:600;margin-top:2px">Prakhar Beniwal · 30 Jun 2008</div></div><span class="chip" style="align-self:center">Edit</span></div>
+            <div class="divider" style="margin:10px 0"></div>
+            <div style="display:flex;justify-content:space-between"><div><div class="t2" style="font-size:10px;color:var(--muted)">Address</div><div style="font-size:13px;font-weight:500;margin-top:2px">14, Koramangala 5th Block,<br>Bengaluru 560095</div></div><span class="chip" style="align-self:center">Edit</span></div>
+          </div>
+        </div>
+        <div class="pfoot"><button class="pbtn">Yep, that's me →</button></div>
+      </div></div>
+      <div class="phone-cap"><b>Delta-KYC · confirm, don't re-type</b>Full-KYC as a delta on the teen record, the fix for India's brutal KYC drop-off cliff.</div>
+    </div>
+
+    <!-- Phone C: Success -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="sbody" style="display:flex;flex-direction:column">
+          <div style="width:60px;height:60px;border-radius:50%;background:rgba(2,179,119,.16);border:2px solid var(--jade);display:grid;place-items:center;font-size:30px;color:#3fe0a8;margin:8px auto 12px">✓</div>
+          <div class="scr-h center" style="font-size:20px">You're officially a<br>full FamApp adult.</div>
+          <div class="limitw">
+            <span class="from">₹10,000</span> <span class="ar">→</span> <span class="to">₹2,00,000</span>
+            <div class="tiny" style="text-align:center">your new spending limit</div>
+          </div>
+          <div class="chips" style="justify-content:center;margin:6px 0 12px">
+            <span class="chip j">UPI 2.0 ✓</span><span class="chip j">ATM ✓</span><span class="chip j">Higher limits ✓</span>
+          </div>
+          <div class="gbadge" style="align-self:center;margin-bottom:12px">🪙 4,210 FamCoins, carried over</div>
+          <div class="ucard y" style="padding:13px;margin-bottom:0"><div class="u-row"><div class="u-ico y">💼</div><div class="u-tx"><div class="t1">Getting your first paycheck?</div><div class="t2">Make FamApp your salary account</div></div></div><button class="pbtn sm" style="margin-top:10px">Set up salary account</button></div>
+        </div>
+        <div class="tbar">
+          <div class="tb on"><span class="ic">🏠</span>Home</div><div class="tb"><span class="ic">💳</span>Card</div>
+          <div class="tb"><span class="ic">📈</span>Invest</div><div class="tb"><span class="ic">🎁</span>Rewards</div><div class="tb"><span class="ic">👤</span>You</div>
+        </div>
+      </div></div>
+      <div class="phone-cap"><b>Graduation Success + salary hook</b>Make the limit jump tangible, then capture primacy, owning the first paycheck is the retention anchor.</div>
+    </div>
+  </div>
+
+  <!-- ACCORDION NARRATIVE -->
+  <style>
+    .acc-group { display: flex; flex-direction: column; gap: 8px; margin-top: 34px; }
+    .acc-item { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; overflow: hidden; transition: all 0.25s ease; }
+    .acc-item.open { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.15); box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+    .acc-btn { width: 100%; text-align: left; background: none; border: none; color: #fff; padding: 18px 22px; font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; letter-spacing: .02em; }
+    .acc-btn:hover { background: rgba(255,255,255,.02); }
+    .acc-icon { font-size: 14px; color: var(--muted); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-block; }
+    .acc-item.open .acc-icon { transform: rotate(180deg); color: #fff; }
+    .acc-panel { max-height: 0; overflow: hidden; padding: 0 22px; transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease; opacity: 0; }
+    .acc-item.open .acc-panel { opacity: 1; padding: 0 22px 22px; }
+    .acc-panel ul { margin: 0; padding-left: 20px; list-style: none; }
+    .acc-panel ul li { margin-bottom: 10px; font-size: 13.5px; line-height: 1.5; color: #a1a1aa; position: relative; }
+    .acc-panel ul li::before { content: '→'; position: absolute; left: -22px; color: var(--yellow); opacity: 0.9; font-weight: bold; }
+    .acc-panel .k { font-weight: 600; color: #fff; }
+  </style>
+
+  <div class="acc-group">
+    <!-- Accordion 1: Mechanics & Happy Path -->
+    <div class="acc-item">
+      <button class="acc-btn">Mechanics &amp; Happy Path <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Auto-convert-in-place:</span> Same card, login &amp; coins. Flip status from teen PPI to adult account (Fidelity/Cash App pattern).</li>
+          <li><span class="k">Delta-KYC:</span> Pre-fill from Aadhaar + teen profile. Confirm, don't re-type.</li>
+          <li><span class="k">Unlocks:</span> ₹2L ceiling, UPI 2.0, IDFC savings rail.</li>
+          <li><span class="k">Primacy hook:</span> "Set FamApp as your salary account."</li>
+          <li><span class="k">Path:</span> T-7 countdown → T-0 birthday takeover → value reveal → Delta-KYC (V-CIP) → limits jump → salary nudge.</li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Accordion 2: Interaction States -->
+    <div class="acc-item">
+      <button class="acc-btn">Interaction States <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Empty (pre-18):</span> Locked card with countdown; no early apply.</li>
+          <li><span class="k">Loading (V-CIP):</span> Skeleton UI + live queue position.</li>
+          <li><span class="k">Success:</span> Limits count up, streaks preserved, confetti.</li>
+          <li><span class="k">Soft-decline:</span> 60-day soft deadline, re-nudges, no lockout.</li>
+          <li><span class="k">Edges:</span> KYC mismatch (fix one detail) &amp; DOB dispute (manual review, teen caps remain).</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Accordion 3: Business & User Impact -->
+    <div class="acc-item">
+      <button class="acc-btn">Business &amp; User Impact <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Revenue:</span> Multiplies interchange, float &amp; Ultra renewals. Feeds Credit &amp; Investing funnel.</li>
+          <li><span class="k">Business Est.:</span> ARPU step from ₹65 → ₹300 to 600 (5 to 10×). De-risks single BaaS rail.</li>
+          <li><span class="k">User:</span> No cold re-onboarding. 20× higher limits + real UPI instantly.</li>
+          <li><span class="k">Trade-offs:</span> No hard lockouts (coercion kills brand love). Not a separate "adult app". Not auto-liquidating balances.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Accordion 4: Metrics & Rollout -->
+    <div class="acc-item">
+      <button class="acc-btn">Metrics &amp; Rollout <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">North Star:</span> 30-day adult-product activation.</li>
+          <li><span class="k">Guardrails:</span> KYC friction, V-CIP time (&lt;3 min), KYC rejection drop-offs.</li>
+          <li><span class="k">P0 / P1:</span> Instrument birthday trigger &amp; baseline. 50/50 A/B graduation takeover + delta-KYC.</li>
+          <li><span class="k">P2 / P3:</span> Layer soft 60-day deadline + salary nudge. Personalise reveal order.</li>
+          <li><span class="k">RICE:</span> Highest reach × high impact × low effort = clear P0.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.acc-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.parentElement;
+        const panel = btn.nextElementSibling;
+        const isOpen = item.classList.contains('open');
+        
+        if (!isOpen) {
+          item.classList.add('open');
+          panel.style.maxHeight = panel.scrollHeight + 30 + "px";
+        } else {
+          item.classList.remove('open');
+          panel.style.maxHeight = null;
+        }
+      });
+    });
+  </script>
+</div>
+<!-- ========== SOLUTION 2 · FamApp Independence ========== -->
+<div class="solution rv" id="sol-2">
+  <div class="sol-head">
+    <span class="sol-num">2</span>
+    <h3>FamApp Independence</h3>
+  </div>
+  <div class="sol-tagline">you turn 18. your account stays. your privacy is finally yours too.</div>
+  <div class="jtbd">
+    <b>JTBD:</b> When I turn 18, I want FamApp to automatically make my account <b>private from my parents</b> by default.
+  </div>
+
+  <!-- MOCKUPS -->
+  <div class="phones" style="margin:34px 0 10px">
+    <!-- Phone 1: Privacy activation reveal -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen takeover">
+        <div class="confetti">
+          <i style="left:15%;top:12px;background:#02B377;transform:rotate(18deg)"></i>
+          <i style="left:32%;top:38px;background:#FFC107;transform:rotate(-12deg)"></i>
+          <i style="left:50%;top:8px;background:#4C9AFF;transform:rotate(30deg)"></i>
+          <i style="left:68%;top:44px;background:#02B377;transform:rotate(-20deg)"></i>
+          <i style="left:82%;top:16px;background:#FFC107;transform:rotate(14deg)"></i>
+        </div>
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="sbody" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px">
+          <div style="width:72px;height:72px;border-radius:50%;background:rgba(2,179,119,.14);border:2px solid var(--jade);display:grid;place-items:center;margin-bottom:16px">
+            <div style="width:40px;height:22px;border-radius:50rem;background:rgba(255,255,255,.12);position:relative">
+              <span style="position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:.2s"></span>
+            </div>
+          </div>
+          <div class="scr-h" style="font-size:21px;line-height:1.2">Parent visibility<br>ends today.</div>
+          <p class="scr-sub" style="margin:12px 0 18px;padding:0 6px">You turned 18. Your account is now <b style="color:#fff">fully private</b>. No one sees your transactions, balances, or activity unless you invite them.</p>
+          <div class="ucard y" style="padding:13px 16px;width:100%;text-align:left;margin-bottom:10px"><div class="u-row"><div class="u-ico" style="background:rgba(2,179,119,.16);color:#3fe0a8">🔒</div><div class="u-tx"><div class="t1">Privacy: ON</div><div class="t2">Parent view access removed automatically</div></div></div></div>
+          <div class="reassure" style="margin-top:4px">This is 100% your account now.</div>
+        </div>
+        <div class="pfoot"><button class="pbtn">Got it</button></div>
+      </div></div>
+      <div class="phone-cap"><b>Privacy Activation · T-0</b>At 18, parent visibility switches off, no settings to dig through. One clear moment: your account is now yours alone.</div>
+    </div>
+
+    <!-- Phone 2: Who can see your account -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="abar"><div class="bk">‹</div><div class="ti">Privacy</div></div>
+        <div class="sbody">
+          <div class="scr-h" style="font-size:18px">Who can see your account</div>
+          <p class="scr-sub" style="margin-bottom:16px">You control this. Nobody has access unless you invite them.</p>
+          <div class="ucard" style="padding:16px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:44px;height:44px;border-radius:50%;background:rgba(2,179,119,.12);border:1px solid rgba(2,179,119,.25);display:grid;place-items:center;font-size:20px;flex-shrink:0">🔒</div>
+              <div style="flex:1"><div style="font-size:15px;font-weight:700;color:#3fe0a8">No one can see your account.</div><div class="tiny" style="margin-top:3px">Your transactions, balance, and activity are private.</div></div>
+            </div>
+          </div>
+          <button class="pbtn ghost" style="margin-bottom:16px">+ Invite someone to view</button>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">HOW IT WORKS</div>
+          <div class="ucard" style="padding:12px 14px;margin-bottom:8px"><div class="u-row"><div class="u-ico" style="background:rgba(255,193,7,.12)">👤</div><div class="u-tx"><div class="t1">You invite, they see</div><div class="t2">Share view-only access with anyone you choose.</div></div></div></div>
+          <div class="ucard" style="padding:12px 14px;margin-bottom:8px"><div class="u-row"><div class="u-ico" style="background:rgba(228,87,46,.12)">✕</div><div class="u-tx"><div class="t1">Remove anytime</div><div class="t2">One tap. No questions. Instant.</div></div></div></div>
+          <div class="ucard" style="padding:12px 14px;margin-bottom:0"><div class="u-row"><div class="u-ico" style="background:rgba(2,179,119,.12)">🔒</div><div class="u-tx"><div class="t1">Private by default</div><div class="t2">Nobody sees anything unless you say so.</div></div></div></div>
+        </div>
+        <div class="tbar">
+          <div class="tb"><span class="ic">🏠</span>Home</div><div class="tb"><span class="ic">💳</span>Card</div>
+          <div class="tb"><span class="ic">📈</span>Invest</div><div class="tb"><span class="ic">🎁</span>Rewards</div><div class="tb on"><span class="ic">👤</span>You</div>
+        </div>
+      </div></div>
+      <div class="phone-cap"><b>Privacy settings · who can see</b>Default: nobody. The user invites, not the other way around. Access is always removable, one tap, instant.</div>
+    </div>
+
+    <!-- Phone 3: Financial identity with privacy first -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="abar"><div class="bk">‹</div><div class="ti">Your Financial Identity</div></div>
+        <div class="sbody">
+          <div class="idcard">
+            <div style="position:absolute;inset:0;background:linear-gradient(45deg,transparent 42%,rgba(255,255,255,.14) 50%,transparent 58%)"></div>
+            <div class="il">Built over 5 years</div>
+            <div class="iv">₹3,84,200 moved</div>
+            <div class="ir"><span>🔥 1,240 taps</span><span>🏆 5-yr streak</span></div>
+          </div>
+          <div class="stays">
+            <div class="sh">✓ Stays yours, private, by default</div>
+            <div class="li">→ <b style="color:#3fe0a8">full privacy, by default</b></div>
+            <div class="li">→ your 5-year history</div>
+            <div class="li">→ your emerging credit file</div>
+            <div class="li">→ your compounding coins</div>
+          </div>
+          <div class="loses" style="margin-top:8px">
+            <div class="sh">✕ At Jupiter or Groww</div>
+            <div style="font-size:12.5px;color:#d2d2d6">All of this resets to <b style="color:#fff">zero.</b></div>
+          </div>
+          <div class="chip amb" style="display:block;text-align:center;margin:10px 0">📊 CIBIL file: building, score in ~30 days</div>
+          <div class="ucard y" style="padding:13px;margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:700">🪙 4,210 FamCoins</div><div class="tiny" style="margin-top:2px">Loyalty ×1.8, grows the longer you stay</div></div><div style="font-size:22px">📈</div></div></div>
+        </div>
+        <div style="padding:0 18px 14px"><div class="reassure" style="font-family:var(--hand);font-size:18px;color:var(--soft-yellow);margin-bottom:8px">grow up with Fam, it all comes with you, privately</div><button class="pbtn">Claim my Grown-Up account</button></div>
+      </div></div>
+      <div class="phone-cap"><b>Your Financial Identity · private by default</b>Everything you built stays, and none of it is visible to anyone unless you choose to share.</div>
+    </div>
+  </div>
+
+  <!-- ACCORDION NARRATIVE -->
+  <div class="acc-group" style="margin-top:26px">
+    <!-- Accordion 1: Mechanics & Privacy Model -->
+    <div class="acc-item">
+      <button class="acc-btn">Mechanics &amp; Privacy Model <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Auto-off:</span> Parent access turns off automatically at 18. No settings to hunt for.</li>
+          <li><span class="k">Private by default:</span> Account transitions from shared to 100% private instantly.</li>
+          <li><span class="k">Opt-in sharing:</span> Users can explicitly invite a parent or friend to view activity.</li>
+          <li><span class="k">One-tap revoke:</span> View access can be removed instantly at any time.</li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Accordion 2: Impact & Measurement -->
+    <div class="acc-item">
+      <button class="acc-btn">Impact &amp; Measurement <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Why it matters:</span> Adults don't want to be watched. Privacy is the trust signal that keeps them on the platform.</li>
+          <li><span class="k">Trade-off:</span> Parents lose a reason to log in, but we gain the adult user's trust and retention.</li>
+          <li><span class="k">North Star:</span> % of 18+ users who keep their account private (expected to be high).</li>
+          <li><span class="k">Guardrail:</span> Privacy-related complaints post-18 (should approach zero).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('sol-2').querySelectorAll('.acc-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.parentElement;
+        const panel = btn.nextElementSibling;
+        const isOpen = item.classList.contains('open');
+        
+        if (!isOpen) {
+          item.classList.add('open');
+          panel.style.maxHeight = panel.scrollHeight + 30 + "px";
+        } else {
+          item.classList.remove('open');
+          panel.style.maxHeight = null;
+        }
+      });
+    });
+  </script>
+</div>
+<!-- ========== SOLUTION 3 · Credit at 18 ========== -->
+<div class="solution rv" id="sol-3">
+  <div class="sol-head">
+    <span class="sol-num">3</span>
+    <h3>Credit at 18</h3>
+  </div>
+  <div class="sol-tagline">your first credit card, and a credit history built from 5 years you've already spent.</div>
+  <div class="jtbd">
+    <b>JTBD:</b> When I turn 18 with a zero-history "thin file", I want FamApp to issue my first credit card so I can <b>start building my score</b> without defecting to Slice or OneCard.
+  </div>
+
+  <!-- MOCKUPS -->
+  <div class="phones" style="margin:34px 0 10px">
+    <!-- Phone A: Pre-approved offer -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="abar"><div class="bk">‹</div><div class="ti">Your first credit card</div></div>
+        <div class="sbody">
+          <!-- mini credit card art -->
+          <div style="border-radius:16px;background:linear-gradient(150deg,#232326,#050505);padding:16px;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5);margin-bottom:14px;height:130px">
+            <div style="position:absolute;inset:0;background:linear-gradient(45deg,transparent 42%,rgba(255,255,255,.08) 50%,transparent 58%)"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="width:26px;height:26px;border-radius:7px;background:var(--yellow);color:#111;display:grid;place-items:center;font-weight:800;font-size:14px">F</span><span style="font-size:10px;color:var(--muted)">CREDIT</span></div>
+            <div style="font-family:var(--hand);font-size:24px;color:var(--yellow);position:absolute;bottom:34px;left:16px">Prakhar</div>
+            <div style="position:absolute;bottom:14px;left:16px;font-size:9px;color:#c9c9cd;letter-spacing:.03em">issued by IDFC First Bank</div>
+            <div style="position:absolute;bottom:12px;right:16px;font-style:italic;font-weight:800;font-size:16px">VISA</div>
+          </div>
+          <div class="center" style="margin-bottom:4px"><div class="tiny">Pre-approved limit</div><div style="font-size:34px;font-weight:800;color:var(--yellow);letter-spacing:-.02em">₹15,000</div></div>
+          <div class="chip j" style="display:block;text-align:center;margin:8px 0 14px">✦ Built on your 5 years with Fam</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <div class="ucard" style="flex:1;padding:12px;border-color:var(--yellow);margin:0"><div style="font-size:12.5px;font-weight:700">Secured</div><div class="tiny" style="margin-top:3px">Lock ₹15k FD → ₹13.5k limit · FD earns 7%</div></div>
+            <div class="ucard" style="flex:1;padding:12px;margin:0;opacity:.7"><div style="font-size:12.5px;font-weight:700">Unsecured</div><div class="tiny" style="margin-top:3px">Needs more history, start secured, upgrade in 6 mo</div></div>
+          </div>
+          <div class="ucard y" style="padding:12px 13px;margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="font-size:12.5px;font-weight:700">Smart Pay</div><div class="tiny" style="margin-top:2px">Auto-pay full bill from balance, never miss, never owe interest</div></div><div style="width:38px;height:22px;border-radius:50rem;background:var(--jade);position:relative;flex-shrink:0"><span style="position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff"></span></div></div></div>
+        </div>
+        <div class="pfoot"><button class="pbtn">Get my first card</button></div>
+      </div></div>
+      <div class="phone-cap"><b>Pre-approved offer</b>Frames the card as an <em>earned reward</em> of 5 years, and routes a thin-file 18-yr-old onto a legal, zero-debt-risk secured rail.</div>
+    </div>
+
+    <!-- Phone B: Credit-building dashboard -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="abar"><div class="ti">Your credit</div><div class="rt"><div class="bell">🔔<span class="bd"></span></div><div class="av">A</div></div></div>
+        <div class="sbody">
+          <div class="dialwrap">
+            <div class="dial">
+              <svg viewBox="0 0 180 108" width="170" height="102">
+                <path d="M15 95 A75 75 0 0 1 165 95" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12" stroke-linecap="round"></path>
+                <path d="M15 95 A75 75 0 0 1 142.5 41.4" fill="none" stroke="url(#dg)" stroke-width="12" stroke-linecap="round"></path>
+                <defs><lineargradient id="dg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#F5A623"></stop><stop offset="1" stop-color="#FFC107"></stop></lineargradient></defs>
+              </svg>
+              <div class="num">748</div>
+              <div class="dl">CIBIL-style · 300 to 900</div>
+            </div>
+            <span class="trend">▲ +12 this month</span>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 6px">ON-TIME STREAK</div>
+          <div class="streak">
+            <i>✓</i><i>✓</i><i>✓</i><i>✓</i><i>✓</i><i>✓</i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i>
+          </div>
+          <div class="center tiny" style="margin-bottom:12px">🔥 6-month streak, keep it alive</div>
+          <div class="ucard" style="padding:12px 14px"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span class="muted">Payment history</span><span style="color:#3fe0a8;font-weight:700">Great</span></div><div class="divider" style="margin:8px 0"></div><div style="display:flex;justify-content:space-between;font-size:12.5px"><span class="muted">Utilization</span><span style="font-weight:700">12% <span class="tiny" style="color:var(--muted)">(keep &lt;30%)</span></span></div></div>
+          <div class="ucard y" style="padding:12px 14px;margin-bottom:0"><div style="font-size:12px;font-weight:600">💡 Pay ₹500 early → score could climb <b>~8 pts</b></div></div>
+        </div>
+        <div class="tbar">
+          <div class="tb"><span class="ic">🏠</span>Home</div><div class="tb on"><span class="ic">💳</span>Card</div>
+          <div class="tb"><span class="ic">📈</span>Invest</div><div class="tb"><span class="ic">🎁</span>Rewards</div><div class="tb"><span class="ic">👤</span>You</div>
+        </div>
+      </div></div>
+      <div class="phone-cap"><b>Credit-building dashboard</b>Turns credit from guesswork into a game the user is <em>winning</em>, reusing FamCoins streak psychology. The switching-cost surface.</div>
+    </div>
+
+    <!-- Phone C: Pre-due nudge -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen dk">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="sbody" style="display:flex;flex-direction:column">
+          <div class="center" style="margin:10px 0 4px"><div style="font-size:52px;font-weight:300;letter-spacing:-.02em">9:41</div><div class="tiny">Monday, 3 July</div></div>
+          <div class="push">
+            <div class="pi">F</div>
+            <div class="pt"><div class="ph">FamApp <span>now</span></div><div class="pb">₹1,240 due in 3 days. Don't break your 6-month streak, pay in 2 taps.</div></div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">In the app</div>
+          <div style="background:rgba(251,175,3,.1);border:1px solid rgba(251,175,3,.3);border-radius:14px;padding:14px">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="font-size:20px">🔥</span><div style="font-size:12.5px;font-weight:700;color:var(--amber)">Streak at risk</div></div>
+            <div style="font-size:12.5px;color:#d2d2d6;line-height:1.5">Smart Pay will auto-settle on 3 Jul, your balance is short by <b style="color:#fff">₹300</b>.</div>
+            <button class="pbtn sm" style="margin-top:12px">Add ₹300 to cover it</button>
+            <button class="pbtn sm ghost" style="margin-top:8px">Pay ₹1,240 now</button>
+          </div>
+        </div>
+        <div class="toast" style="bottom:20px"><span class="tk">✓</span><div>Paid ₹1,240 · streak safe, now 7 months 🔥</div></div>
+      </div></div>
+      <div class="phone-cap"><b>Pre-due nudge</b>Prevents the <em>involuntary</em> miss that breaks the streak and creates delinquency, protecting both the user and the portfolio.</div>
+    </div>
+  </div>
+
+  <!-- ACCORDION NARRATIVE -->
+  <div class="acc-group" style="margin-top:26px">
+    <!-- Accordion 1: Mechanics & Happy Path -->
+    <div class="acc-item">
+      <button class="acc-btn">Mechanics &amp; Happy Path <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Legal Rail:</span> Ships legally (no credit on PPI) via an FD-secured IDFC card or unsecured NBFC disbursal.</li>
+          <li><span class="k">Smart Pay:</span> Works like debit. Balances auto-settle to guarantee on-time payment. Zero debt risk.</li>
+          <li><span class="k">Instant History:</span> Reports to bureaus from day one (ideal retro-reporting on past 5 years).</li>
+          <li><span class="k">Path:</span> Explainer → Lock ₹15k FD for ₹13.5k limit → Smart Pay ON → First spend = instant streak and score lift.</li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Accordion 2: Interaction States -->
+    <div class="acc-item">
+      <button class="acc-btn">Interaction States <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Empty (No Score):</span> "Your first score lands in ~30 days." No fake numbers.</li>
+          <li><span class="k">Success (Score Up):</span> Dial fills, "+12 this month", "First on-time payment" badge.</li>
+          <li><span class="k">Pending (Miss Risk):</span> Amber chip + one-tap top up before due date.</li>
+          <li><span class="k">Declined Unsecured:</span> Graceful routing to secured card. Never a dead-end.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Accordion 3: Business & User Impact -->
+    <div class="acc-item">
+      <button class="acc-btn">Business &amp; User Impact <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Revenue:</span> Highest-margin product: rich interchange, card fees, float, and lending interest.</li>
+          <li><span class="k">Business Est.:</span> Credit ARPU is ₹800 to 2000+/yr (12 to 30× step). Massive switching cost via CIBIL data lock-in.</li>
+          <li><span class="k">User:</span> Solves the "thin-file" cold start with zero debt risk.</li>
+          <li><span class="k">Guardrails:</span> Never load credit on PPI. Keep risk near-zero with secured-first path.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Accordion 4: Metrics & Rollout -->
+    <div class="acc-item">
+      <button class="acc-btn">Metrics &amp; Rollout <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">North Star:</span> Credit activation ≤30 days of 18th b'day.</li>
+          <li><span class="k">Guardrails:</span> Smart Pay coverage (~100%) and 30+ DPD delinquency (~zero).</li>
+          <li><span class="k">P1:</span> Ship FD-secured card to small cohort. Watch delinquency before scale.</li>
+          <li><span class="k">P2 / P3:</span> A/B retro-history messaging. Pre-approved unsecured offers for proven users.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('sol-3').querySelectorAll('.acc-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.parentElement;
+        const panel = btn.nextElementSibling;
+        const isOpen = item.classList.contains('open');
+        
+        if (!isOpen) {
+          item.classList.add('open');
+          panel.style.maxHeight = panel.scrollHeight + 30 + "px";
+        } else {
+          item.classList.remove('open');
+          panel.style.maxHeight = null;
+        }
+      });
+    });
+  </script>
+</div>
+<!-- ========== SOLUTION 4 · FamApp Invest ========== -->
+<div class="solution rv" id="sol-4">
+  <div class="sol-head">
+    <span class="sol-num">4</span>
+    <h3>FamApp Invest, the first-SIP tab</h3>
+  </div>
+  <div class="sol-tagline">start investing with ₹100. small, safe, real, your money grows up too.</div>
+  <div class="jtbd">
+    <b>JTBD:</b> When I turn 18, I want to start investing <b>tiny, safe amounts</b> inside the app I already trust, before I ever download Groww or Zerodha.
+  </div>
+
+  <!-- MOCKUPS -->
+  <div class="phones" style="margin:34px 0 10px">
+    <!-- Phone A: quiz + result -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="abar"><div class="bk">‹</div><div class="ti">Find your money style</div></div>
+        <div class="pdots"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+        <div class="sbody">
+          <div class="quizq"><div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--muted);margin-bottom:10px">NO WRONG ANSWERS</div><div class="q">Your money drops 10% in a month. You…</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px">
+            <div class="chip" style="text-align:left;padding:12px 14px">😱 Panic-sell everything</div>
+            <div class="chip on" style="text-align:left;padding:12px 14px">😌 Wait it out</div>
+            <div class="chip" style="text-align:left;padding:12px 14px">🤑 Buy more</div>
+          </div>
+          <div class="ucard j" style="background:linear-gradient(135deg,rgba(2,179,119,.16),rgba(2,179,119,.03));border:1px solid rgba(2,179,119,.3);padding:14px;margin-top:6px;margin-bottom:6px">
+            <div style="font-size:11px;color:#3fe0a8;font-weight:700">YOUR RESULT</div>
+            <div style="font-size:19px;font-weight:700;margin:4px 0">You're a Steady Grower 🌱</div>
+            <div style="font-size:12.5px;color:#d2d2d6">You like your money to climb, without the scary drops.</div>
+          </div>
+          <div class="tiny" style="margin-bottom:10px">Guidance, not advice. Investments are subject to market risks.</div>
+          <div class="ucard" style="padding:12px 14px;margin-bottom:0"><div class="t1" style="font-size:13.5px;font-weight:600">Balanced Growth Fund</div><div class="t2" style="margin-top:3px">medium ups-and-downs · past 3yr ~11% <span class="tiny">(not a promise)</span></div></div>
+        </div>
+        <div class="pfoot"><button class="pbtn">Continue →</button></div>
+      </div></div>
+      <div class="phone-cap"><b>Money-style quiz + result</b>Replaces intimidating risk-profiling with a 3-tap vibe check mapped to a plain-English band. "Risk" → "ups-and-downs."</div>
+    </div>
+
+    <!-- Phone B: first SIP + success -->
+    <div class="phone-wrap">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="r">● ●● ▮</span></div>
+        <div class="abar"><div class="bk">‹</div><div class="ti">Your first SIP</div></div>
+        <div class="sbody">
+          <div class="scr-h" style="font-size:18px">How much to start?</div>
+          <p class="scr-sub" style="margin-bottom:6px">Start tiny. You can change it anytime.</p>
+          <div class="amtrow">
+            <div class="amtchip on">₹100<small>selected</small></div>
+            <div class="amtchip">₹250</div>
+            <div class="amtchip">₹500</div>
+            <div class="amtchip">✎<small>custom</small></div>
+          </div>
+          <div class="ucard" style="padding:12px 14px"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span class="muted">Frequency</span><span style="font-weight:600">₹100 · 1st of every month</span></div><div class="divider" style="margin:8px 0"></div><div style="display:flex;justify-content:space-between;font-size:12.5px"><span class="muted">Starts</span><span style="font-weight:600">1 Jul 2026</span></div></div>
+          <div class="spark">
+            <svg viewBox="0 0 260 66" width="100%" height="66" preserveAspectRatio="none"><path d="M0 58 C40 54,70 48,110 40 S190 20,260 8" fill="none" stroke="#3fe0a8" stroke-width="2.5"></path><path d="M0 58 C40 54,70 48,110 40 S190 20,260 8 L260 66 L0 66Z" fill="rgba(2,179,119,.14)"></path></svg>
+          </div>
+          <div class="tiny" style="margin-bottom:10px">Est. fees over 5 yrs on this SIP: <b style="color:#d2d2d6">~₹30</b> · Past performance ≠ future returns.</div>
+          <div class="gbadge" style="background:rgba(2,179,119,.12);border-color:rgba(2,179,119,.3);color:#3fe0a8">🏅 Mutual Fund Rookie, unlocks on start</div>
+        </div>
+        <div class="pfoot"><button class="pbtn">Start my SIP</button></div>
+        <div class="toast"><span class="tk">✓</span><div>3 days later: your ₹100 is now <b>₹101.80</b>. Small, but it's real. 🌱</div></div>
+      </div></div>
+      <div class="phone-cap"><b>First-SIP setup → the aha</b>A defaulted ₹100 (training wheels). The aha isn't committing big, it's seeing a real ₹1.80 return. Gamified to <em>learning</em>, never gains.</div>
+    </div>
+
+    <div class="phone-wrap" style="max-width:300px;justify-content:center">
+      <div class="card" style="align-self:stretch;background:rgba(255,255,255,.03)">
+        <div class="ico jade">🧭</div>
+        <h3 style="font-size:17px">The fastest legal ship</h3>
+        <p style="font-size:13.5px">FamApp registers as an <b style="color:#fff">AMFI Mutual-Fund Distributor</b> (ARN, fully online since Oct 2024) and offers SIPs, <b style="color:#fff">no demat account required</b>. It stays strictly <em>execution-only</em> (no advice → no SEBI RIA obligation). Stocks/ETFs come later by white-labelling a SEBI broker+DP, <em>integrate, don't build.</em> DigiGold already sits alongside as the ultra-safe entry.</p>
+        <div class="divider" style="margin:14px 0"></div>
+        <p class="tiny">The credibility line: gamify <b style="color:#3fe0a8">learning badges</b>, never implied gains. That's what separates a wealth app from a trading casino, and keeps regulators comfortable.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCORDION NARRATIVE -->
+  <div class="acc-group" style="margin-top:26px">
+    <!-- Accordion 1: Mechanics & Happy Path -->
+    <div class="acc-item">
+      <button class="acc-btn">Mechanics &amp; Happy Path <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Execution-Only:</span> AMFI Mutual-Fund Distributor (ARN). No demat needed. No SEBI RIA risk.</li>
+          <li><span class="k">Vibe Check:</span> 3-tap plain-English quiz ("Steady Grower") instead of jargon-heavy risk profiling.</li>
+          <li><span class="k">Tiny Starts:</span> Default ₹100 SIP. The "aha" is learning to invest, not gambling.</li>
+          <li><span class="k">Path:</span> Quiz → Result → Select Fund (low/med ups-and-downs) → Consent → ₹100 SIP live.</li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Accordion 2: Interaction States -->
+    <div class="acc-item">
+      <button class="acc-btn">Interaction States <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Empty:</span> "No investments yet, start with ₹100." DigiGold as safer entry.</li>
+          <li><span class="k">Pending:</span> "SIP starts 1 Jul. Mandate processing &lt;30 sec."</li>
+          <li><span class="k">Success &amp; Error:</span> "First SIP live" badge. One-tap retry for mandate failures.</li>
+          <li><span class="k">Edge (Market Dip):</span> Honest framing: "Your ₹100 is ₹98.40 today." Never hide a loss.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Accordion 3: Business & User Impact -->
+    <div class="acc-item">
+      <button class="acc-btn">Business &amp; User Impact <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">Revenue:</span> MF distribution trail (ARN), DigiGold spread, future brokerage take-rate.</li>
+          <li><span class="k">Business Est.:</span> Thin margins initially (~0.5-1%), but AUM compounds. Massive lock-in and cross-sell potential.</li>
+          <li><span class="k">User:</span> De-risks the scary first-money decision. Early wealth-building in a trusted brand.</li>
+          <li><span class="k">Guardrails:</span> No F&amp;O or crypto. Gamify learning, never gains. Accept short-term friction for long-term trust.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Accordion 4: Metrics & Rollout -->
+    <div class="acc-item">
+      <button class="acc-btn">Metrics &amp; Rollout <span class="acc-icon">▼</span></button>
+      <div class="acc-panel">
+        <ul>
+          <li><span class="k">North Star:</span> Investing activation ≤30 days of 18th b'day.</li>
+          <li><span class="k">Guardrails:</span> First-SIP mandate success, churn spikes during dips.</li>
+          <li><span class="k">P1:</span> Ship MF-SIP (ARN) with ₹100 default. A/B vs higher defaults.</li>
+          <li><span class="k">P2 / P3:</span> Layer round-up auto-invest + education badges. White-label broker/DP for stocks later.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('sol-4').querySelectorAll('.acc-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.parentElement;
+        const panel = btn.nextElementSibling;
+        const isOpen = item.classList.contains('open');
+        
+        if (!isOpen) {
+          item.classList.add('open');
+          panel.style.maxHeight = panel.scrollHeight + 30 + "px";
+        } else {
+          item.classList.remove('open');
+          panel.style.maxHeight = null;
+        }
+      });
+    });
+  </script>
+</div>
+
+<!-- ========== ROADMAP + CLOSE ========== -->
+<div class="solution rv" id="roadmap" style="border-top:2px solid rgba(255,193,7,.25)">
+  <span class="eyebrow-num">04</span>
+  <span class="kicker"><span class="dot"></span> Putting it together</span>
+  <h2 class="sec">One sequenced bet, not four features</h2>
+  <div style="display:flex; align-items:center; gap:12px; margin:24px 0 32px; font-size:13px; font-weight:600; color:var(--muted); flex-wrap:wrap">
+    <div style="padding:8px 14px; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:rgba(255,255,255,.03)">1. Full-KYC Adult Base</div>
+    <div style="color:var(--yellow)">→</div>
+    <div style="padding:8px 14px; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:rgba(255,255,255,.03)">2. Privacy &amp; Trust</div>
+    <div style="color:var(--yellow)">→</div>
+    <div style="padding:8px 14px; border:1px solid rgba(255,193,7,.3); border-radius:8px; background:rgba(255,193,7,.08); color:var(--yellow)">3. High-Margin Attach</div>
+  </div>
+
+  <div style="display:flex; gap:16px; margin-top:36px">
+    <div style="flex:1; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); border-radius:12px; padding:20px; border-top:3px solid var(--yellow)">
+      <div style="font-size:11px; font-weight:700; color:var(--yellow); letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px">P0 • Phase 1</div>
+      <h4 style="font-size:16px; margin-bottom:6px">Grown-Up</h4>
+      <p style="font-size:13px; color:var(--muted); line-height:1.4; margin:0">Convert the 18th birthday into a graduation moment. The foundation.</p>
+    </div>
+    <div style="flex:1; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); border-radius:12px; padding:20px; border-top:3px solid var(--yellow)">
+      <div style="font-size:11px; font-weight:700; color:var(--yellow); letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px">P0 • Phase 1</div>
+      <h4 style="font-size:16px; margin-bottom:6px">Independence</h4>
+      <p style="font-size:13px; color:var(--muted); line-height:1.4; margin:0">Auto-disable parent visibility. Privacy builds immediate adult trust.</p>
+    </div>
+    <div style="flex:1; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); border-radius:12px; padding:20px; border-top:3px solid rgba(255,193,7,.4)">
+      <div style="font-size:11px; font-weight:700; color:#a1a1a6; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px">P1 • Phase 2</div>
+      <h4 style="font-size:16px; margin-bottom:6px">Credit at 18</h4>
+      <p style="font-size:13px; color:var(--muted); line-height:1.4; margin:0">FD-secured bank card. No PPI risk. High ARPU ceiling.</p>
+    </div>
+    <div style="flex:1; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); border-radius:12px; padding:20px; border-top:3px solid rgba(255,193,7,.4)">
+      <div style="font-size:11px; font-weight:700; color:#a1a1a6; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px">P1 • Phase 2</div>
+      <h4 style="font-size:16px; margin-bottom:6px">Invest</h4>
+      <p style="font-size:13px; color:var(--muted); line-height:1.4; margin:0">₹100 default SIPs. Safe, first exposure to wealth building.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:24px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); border-radius:16px; display:flex">
+    <div style="flex:1; padding:24px; border-right:1px solid rgba(255,255,255,.05)">
+      <div style="font-size:11px; font-weight:700; color:var(--yellow); letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px">The Metric</div>
+      <div style="font-size:14px; font-weight:600; color:#fff; line-height:1.4">Convert teens to adult products within 30 days of turning 18.</div>
+    </div>
+    <div style="flex:1; padding:24px; border-right:1px solid rgba(255,255,255,.05)">
+      <div style="font-size:11px; font-weight:700; color:#ff9e85; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px">The Guardrail</div>
+      <div style="font-size:14px; font-weight:600; color:#fff; line-height:1.4">No credit on prepaid wallets. Everything ships on legal banking rails.</div>
+    </div>
+    <div style="flex:1; padding:24px">
+      <div style="font-size:11px; font-weight:700; color:var(--jade); letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px">The Moat</div>
+      <div style="font-size:14px; font-weight:600; color:#fff; line-height:1.4">5 years of proprietary data lets Fam approve users big banks reject.</div>
+    </div>
+  </div>
+
+
+</div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="foot" style="position:relative; overflow:hidden; min-height:400px; display:flex; flex-direction:column; justify-content:flex-end; padding-top:100px; --x: 50%; --y: 50%; background-image: radial-gradient(circle 500px at var(--x) var(--y), rgba(255,193,7,0.06) 0%, transparent 80%); transition: background-image 0.1s ease-out;">
+  
+  <div id="torch-text" style="position:absolute; bottom:-4%; left:50%; transform:translateX(-50%); font-size:clamp(80px, 14.5vw, 380px); font-weight:900; letter-spacing:-0.05em; line-height:0.8; font-family:var(--font); text-transform:uppercase; z-index:0; pointer-events:none; white-space:nowrap; background-image: radial-gradient(circle 450px at var(--x) var(--y), rgba(255,193,7,0.95) 0%, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0.02) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; opacity: 0.95;">
+    PRAKHAR
+  </div>
+
+  <div class="wrap" style="position:relative; z-index:1; padding-bottom:40px">
+    <span class="kicker"><span class="dot"></span> A note on honesty</span>
+    <div class="honest">
+      <b>What's real vs. illustrative:</b> Regulatory rails, design system, and competitor precedents are drawn from public sources. The retention cliff and ARPU models are <b>triangulated estimates</b>. This case study demonstrates product thinking, not insider data. Good analysts show their assumptions.
+    </div>
+    <div style="margin:40px 0 30px; background:rgba(2,179,119,.06); border:1px solid rgba(2,179,119,.2); border-radius:16px; padding:24px 30px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+      <div>
+        <h3 style="font-size:19px; font-weight:700; color:#fff; margin-bottom:4px">Ready to see the full spec?</h3>
+        <p style="color:var(--muted); font-size:14px; margin:0">Download the comprehensive Product Requirements Document.</p>
+      </div>
+      <a href="https://fam-app-casestudy-a589.vercel.app/New_PRD.docx" class="btn btn-fam" style="background:var(--jade); color:#04231a; padding:12px 24px; font-size:15px; box-shadow: 0 6px 20px rgba(2,179,119,.2)">
+        <span style="font-size:18px">📄</span> Download PRD
+      </a>
+    </div>
+
+    <div class="fbot">
+      <div class="made">Made with 🧡, a self-initiated case study for FamApp by Trio</div>
+      <div><b style="color:#fff">Prakhar Beniwal</b> · Product Analyst application · June 2026</div>
+    </div>
+    <div class="srcs">Sources include: famapp.in (live product &amp; brand CSS), FamApp blog &amp; App Store listing, RBI Master Directions on PPIs (2021, incl. June-2022 credit-line clarification), AMFI/SEBI distributor norms, and public reporting on GoHenry, Step, Chime, Greenlight, Zolve, Jupiter, Fi, slice, Groww &amp; Zerodha. Numbers marked "est." are the author's triangulated estimates.</div>
+  </div>
+</footer>
+
+<script>
+/* footer torch effect */
+const foot = document.querySelector('.foot');
+const torch = document.getElementById('torch-text');
+if(foot && torch) {
+  foot.addEventListener('mousemove', e => {
+    const fr = foot.getBoundingClientRect();
+    foot.style.setProperty('--x', (e.clientX - fr.left) + 'px');
+    foot.style.setProperty('--y', (e.clientY - fr.top) + 'px');
+    
+    const tr = torch.getBoundingClientRect();
+    torch.style.setProperty('--x', (e.clientX - tr.left) + 'px');
+    torch.style.setProperty('--y', (e.clientY - tr.top) + 'px');
+  });
+}
+/* scroll reveal */
+const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+/* active nav */
+const secs=[...document.querySelectorAll('section[id],header[id]')];
+const links=[...document.querySelectorAll('.nav .links a')];
+const nio=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){const id=e.target.id;links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+id))}})},{rootMargin:'-45% 0px -50% 0px'});
+secs.forEach(s=>nio.observe(s));
+</script>
+
+
+
+<div id="give-freely-root-ejkiikneibegknkgimmihdpcbcedgmpo" class="give-freely-root" data-extension-id="ejkiikneibegknkgimmihdpcbcedgmpo" data-extension-name="Volume Booster" style="display: block;"><template shadowrootmode="open"><style>
+  :host {
+    all: initial;
+  }
+
+  .gf-scroll-remove::-webkit-scrollbar {
+    border-radius-bottom-right: 15px;
+  }
+
+  button {
+    cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+
+  button:active {
+    transform: scale(0.98);
+  }
+
+  .give-freely-close-button:hover {
+    opacity: 0.7;
+  }
+
+  input[type="radio"] {
+    margin-right: 8px;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #e5e5e5;
+    margin: 1em 0;
+  }
+
+  @media (max-width: 600px), (max-height: 480px) {
+    #give-freely-checkout-popup {
+      display: none !important;
+    }
+  }
+</style><div><div class="gf-app"></div></div></template></div><div id="loom-download-manager" style="position: fixed; top: 20px; right: 20px; width: 380px; max-height: 500px; background: rgb(27, 27, 27); border: 2px solid rgb(98, 93, 245); border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.5) 0px 4px 16px; z-index: 2147483647; color: rgb(255, 255, 255); overflow: hidden; transform: translateX(100%); opacity: 0; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Arial, sans-serif; font-size: 13px; box-sizing: border-box;">
+      <div id="loom-dm-header" style="background:linear-gradient(135deg,#333,#222);color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:nowrap;gap:8px;font-weight:700;border-bottom:1px solid #444;user-select:none">
+        <div id="loom-dm-title" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📥 Downloads (none)</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;white-space:nowrap">
+          <button id="loom-dm-cancel-all" title="Cancel all active downloads" style="background:#d32f2f;border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;display:none;white-space:nowrap">Cancel All</button>
+          <button id="loom-dm-clear" title="Clear completed" style="background:#625df5;border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap">Clear</button>
+          <button id="loom-dm-collapse" title="Collapse" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:20px;height:20px;border-radius:3px;cursor:pointer">−</button>
+        </div>
+      </div>
+      <div id="loom-dm-content" style="max-height:450px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#666 transparent;background:#1b1b1b"></div>
+      <style>
+        #loom-dm-content::-webkit-scrollbar{width:6px}
+        #loom-dm-content::-webkit-scrollbar-track{background:#1b1b1b}
+        #loom-dm-content::-webkit-scrollbar-thumb{background:#666;border-radius:3px}
+        #loom-dm-content::-webkit-scrollbar-thumb:hover{background:#888}
+      </style></div></body><fatkun-drop-panel><template shadowrootmode="open">
+        <!-- Compact mode -->
+        <div class="drop-area" style="display:none">
+            <button class="close-btn" aria-label="Close">×</button>
+            <div class="drop-area-content">
+                <div class="icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+                <div class="compact-title">Drag and drop</div>
+                <div class="compact-desc">Drop to download via Fatkun</div>
+            </div>
+            <div class="compact-footer">
+                <div class="compact-util" data-action="disable"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg> Drag here to disable</div>
+                <div class="compact-util" data-action="settings"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Drag here for settings</div>
+            </div>
+        </div>
+        <!-- Bar mode -->
+        <div class="drop-bar" style="display:none">
+            <div class="bar-utils">
+                <div class="bar-util" data-action="disable"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg> Drag here to disable</div>
+                <div class="bar-util" data-action="settings"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Drag here for settings</div>
+            </div>
+            <div class="bar-action" data-action="download">
+                <div class="bar-action-inner">
+                    <div class="bar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+                    <div class="bar-label">Download</div>
+                    <div class="bar-hint">Save to your computer</div>
+                </div>
+            </div>
+            <div class="bar-action" data-action="filter">
+                <div class="bar-action-inner">
+                    <div class="bar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></div>
+                    <div class="bar-label">Collect</div>
+                    <div class="bar-hint">Send to filter page</div>
+                </div>
+            </div>
+            <div class="bar-action" data-action="search">
+                <div class="bar-action-inner">
+                    <div class="bar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
+                    <div class="bar-label">Search by Image</div>
+                    <div class="bar-hint">Find similar products</div>
+                </div>
+            </div>
+            <button class="bar-close" aria-label="Close">×</button>
+        </div></template></fatkun-drop-panel></html>

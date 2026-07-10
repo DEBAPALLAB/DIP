@@ -21,7 +21,7 @@ The core architecture is not a toy. Before tearing it apart, this is worth ackno
 
 | Dimension | Score | What's missing |
 |---|---|---|
-| Behavioral math | 78/100 | Two divergent utility functions exist (`simulation.ts` vs `prompts.ts`). Only one is live. The dead one is simpler and would give different results. |
+| Behavioral math | 78/100 | ~~Two divergent utility functions exist (`simulation.ts` vs `prompts.ts`).~~ ✅ Resolved July 7, 2026 — dead `computeUtility` deleted; `calculateDecision` is now the single source of truth. |
 | Agent heterogeneity | 72/100 | 8 dimensions, 8 personas, GSS-grounded. Good. But all agents receive the same scenario simultaneously with full information. |
 | Social network | 60/100 | Right topology, wrong influence model. Degree centrality only. No directional influence, no weak ties for bridging, static network. |
 | Decision realism | 45/100 | No habit/inertia at category level, no brand trust separate from institutional trust, no reference price anchoring, no temporal discounting. |
@@ -37,8 +37,9 @@ Every decision is made deterministically in `calculateDecision()`. The LLM is th
 **2. Simultaneous full-information reveal.**
 All agents see the complete scenario brief on step 1. Real adoption starts with zero awareness and builds. Influencers hear first. Mass market hears last. Word-of-mouth carries distorted, incomplete information. Your simulation skips the entire awareness-consideration funnel and starts everyone at the decision stage simultaneously. This is why your curves converge fast — everyone starts informed.
 
-**3. Decisions are permanent.**
+**3. Decisions are permanent.** — ✅ *partially addressed July 7, 2026*
 Once an agent decides "support" or "oppose," they never reconsider. There's no trial, evaluation, retention, churn, or re-adoption. A "support" on step 2 is treated identically to a "support" on step 8. Real adoption is leaky — early supporters churn, late skeptics convert, conviction varies. Your current model produces a ratchet, not a market.
+> *Correction/update:* on closer inspection the live loop already re-decides every agent each step (decisions were never actually locked). What was missing was a *measure* of decision stability, now shipped as **conviction scoring** (Tier 1A) + a **Retention Risk** readout. Explicit trial→churn→re-adoption state transitions remain future work.
 
 ---
 
@@ -124,8 +125,9 @@ If this product is going to be worth using over just talking to people, it needs
 
 #### Tier 1 — Do these or the tool stays a toy
 
-**A. Reversible decisions with conviction scoring**
+**A. Reversible decisions with conviction scoring** — ✅ **DONE (July 7, 2026)**
 Remove the "already decided" guard. Add a `conviction: number` per agent = distance of utility from threshold. Low conviction = flip candidate. High conviction = sticky. Show "retention risk" in results (% of supporters with conviction < 0.3). This single change makes the simulation dynamic instead of a one-shot ratchet.
+> *As-built correction:* the audit above assumed decisions were permanent, but the live client loop (`runStep`) already re-evaluates every agent each step — there was no "already decided" guard to remove. `conviction` shipped as a normalized [0,1] margin (how far `|stance|` clears the neutral band), and a **Retention Risk** stat is live on the results page. Open item: `tanh(utility)` compresses conviction toward the low end, so the fixed `< 0.3` cutoff needs recalibration (or a relative bottom-tercile rule) against real run distributions.
 
 **B. Awareness funnel (staged information exposure)**
 Don't expose all agents to the full brief on step 1. Model a diffusion of awareness:
@@ -174,7 +176,7 @@ What it isn't: validated, calibrated, or able to produce findings you'd stake a 
 The only product in the market that runs parameterized social-network cascade simulations on behaviorally grounded synthetic populations, with competitive displacement modeling and calibrated external validity. That use case — "I know people want this, now show me how adoption spreads under 12 different launch strategies across a realistic social network" — has no equivalent tool, paid or free.
 
 The gap between now and that is not architectural. The math is mostly there. The gap is:
-1. Conviction scoring + reversible decisions (2 days of engineering)
+1. ✅ ~~Conviction scoring + reversible decisions (2 days of engineering)~~ — done July 7, 2026
 2. Awareness funnel (3 days)
 3. Competitive baseline utility (1 day)
 4. One calibration anchor (research + 1 week of parameter tuning)

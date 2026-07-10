@@ -644,7 +644,7 @@ export default function SimulatePage() {
                                 .map(id => agents.find(ag => ag.id === id))
                                 .filter(Boolean) as Agent[];
 
-                            const { decision } = calculateDecision(
+                            const { decision, conviction } = calculateDecision(
                                 agent,
                                 scenario,
                                 neighborStateMap,
@@ -660,6 +660,7 @@ export default function SimulatePage() {
                             return {
                                 agentId: agent.id,
                                 decision: finalDecision,
+                                conviction: isSeeded ? 1 : conviction,
                                 reasoning: finalReasoning,
                                 model: "local-resilience-fallback"
                             };
@@ -681,6 +682,7 @@ export default function SimulatePage() {
                         decision: finalDecision,
                         reasoning: finalReasoning,
                         model: resItem.model,
+                        conviction: resItem.conviction,
                         step: currentStep,
                         pending: false,
                     };

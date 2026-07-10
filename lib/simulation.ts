@@ -32,23 +32,10 @@ export function classifyPersona(agent: Agent): PersonaType {
     return best;
 }
 
-// ─── Prospect Theory Utility ──────────────────────────────────────────────────
-
-/**
- * Computes adoption utility using Tversky–Kahneman prospect theory.
- * λ (loss aversion) ≈ 2.25 for median agent.
- */
-export function computeUtility(
-    agent: Agent,
-    scenarioValue: number,
-    scenarioRisk: number,
-    scenarioLoss: number
-): number {
-    const lambda = 1.0 + agent.risk * 3.0; // 1.0 → 4.0 range
-    const gain = scenarioValue * (1 - agent.risk) * (1 - agent.risk * 0.3);
-    const loss = lambda * scenarioLoss * agent.risk;
-    return gain - loss;
-}
+// The live prospect-theory utility lives in `calculateDecision` (lib/prompts.ts),
+// which is the single source of truth for agent decisions. A second, simpler
+// `computeUtility` used to live here but diverged from the live math and was
+// dead code — removed to avoid a correctness landmine.
 
 // ─── Snapshot Builder ─────────────────────────────────────────────────────────
 

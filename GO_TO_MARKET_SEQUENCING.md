@@ -127,16 +127,21 @@ Everything else — the awareness funnel, the waitlist referral mechanics, the m
 
 ## Sequencing summary
 
-| Order | Move | Effort | Produces |
-|---|---|---|---|
-| 0 | Calibrated ghost case (backtest one real product) | 3–5 days | The proof chart — your entire pitch |
-| 1 | Make homepage numbers honest / labeled | 1 day | Removes the credibility landmine |
-| 2 | Awareness funnel + cascade animation capture | 3 days | The shareable spectacle GIF |
-| 3 | Open waitlist with use-case capture + referral | 2 days | The pre-launch growth engine |
-| 4 | Drip 2–3 more ghost cases during waitlist | ongoing | Compounding proof, re-engagement |
-| — | Methodology / honest-limits page | 1 day | Trust moat vs. overclaiming competitors |
+> **Status (July 7, 2026):** Move 0 done (Quibi); Move 1 intentionally held. See progress notes below.
+
+| Order | Move | Effort | Produces | Status |
+|---|---|---|---|---|
+| 0 | Calibrated ghost case (backtest one real product) | 3–5 days | The proof chart — your entire pitch | ✅ **Done — Quibi**, ≈97% shape fit (1 case), chart published |
+| 1 | Make homepage numbers honest / labeled | 1 day | Removes the credibility landmine | ⏸ **Held** — chart kept standalone; marketing page untouched by choice |
+| 2 | Awareness funnel + cascade animation capture | 3 days | The shareable spectacle GIF | Next eng unit (Tier 1B) |
+| 3 | Open waitlist with use-case capture + referral | 2 days | The pre-launch growth engine | Pending |
+| 4 | Drip 2–3 more ghost cases during waitlist | ongoing | Compounding proof, re-engagement | Runner ready (`scripts/ghost-cases/`) |
+| — | Methodology / honest-limits page | 1 day | Trust moat vs. overclaiming competitors | Pending |
 
 Total to credible launch-ready waitlist: **~2 weeks**, almost none of it on net-new simulation architecture.
+
+### Move 0 — completed (Quibi), July 7, 2026
+A headless runner (`scripts/ghost-cases/`) drives the real production decision engine. Quibi's launch economics produce an emergent adoption **collapse to ~0%** that tracks the real decline within **2.9 pts** normalized (≈97% shape fit, 25-run avg). **Public framing = qualitative-led** ("the sim predicted Quibi's collapse"); the % is stated as one calibrated case with explicit caveats (the collapse is emergent; the decay *rate* was tuned), deliberately **not** a headline "97%," to avoid the "confidence in what?" takedown this doc warns about. The single case is a signal, not proof — Move 4 (more cases) is what makes the number defensible.
 
 ---
 

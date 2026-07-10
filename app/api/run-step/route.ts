@@ -36,12 +36,13 @@ export async function POST(req: NextRequest) {
                 ])
             );
 
-            const { decision } = calculateDecision(item.agent, scenario, neighborStateMap, item.neighborAgents || [], previousParams);
-            
+            const { decision, conviction } = calculateDecision(item.agent, scenario, neighborStateMap, item.neighborAgents || [], previousParams);
+
             return {
                 agentId: item.agentId,
                 agent: item.agent,
                 decision,
+                conviction,
                 neighborAgents: item.neighborAgents,
                 neighborStateMap
             };
@@ -153,6 +154,7 @@ Output format: [{"id": agentId, "reasoning": "ONE concise sentence matching Arch
             return {
                 agentId: d.agentId,
                 decision: d.decision,
+                conviction: d.conviction,
                 reasoning: aiEntry?.reasoning || "Logic stabilizing in character background...",
                 model: finalModel
             };

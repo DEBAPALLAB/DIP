@@ -127,13 +127,14 @@ Everything else — the awareness funnel, the waitlist referral mechanics, the m
 
 ## Sequencing summary
 
-> **Status (July 7, 2026):** Move 0 done (Quibi); Move 1 intentionally held. See progress notes below.
+> **Status (July 10, 2026):** Move 0 done (Quibi, 97.1% fit); Move 1 intentionally held; Tier 1A conviction live. Next: Tier 1B awareness funnel. See progress notes below.
 
 | Order | Move | Effort | Produces | Status |
 |---|---|---|---|---|
-| 0 | Calibrated ghost case (backtest one real product) | 3–5 days | The proof chart — your entire pitch | ✅ **Done — Quibi**, ≈97% shape fit (1 case), chart published |
+| 0 | Calibrated ghost case (backtest one real product) | 3–5 days | The proof chart — your entire pitch | ✅ **Done — Quibi**, 97.1% curve fit (1 case), chart published |
 | 1 | Make homepage numbers honest / labeled | 1 day | Removes the credibility landmine | ⏸ **Held** — chart kept standalone; marketing page untouched by choice |
-| 2 | Awareness funnel + cascade animation capture | 3 days | The shareable spectacle GIF | Next eng unit (Tier 1B) |
+| 1A | Conviction scoring + reversible decisions | 2 days | Retention Risk metric live | ✅ **Done (July 7)** — conviction scoring live, `< 0.3` churn indicator on results |
+| 2 | Awareness funnel + cascade animation capture | 3 days | The shareable spectacle GIF | ⏳ **Next eng unit (Tier 1B)** — highest priority for post #6 |
 | 3 | Open waitlist with use-case capture + referral | 2 days | The pre-launch growth engine | Pending |
 | 4 | Drip 2–3 more ghost cases during waitlist | ongoing | Compounding proof, re-engagement | Runner ready (`scripts/ghost-cases/`) |
 | — | Methodology / honest-limits page | 1 day | Trust moat vs. overclaiming competitors | Pending |
@@ -141,7 +142,7 @@ Everything else — the awareness funnel, the waitlist referral mechanics, the m
 Total to credible launch-ready waitlist: **~2 weeks**, almost none of it on net-new simulation architecture.
 
 ### Move 0 — completed (Quibi), July 7, 2026
-A headless runner (`scripts/ghost-cases/`) drives the real production decision engine. Quibi's launch economics produce an emergent adoption **collapse to ~0%** that tracks the real decline within **2.9 pts** normalized (≈97% shape fit, 25-run avg). **Public framing = qualitative-led** ("the sim predicted Quibi's collapse"); the % is stated as one calibrated case with explicit caveats (the collapse is emergent; the decay *rate* was tuned), deliberately **not** a headline "97%," to avoid the "confidence in what?" takedown this doc warns about. The single case is a signal, not proof — Move 4 (more cases) is what makes the number defensible.
+A headless runner (`scripts/ghost-cases/quibi.ts`) drives the real production decision engine. Quibi's launch economics (value=0.24, risk=0.34, loss=0.44) produce an emergent adoption **collapse to ~0.08%** that tracks the real decline within **2.9 pts** normalized (97.1% curve fit, 25-run average). **Public framing = qualitative-led** ("the sim predicted Quibi's collapse"); the % is stated as one calibrated case with explicit caveats (the collapse is emergent — conviction drops to 0.103; only decay *rate* was tuned), deliberately **not** a headline "97%," to avoid the "confidence in what?" takedown this doc warns about. The single case is a signal, not proof — Move 4 (more cases) is what makes the number defensible.
 
 ---
 

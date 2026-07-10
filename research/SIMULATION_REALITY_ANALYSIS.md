@@ -19,15 +19,15 @@ The core architecture is not a toy. Before tearing it apart, this is worth ackno
 
 ### Reality Score: 54 / 100
 
-| Dimension | Score | What's missing |
+| Dimension | Score | Status (July 10, 2026) |
 |---|---|---|
-| Behavioral math | 78/100 | ~~Two divergent utility functions exist (`simulation.ts` vs `prompts.ts`).~~ ✅ Resolved July 7, 2026 — dead `computeUtility` deleted; `calculateDecision` is now the single source of truth. |
-| Agent heterogeneity | 72/100 | 8 dimensions, 8 personas, GSS-grounded. Good. But all agents receive the same scenario simultaneously with full information. |
-| Social network | 60/100 | Right topology, wrong influence model. Degree centrality only. No directional influence, no weak ties for bridging, static network. |
-| Decision realism | 45/100 | No habit/inertia at category level, no brand trust separate from institutional trust, no reference price anchoring, no temporal discounting. |
-| Market dynamics | 30/100 | One product. No competition. No substitutes. No platform effects. No churn. No external events. |
-| Scenario encoding | 40/100 | Three scalars (value, risk, loss) collapse all product complexity. B2B SaaS and consumer health insurance have fundamentally different purchase dynamics that can't be expressed in the same param space. |
-| Output interpretability | 65/100 | Persona breakdown and curve are good. But insights are LLM-generated from aggregates, not derived from the simulation's causal structure. You can't tell which network event caused a plateau. |
+| Behavioral math | **82/100** | ✅ **FIXED** — dead `computeUtility` (simulation.ts) deleted July 7; `calculateDecision` (lib/prompts.ts:11–114) is now the single, tested source of truth. Prospect Theory: trust-adjusted value, loss aversion (lambda × loss × effRisk), social signal weighting, shock bonus. |
+| Agent heterogeneity | 72/100 | 13 core agent fields (persona, risk, trust, social, budget, emotional, etc.) + 3 psychological traits (lossAversion, statusQuoBias, priorAdoptions); 8 personas (Influencer, Early Adopter, Price Hawk, Pragmatist, Social Follower, Herd Member, Skeptic, Laggard). **Gap remains:** all agents still receive full brief simultaneously at step 1; no staged awareness (Tier 1B). |
+| Social network | 60/100 | Watts-Strogatz topology correct; degree centrality influence scoring working. **Gaps:** no directional trust, no weak-tie bridging model, network static. Improvement: `computeInfluenceScores()` live in agentGeneration.ts. |
+| Decision realism | 48/100 | ✅ **Conviction scoring LIVE** — agents now have measurable conviction margin (distance from threshold); low conviction enables re-decisions (reversible adoption). **Gaps:** no habit/inertia, no brand trust separate from institutional, no reference price anchoring, no temporal discounting. |
+| Market dynamics | 30/100 | One product per run. No competition, no substitutes, no platform effects, no churn modeling, no exogenous shocks. **Planned (Tier 1C):** competitive baseline (switching utility). |
+| Scenario encoding | 40/100 | 3-scalar space (value, risk, loss) remains. Collapses B2B/B2C complexity. **Known gap:** SaaS adoption vs. consumer health adoption have different network dynamics, can't be expressed in same params. |
+| Output interpretability | **68/100** | ✅ **Retention Risk % now live** (adopters with conviction < 0.3) on results page. Persona breakdown + adoption curve good. **Gaps:** LLM reasoning still post-hoc rationalization; can't isolate which network event caused plateau (would need causal tracing). |
 
 ### The three biggest context losses
 
@@ -125,16 +125,16 @@ If this product is going to be worth using over just talking to people, it needs
 
 #### Tier 1 — Do these or the tool stays a toy
 
-**A. Reversible decisions with conviction scoring** — ✅ **DONE (July 7, 2026)**
-Remove the "already decided" guard. Add a `conviction: number` per agent = distance of utility from threshold. Low conviction = flip candidate. High conviction = sticky. Show "retention risk" in results (% of supporters with conviction < 0.3). This single change makes the simulation dynamic instead of a one-shot ratchet.
-> *As-built correction:* the audit above assumed decisions were permanent, but the live client loop (`runStep`) already re-evaluates every agent each step — there was no "already decided" guard to remove. `conviction` shipped as a normalized [0,1] margin (how far `|stance|` clears the neutral band), and a **Retention Risk** stat is live on the results page. Open item: `tanh(utility)` compresses conviction toward the low end, so the fixed `< 0.3` cutoff needs recalibration (or a relative bottom-tercile rule) against real run distributions.
+**A. Reversible decisions with conviction scoring** — ✅ **DONE (July 7, 2026) — LIVE**
+Add a `conviction: number` per agent = normalized distance of utility from threshold. Low conviction = flip candidate. High conviction = sticky. Show "retention risk" in results (% of supporters with conviction < 0.3).
+> *As-built (July 10 verified):* Live client loop (`app/api/run-step/route.ts`) already re-evaluates every agent each step — decisions were always reversible. `conviction` shipped as normalized [0,1] margin = (|stance| − threshold) / headroom; `stance = tanh(utility)`. **Retention Risk** stat live on app/results/page.tsx:174–181, displays both % and headcount of adopters at risk. **Open item:** tanh compression biases conviction low; the fixed < 0.3 cutoff needs recalibration against real run distributions to set meaningful churn threshold.
 
-**B. Awareness funnel (staged information exposure)**
+**B. Awareness funnel (staged information exposure)** — ⏳ **NOT SHIPPED (Tier 1B, HIGHEST PRIORITY)**
 Don't expose all agents to the full brief on step 1. Model a diffusion of awareness:
 - Step 1: seeded agents + Influencers + Early Adopters only
 - Steps 2–4: their neighbors receive a "heard about this from [peer]" signal, not the full brief
 - Steps 5+: mass market exposure via a controllable "reach" parameter
-This produces S-curves from first principles, not from parameter tuning.
+This produces S-curves from first principles (not parameter tuning). **Most visually dramatic feature** — cascade animation spreads outward across network over ticks (the GIF for LinkedIn post #6). **Current status:** all agents still receive full scenario brief simultaneously at step 1 in runStep; no awareness layering yet. **Effort estimate:** ~3 days. **Score impact:** 60 → 66.
 
 **C. Competitive baseline**
 The utility function currently asks "is this product worth anything?" It should ask "is this product worth switching from what I have?" Add a `baseline` scenario representing the status quo. `utility = U(new) - U(current) - switching_cost`. This is how every real purchase decision works.

@@ -2,6 +2,25 @@
 
 This document provides a complete technical reference of the simulation platform's state management, data models, routes, API contracts, and lifecycle workflows. Use this guide to reconfigure pages safely without breaking existing features or losing simulation data.
 
+> **Last Updated:** July 10, 2026 | **Status:** Architecture verified against live codebase (lib/, app/api/, app/)
+
+---
+
+## Summary of Key Files
+
+| Module | Path | Purpose |
+|--------|------|---------|
+| Decision Engine | `lib/prompts.ts:11–114` | `calculateDecision()` — Prospect Theory utility + conviction scoring (single source of truth) |
+| Agent Generation | `lib/agentGeneration.ts` | `generateAgents()`, `buildWattsStrogatz()`, `classifyPersona()`, `computeInfluenceScores()` |
+| State Management | `lib/SimulationContext.tsx` | Global state (agents, scenarios, adoption curve, branches, LLM logs) |
+| Step Execution | `app/api/run-step/route.ts` | Batch decision processing + LLM narrative fallback (OpenRouter free tier) |
+| Results Page | `app/results/page.tsx` | Adoption curve chart, persona breakdown, **Retention Risk %**, key agent voices |
+| Dashboard | `app/dashboard/page.tsx` | Simulation history, filtering, quick-launch |
+| Core Types | `lib/types.ts` | `Agent`, `AgentState`, `StepSnapshot`, `ProductInput`, `MarketFilters` |
+| Utilities | `lib/apiGuard.ts`, `lib/productParams.ts` | Auth/rate-limit enforcement, input validation, param derivation |
+
+---
+
 ---
 
 ## 1. Core State & Data Models
@@ -166,14 +185,38 @@ Each epoch processes agents in batches (usually `batchSize = 10`):
 ## 5. Routes & API Endpoints
 
 ### App Routes
-- **`/dashboard`**: Shows simulation histories, active quotas, telemetry, and quick launch triggers.
-- **`/simulate`**: Handles configuration setup, social network visualizer, and step execution controls.
-- **`/results?id={uuid}`**: Renders charts (adoption curve), user sentiment, key voice snippets, and LLM-generated strategic insights.
+- **`/dashboard`** — Simulation history, filtering, status, quick-launch controls
+- **`/simulate`** — Configuration (product name/price/benefits, risk level, category, market filters) → agent generation + network visualizer → step-by-step execution
+- **`/results?id={uuid}`** — Adoption curve (Recharts), persona breakdown (table), **Retention Risk %**, key agent voices (influence-sorted reasoning), strategic insights
+- **`/(marketing)/`** — Landing page (hero, demo, pricing, about, case studies including `/case-study/quibi`)
 
-### API Endpoints
-1. **`POST /api/run-step`**: Runs simulation decisions for a batch of agents.
-2. **`POST /api/generate-insights`**: Takes consensus results, top quotes, and product parameters to generate final analytical advice.
-3. **`POST /api/analyze-resistance`**: Scans logs to run strategic scans detailing cohort roadblocks.
+### API Endpoints (7 total, all POST-only, guard-protected, OpenRouter free tier)
+1. **`POST /api/run-step`** (app/api/run-step/route.ts)
+   - Executes simulation batch: deterministic `calculateDecision()` → LLM reasoning (free OpenRouter models with key rotation, 50-agent batch limit, 12s timeout, temp 0.3) → resilient rescue parser for truncated responses
+   - Returns: `RunStepResponse[]` with decision, utility breakdown, social pressure, conviction, reasoning
+
+2. **`POST /api/generate-insights`** (app/api/generate-insights/route.ts)
+   - Input: adoption %, consensus score, top agent quotes, product params
+   - Output: 3 sections (PRIMARY BARRIER, PRIMARY DRIVER, RECOMMENDATION), ~600 tokens, 90s timeout
+
+3. **`POST /api/analyze-resistance`** (app/api/analyze-resistance/route.ts)
+   - Extracts opposition verbatims from current step, synthesizes top 2 root causes
+   - Uses Google Gemini 2.0 Flash (free), 150 tokens
+
+4. **`POST /api/semantic-search`** (app/api/semantic-search/route.ts)
+   - Filters job titles by semantic relevance to query (max 500 jobs, 120 chars each)
+   - Returns matching job titles as JSON array, temp 0.1, JSON-enforced
+
+5. **`POST /api/parse-scenario`** (app/api/parse-scenario/route.ts)
+   - Converts freeform product description → structured JSON (name, price, benefits, risk level, category, pain points, market filters)
+   - **Local heuristic fallback:** guarantees output even if OpenRouter times out/fails
+
+6. **`POST /api/auto-params`** (app/api/auto-params/route.ts)
+   - Strategic market audit: analyzes product brief against 2024–2025 context
+   - Outputs adoption params (value, risk, loss: [0.00–1.00]), justification, target demographics, 8s timeout
+
+7. **`POST /api/generate-agents`** (app/api/generate-agents/route.ts)
+   - Returns static AGENTS list from `@/lib/agents`; guard-protected to prevent beta-gate probing
 
 ---
 

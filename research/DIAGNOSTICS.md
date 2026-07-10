@@ -1,5 +1,9 @@
 # Simulation Diagnostics Log
-This file tracks API failures and model fallback events to identify performance bottlenecks.
+
+> **⚠️ ARCHIVE NOTICE (July 10, 2026)**  
+> This log is historical data from April 2–3, 2026 when the app was hitting free-model rate limits. Current API strategy uses OpenRouter free-tier with key rotation + graceful fallback to local deterministic `calculateDecision()`. See `app/api/run-step/route.ts:45–95` for current resilience patterns. **This log can be cleared** — consider replacing with active telemetry/monitoring instead.
+
+## Historical Failure Log (April 2–3, 2026)
 
 | Timestamp | Agent ID | Model | Status | Error Detail |
 |-----------|----------|-------|--------|--------------|

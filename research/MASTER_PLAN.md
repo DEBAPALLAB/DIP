@@ -1,14 +1,14 @@
 # Master Plan: Hype + Product Depth
 ## Building in public, where the roadmap IS the content
 
-*Last updated: July 7, 2026*
+*Last updated: July 10, 2026*
 
-> **Progress log**
-> - **✅ Tier 1A — Conviction scoring + reversible decisions** *(shipped July 7, 2026)*. `calculateDecision` now emits a normalized `conviction ∈ [0,1]`; the results page surfaces a **Retention Risk** stat (% of adopters with conviction < 0.3). Notes: the live loop already re-decided every agent each step, so there was no "already decided" guard to remove (that described the old `simulation_v3.py` architecture); conviction is implemented as a normalized margin rather than raw `|utility − threshold|`; the `< 0.3` churn cutoff needs calibration against real run distributions (tanh compresses conviction low). Score: 54 → ~60 (projected).
-> - **✅ Phase 1 cleanup — dead utility function deleted** *(shipped July 7, 2026)*. Removed the divergent dead `computeUtility` from `simulation.ts`; `calculateDecision` (prompts.ts) is now the single source of truth.
-> - **✅ Ghost Case 01 — Quibi backtest** *(built July 7, 2026)*. A headless runner (`scripts/ghost-cases/`) drives the **real production engine** (same `calculateDecision` + GSS pool + Watts–Strogatz network) — no mockup. Quibi's launch economics (value 0.24 / risk 0.34 / loss 0.44) produce an adoption **collapse to ~0%** that tracks Quibi's real decline within **2.9 pts** normalized (**≈97% shape fit**, 25-run average). The collapse is **emergent** (organic conviction ≈ 0 — the launch cohort can't hold regardless of tuning); only the decay **rate** was calibrated. Proof chart published as an Artifact. **Public framing decision: qualitative-led** ("the sim predicted Quibi's collapse"), curve-fit stated as one calibrated case with caveats — not a headline "97%".
-> - **⏸ Homepage-honesty fix — intentionally HELD** *(July 7, 2026)*. The fabricated numbers (`86.4%`, `78.4%`, `0%→100%`) are still live in `app/(marketing)/page.tsx`, but by decision the ghost-case chart stays a **standalone shareable asset** (LinkedIn post #3) for now; the marketing page is untouched pending a fuller redo call.
-> - **⏭ Next:** Tier 1B (awareness funnel — "THE GIF") remains the next engineering unit; drip more ghost cases (Phase 2D) to convert the single 97% into a defensible average.
+> **Progress log (current as of July 10, 2026)**
+> - **✅ Tier 1A — Conviction scoring + reversible decisions** *(shipped July 7, 2026; LIVE)*. `calculateDecision` (lib/prompts.ts) emits a normalized `conviction ∈ [0,1]`; the results page surfaces **Retention Risk** stat (% of adopters with conviction < 0.3 flagged as churn candidates). Implementation: conviction = (|stance| − threshold) / headroom where stance = tanh(utility). Live on app/results/page.tsx:174–181. Notes: the live loop already re-decides every agent each step (decisions reversible, contrary to old audit assumptions); conviction compressed by tanh so < 0.3 cutoff needs recalibration per real-run distributions. Score: 54 → **60 (actual)**.
+> - **✅ Phase 1 cleanup — dead utility function deleted** *(shipped July 7, 2026)*. Removed the divergent dead `computeUtility` from `simulation.ts`; `calculateDecision` (prompts.ts, lib/prompts.ts:11–114) is now the **single source of truth**. Prospect Theory: trust-adjusted value, loss aversion (lambda × loss × effRisk), social signal (influence-weighted), shock bonus for param deltas.
+> - **✅ Ghost Case 01 — Quibi backtest** *(built July 7, 2026; LIVE)*. Headless runner (`scripts/ghost-cases/quibi.ts`) drives the **real production engine** (calculateDecision + GSS pool + Watts–Strogatz network). Quibi params (value=0.24, risk=0.34, loss=0.44) produce emergent collapse to 0.08% adoption that tracks real decline within **2.9 pts normalized (97.1% curve fit, 25-run avg)**. Collapse is emergent (conviction drops to 0.103); only decay rate tuned. Result artifact: `scripts/ghost-cases/result.json`. **Public framing: qualitative-led** ("the sim predicted Quibi's collapse"); stated as one calibrated case with explicit caveats, NOT a headline "97%".
+> - **⏸ Homepage-honesty fix — intentionally HELD** *(July 10, 2026)*. Fabricated numbers (`86.4%`, `78.4%`, `0%→100%`) remain in `app/(marketing)/page.tsx` by decision; ghost-case chart kept **standalone shareable asset** (LinkedIn post #3). Marketing page untouched pending full Phase 2 redo decision.
+> - **⏭ Next:** **Tier 1B (awareness funnel)** is the next engineering unit — highest priority for post #6 ("THE GIF"). Enables S-curves from first principles (staged awareness exposure). Then Tier 1C (competitive baseline) for post #8. Phase 2D (cases #2–#3) to convert single 97% into defensible 85–90% average.
 
 > Read alongside [SIMULATION_REALITY_ANALYSIS.md](SIMULATION_REALITY_ANALYSIS.md) (the technical audit) and [GO_TO_MARKET_SEQUENCING.md](GO_TO_MARKET_SEQUENCING.md) (the launch sequence). This document fuses them into one timeline.
 
@@ -160,14 +160,12 @@ These run through BOTH tracks. Break them and the hype becomes a liability.
 
 | Week | Product | LinkedIn | Score |
 |---|---|---|---|
-| 1 | ✅ Ghost case #1 (Quibi) built & charted; ⏸ homepage numbers HELD (kept as standalone asset) | Post 1 (Teardown), Post 2 (Provocation), Post 3 (Reveal: Quibi) ready | 54 |
-| 2 | ✅ 1A conviction (done) + dead-code cleanup; ⏳ finish ghost case #1 | Post 3 (Reveal), Post 4 (Build) | 60 |
-| 3 | 1B awareness funnel | Post 5 (Provocation/GSS) | 66 |
-| 4 | 1C competitive baseline; delete dead code | Post 6 (Build + GIF) | 71 |
-| 5–6 | 2D calibration (cases #2, #3); Methodology page | Post 7 (Reveal), Post 8 (Build) | 73 |
-| 7 | 2E objection extraction | Post 9 (Teardown: 54→73 recap) | 76 |
-| 8 | Waitlist live with use-case capture + referral | **Post 10 (CTA: open early access)** | 76 |
-| 9+ | 2F, then Phase 3 driven by waitlist signal | Sustained build-in-public | 80+ |
+| 1 (Jul 7) | ✅ Ghost case #1 (Quibi) built & charted; ✅ 1A conviction live; ⏸ homepage numbers HELD | Post 1 (Teardown), Post 2 (Provocation), Post 3 (Reveal: Quibi) ready | 54 → **60** |
+| 2 (Jul 14) | ⏳ **1B awareness funnel** (THE GIF); drip ghost case #2 | Post 4 (Build: Conviction), Post 5 (Provocation/GSS) | **66** |
+| 3 (Jul 21) | 1C competitive baseline | Post 6 (Build + GIF), Post 7 (Reveal: case #2) | **71** |
+| 4–5 | 2D calibration (case #3); Methodology page; 2E objection extraction | Post 8 (Build), Post 9 (Teardown: 54→76 recap) | **76** |
+| 6 | Waitlist live with use-case capture + referral | **Post 10 (CTA: open early access)** | **76** |
+| 7+ | Phase 2F, then Phase 3 driven by waitlist signal | Sustained build-in-public | **80+** |
 
 **~8 weeks from today to: a credible waitlist, a public proof track record, a Reality Score in the high 70s, and a content engine that runs on real work instead of invented hype.**
 

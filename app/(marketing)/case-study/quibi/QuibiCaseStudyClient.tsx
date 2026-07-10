@@ -35,7 +35,7 @@ const FLAWS = [
   {
     tag: "PLATFORM",
     title: "Mobile-only, no TV at launch",
-    desc: "iOS/Android app only — no casting, no desktop, no smart-TV apps. A deliberate “mobile-first” bet that inverted the moment lockdown put everyone home, on the couch, in front of a TV.",
+    desc: "iOS/Android app only, no casting, no desktop, no smart-TV apps. A deliberate “mobile-first” bet that inverted the moment lockdown put everyone home, on the couch, in front of a TV.",
     source: "IESE Blog",
   },
   {
@@ -52,20 +52,20 @@ const FLAWS = [
   },
   {
     tag: "PRICING",
-    title: "No free tier — a hard paywall",
-    desc: "90-day trial, then $4.99 (ads) or $7.99 (none). No permanent free option — competing head-on with YouTube and TikTok, both free and infinite.",
+    title: "No free tier: a hard paywall",
+    desc: "90-day trial, then $4.99 (ads) or $7.99 (none). No permanent free option, competing head-on with YouTube and TikTok, both free and infinite.",
     source: "NBC News",
   },
   {
     tag: "PRODUCT",
     title: "Turnstyle: a feature nobody asked for",
-    desc: "Auto-reframing portrait↔landscape burned real R&D and drew IP litigation with Eko — money that could have funded sharing or a free tier.",
+    desc: "Auto-reframing portrait↔landscape burned real R&D and drew IP litigation with Eko, money that could have funded sharing or a free tier.",
     source: "Mynameiskalam",
   },
   {
     tag: "BUDGET",
     title: "$600M content, no organic loop",
-    desc: "A-list production (Hart, J.Lo, Spielberg) with no viral mechanism to amplify it. Only $63M of marketing ran before shutdown — paid reach with nowhere to compound.",
+    desc: "A-list production (Hart, J.Lo, Spielberg) with no viral mechanism to amplify it. Only $63M of marketing ran before shutdown, paid reach with nowhere to compound.",
     source: "Forbes / Digiday",
   },
   {
@@ -93,11 +93,11 @@ type Persona = {
 };
 
 const PERSONAS: Persona[] = [
-  { name: "Influencer", color: "#E91E63", nRange: "2.5–4%", stanceMin: 0.15, stanceMax: 0.35, decision: "Weak support", note: "High centrality overrides constraints, but with no seeded stance, starts neutral — slow to move." },
+  { name: "Influencer", color: "#E91E63", nRange: "2.5–4%", stanceMin: 0.15, stanceMax: 0.35, decision: "Weak support", note: "High centrality overrides constraints, but with no seeded stance, starts neutral and slow to move." },
   { name: "Early Adopter", color: "#00BCD4", nRange: "7.5–10%", stanceMin: 0.1, stanceMax: 0.25, decision: "Marginal support", note: "Low risk aversion and prior-adoption history help, but the loss term keeps utility thin." },
-  { name: "Price Hawk", color: "#FFEB3B", nRange: "6–9%", stanceMin: -0.15, stanceMax: 0.05, decision: "Neutral / mild oppose", note: "Waits for a discount that never comes — risk_exposure and perceived_loss dominate value_delta." },
+  { name: "Price Hawk", color: "#FFEB3B", nRange: "6–9%", stanceMin: -0.15, stanceMax: 0.05, decision: "Neutral / mild oppose", note: "Waits for a discount that never comes; risk_exposure and perceived_loss dominate value_delta." },
   { name: "Pragmatist", color: "#4CAF50", nRange: "20–30%", stanceMin: -0.25, stanceMax: 0.0, decision: "Oppose / neutral", note: "The balanced-trait middle of the population. Utility nets negative once loss and risk are summed." },
-  { name: "Social Follower", color: "#FF9800", nRange: "10–15%", stanceMin: -0.3, stanceMax: -0.1, decision: "Oppose / neutral", note: "Their entire adoption mechanism — peer cascade — is severed by the no-sharing constraint." },
+  { name: "Social Follower", color: "#FF9800", nRange: "10–15%", stanceMin: -0.3, stanceMax: -0.1, decision: "Oppose / neutral", note: "Their entire adoption mechanism, peer cascade, is severed by the no-sharing constraint." },
   { name: "Herd Member", color: "#9C27B0", nRange: "12.5–17.5%", stanceMin: -0.5, stanceMax: -0.2, decision: "Oppose", note: "Requires broad consensus to flip. Consensus never forms, so they stay opposed the whole run." },
   { name: "Skeptic", color: "#F44336", nRange: "10–15%", stanceMin: -0.6, stanceMax: -0.3, decision: "Oppose", note: "Low institutional trust discounts the value claim by up to 48% before loss and risk even apply." },
   { name: "Laggard", color: "#607D8B", nRange: "5–7.5%", stanceMin: -0.7, stanceMax: -0.4, decision: "Strong oppose", note: "Extreme risk aversion plus high status-quo bias. Structurally immovable within the window." },
@@ -119,7 +119,7 @@ const REALITY_ROWS = [
   { metric: "Opposition dominance", model: "50–65% of agents land oppose", actual: "~93% never converted past trial", strength: "strong" as const },
   { metric: "Trial-to-paid conversion", model: "Weak cascade, no sustained support signal", actual: "8–27% converted, then plateaued", strength: "strong" as const },
   { metric: "Dominant stance cluster", model: "Pragmatists, Social Followers, Herd Members: neutral-to-oppose", actual: "Most “adopters” were one-time trial takers", strength: "moderate" as const },
-  { metric: "Cascade / seeding boost", model: "Minimal — no seeded personas, cold start", actual: "No KOL launch; mass TV ads only", strength: "moderate" as const },
+  { metric: "Cascade / seeding boost", model: "Minimal: no seeded personas, cold start", actual: "No KOL launch; mass TV ads only", strength: "moderate" as const },
 ];
 
 const MECHANISMS = [
@@ -127,52 +127,52 @@ const MECHANISMS = [
     n: "01",
     chip: "−λ · loss_aversion · perceived_loss",
     title: "Loss aversion outweighs value, by design",
-    desc: "With λ≈2.25 (the median agent, per Tversky & Kahneman) and perceived_loss≈0.50, the loss penalty alone is ≈ −0.56 — bigger than the entire value term (≈0.23). Losses loom ~2.4× larger than gains. Prospect theory operating exactly as documented, not a special case invented for Quibi.",
+    desc: "With λ≈2.25 (the median agent, per Tversky & Kahneman) and perceived_loss≈0.50, the loss penalty alone is ≈ −0.56, bigger than the entire value term (≈0.23). Losses loom ~2.4× larger than gains. Prospect theory operating exactly as documented, not a special case invented for Quibi.",
   },
   {
     n: "02",
     chip: "value_delta × (0.4 + 0.6·trust)",
     title: "The trust discount hits at the worst moment",
-    desc: "Even a high-trust agent (0.8) credits just 88% of Quibi's stated value; a skeptic (0.2) credits 52%. The loss term has no equivalent discount — so eroding trust shrinks the one thing working in Quibi's favor while leaving the thing working against it untouched.",
+    desc: "Even a high-trust agent (0.8) credits just 88% of Quibi's stated value; a skeptic (0.2) credits 52%. The loss term has no equivalent discount, so eroding trust shrinks the one thing working in Quibi's favor while leaving the thing working against it untouched.",
   },
   {
     n: "03",
     chip: "social_signal = Σ w·neighbor_stance",
     title: "Social signal collapses without a sharing channel",
-    desc: "The signal is a weighted average of a neighbor's stances. If every neighbor is independently computing negative utility, the average stays near zero — no positive feedback loop forms. TikTok and YouTube have that loop by default; Quibi's no-screenshot policy removed it at the source.",
+    desc: "The signal is a weighted average of a neighbor's stances. If every neighbor is independently computing negative utility, the average stays near zero, no positive feedback loop forms. TikTok and YouTube have that loop by default; Quibi's no-screenshot policy removed it at the source.",
   },
   {
     n: "04",
     chip: "threshold = status_quo × adoption_discount",
     title: "The decision threshold is a structural trap",
-    desc: "With most agents not “practiced adopters,” threshold lands near 0.54–0.65 — stance must clear ≈±0.19 to register as support or oppose. Weak signals in both directions stay trapped in a wide neutral band, matching the observed pattern: many trial signups, little conviction.",
+    desc: "With most agents not “practiced adopters,” threshold lands near 0.54–0.65; stance must clear ≈±0.19 to register as support or oppose. Weak signals in both directions stay trapped in a wide neutral band, matching the observed pattern: many trial signups, little conviction.",
   },
 ];
 
 const COUNTERFACTUALS = [
-  { param: "value_delta", from: "0.35", to: "0.70", change: "Content perceived as clearly superior to free YouTube/Netflix originals — which didn't materialize." },
+  { param: "value_delta", from: "0.35", to: "0.70", change: "Content perceived as clearly superior to free YouTube/Netflix originals, which didn't materialize." },
   { param: "perceived_loss", from: "0.50", to: "0.10", change: "A permanent free / ad-supported tier or money-back guarantee, instead of a hard 90-day wall." },
-  { param: "effective_social_weight", from: "0.05", to: "0.60", change: "Clips, screenshots, in-app sharing — the discovery loop Quibi explicitly disabled." },
+  { param: "effective_social_weight", from: "0.05", to: "0.60", change: "Clips, screenshots, in-app sharing: the discovery loop Quibi explicitly disabled." },
   { param: "risk_exposure", from: "0.65", to: "0.30", change: "TV / casting support shipped before launch, resolving the COVID context mismatch." },
   { param: "seed_personas", from: "none", to: "Influencer + EA", change: "A KOL / creator seeding strategy pre-launch, instead of relying on mass marketing spend." },
 ];
 
 const REFERENCES = [
-  "Wikipedia — Quibi",
-  "CNBC — Quibi to shut down after 6 months",
-  "NBC News — Why Quibi failed so soon",
-  "Variety — Year-one subscriber goal pace",
-  "Variety — Free trial 8% conversion",
-  "Deadline — Katzenberg / Whitman interview",
-  "IESE Blog — The death of a six-month-old app",
-  "Slashgear — Why Quibi was such a failure",
-  "Forbes — Quibi ad spend",
-  "Digiday — Content strategy budget",
-  "ANTENNA Analytics — Trial conversion rates",
-  "Mynameiskalam — Quibi launch failure case study",
+  "Wikipedia: Quibi",
+  "CNBC: Quibi to shut down after 6 months",
+  "NBC News: Why Quibi failed so soon",
+  "Variety: Year-one subscriber goal pace",
+  "Variety: Free trial 8% conversion",
+  "Deadline: Katzenberg / Whitman interview",
+  "IESE Blog: The death of a six-month-old app",
+  "Slashgear: Why Quibi was such a failure",
+  "Forbes: Quibi ad spend",
+  "Digiday: Content strategy budget",
+  "ANTENNA Analytics: Trial conversion rates",
+  "Mynameiskalam: Quibi launch failure case study",
 ];
 
-/* ── Agent network visualization (deterministic, seeded — no hydration drift) ── */
+/* ── Agent network visualization (deterministic, seeded; no hydration drift) ── */
 
 function seededRng(seed: number) {
   let t = seed;
@@ -307,7 +307,7 @@ function AgentNetworkGraph() {
         </div>
       </div>
       <p className="qb-net-caption">
-        Representative population structure — color is decision, clustering reflects the social graph&apos;s
+        Representative population structure: color is decision, clustering reflects the social graph&apos;s
         small-world topology. Illustrative layout; proportions track the directional ranges below.
       </p>
     </div>
@@ -331,7 +331,7 @@ function Kicker({ n, label }: { n: string; label: string }) {
   );
 }
 
-/** Mid-sentence thesis highlight — never a whole sentence, always the 2–4 word argument. */
+/** Mid-sentence thesis highlight, never a whole sentence, always the 2–4 word argument. */
 function Hi({ children, solid = false }: { children: React.ReactNode; solid?: boolean }) {
   return <span className={solid ? "qb-hi qb-hi-solid" : "qb-hi"}>{children}</span>;
 }
@@ -420,7 +420,7 @@ export default function QuibiCaseStudyClient() {
         /* ── Shared editorial primitives ──
            NOTE: Kicker / Hi / AgentNetworkGraph are separate function components.
            styled-jsx only auto-scopes className selectors on DOM elements written
-           directly inside *this* component's JSX — it can't see inside a child
+           directly inside *this* component's JSX; it can't see inside a child
            component's own return tree, so those classNames never receive the
            scoping attribute. Every selector styling their output must be :global(). */
         .qb-wrap { max-width: 1240px; margin: 0 auto; }
@@ -1035,7 +1035,7 @@ export default function QuibiCaseStudyClient() {
         .qb-refs-label { font-family: var(--mono); font-size: 9px; color: var(--accent); letter-spacing: 0.16em; display: block; margin-bottom: 18px; }
         .qb-refs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px; font-size: 11.5px; color: var(--muted); font-family: var(--mono); line-height: 2; }
 
-        /* Network graph panel (hero) — AgentNetworkGraph is a separate component,
+        /* Network graph panel (hero): AgentNetworkGraph is a separate component,
            so every selector below targeting its output must be :global(). */
         :global(.qb-net-outer) {
           padding: 8px;
@@ -1164,7 +1164,7 @@ export default function QuibiCaseStudyClient() {
               <span className="l2">500K out.</span>
             </h1>
             <p className="qb-hero-deck">
-              Quibi is the cleanest product failure in modern streaming — fully funded, professionally run,
+              Quibi is the cleanest product failure in modern streaming: fully funded, professionally run,
               dead in six months. We ran its real launch parameters through the notaprompt.in engine, cold,
               with <Hi>zero outcome data</Hi>. This is what it saw coming.
             </p>
@@ -1206,10 +1206,10 @@ export default function QuibiCaseStudyClient() {
                 Fully funded. Professionally run. <Hi>Failed anyway.</Hi>
               </h2>
               <p className="qb-setup-body" style={{ marginTop: 24 }}>
-                <span className="lg">Quibi (&ldquo;quick bites&rdquo;) was a mobile-only, short-form streaming service</span> —
+                <span className="lg">Quibi (&ldquo;quick bites&rdquo;) was a mobile-only, short-form streaming service,</span>{" "}
                 7&ndash;10 minute episodes for on-the-go viewing. Founded by ex-Disney chairman Jeffrey Katzenberg,
                 led by ex-eBay CEO Meg Whitman, backed with $1.75B from Disney, Sony, WarnerMedia, Goldman Sachs and
-                Alibaba before a single subscriber signed up. <Source>Wikipedia</Source> Not a startup swinging blind —
+                Alibaba before a single subscriber signed up. <Source>Wikipedia</Source> Not a startup swinging blind,
                 a professionally-run, fully-capitalized bet that still launched April 6, 2020 and announced shutdown
                 exactly six months later. The library sold to Roku for under $100M, against ~$500M in production spend.{" "}
                 <Source>CNBC</Source> <Source>Deadline</Source>
@@ -1218,7 +1218,7 @@ export default function QuibiCaseStudyClient() {
 
             <div className="qb-burn reveal" style={{ transitionDelay: "120ms" }}>
               <div className="qb-burn-num">~$1.4B</div>
-              <div className="qb-burn-cap">burned in six months — roughly <strong style={{ color: "var(--bright)" }}>$233M a month</strong> across content, marketing and tech.</div>
+              <div className="qb-burn-cap">burned in six months, roughly <strong style={{ color: "var(--bright)" }}>$233M a month</strong> across content, marketing and tech.</div>
               <div className="qb-burn-rule" />
               <div className="qb-burn-num"><em>63</em> days</div>
               <div className="qb-burn-cap">from &ldquo;we&apos;re shutting down&rdquo; back to the ~910K who signed up in the first 72 hours and mostly left.</div>
@@ -1246,7 +1246,7 @@ export default function QuibiCaseStudyClient() {
             <Kicker n="02" label="What The Market Already Knew" />
             <h2 className="qb-h2">Eight flaws. <Hi>Zero hindsight required.</Hi></h2>
             <p className="qb-lead">
-              None of these are retrospective. Every one was visible pre-launch or in the first weeks — and none
+              None of these are retrospective. Every one was visible pre-launch or in the first weeks, and none
               required predicting a pandemic to see.
             </p>
           </div>
@@ -1271,7 +1271,7 @@ export default function QuibiCaseStudyClient() {
             <Kicker n="03" label="How We Fed It Into The Engine" />
             <h2 className="qb-h2">A utility function, <Hi>not a vibe check.</Hi></h2>
             <p className="qb-lead">
-              Every agent evaluates the decision through the same function. Personas aren&apos;t assigned — they emerge
+              Every agent evaluates the decision through the same function. Personas aren&apos;t assigned: they emerge
               bottom-up from eight empirically grounded trait distributions (risk &amp; loss aversion, social conformity,
               collectivism, institutional trust, status-quo bias, budget sensitivity, information processing), each
               calibrated against published behavioral research (Barsky 1997; Tversky &amp; Kahneman 1992; Hofstede WVS; Cialdini).
@@ -1283,7 +1283,7 @@ export default function QuibiCaseStudyClient() {
               <i style={{ background: "#ff5f57" }} />
               <i style={{ background: "#febc2e" }} />
               <i style={{ background: "#28c840" }} />
-              <span className="qb-editor-file">simulation_v3.py — compute_utility()</span>
+              <span className="qb-editor-file">simulation_v3.py / compute_utility()</span>
             </div>
             <div className="qb-editor-body">
               <div className="qb-editor-comment"># the single equation every one of the 200 agents runs each step</div>
@@ -1306,14 +1306,14 @@ export default function QuibiCaseStudyClient() {
               <h3 className="qb-trans-title">Quibi&apos;s constraints → parameters</h3>
               <p className="qb-trans-lead">
                 We didn&apos;t hand-tune numbers to force a failure. Each parameter is a direct translation of a documented,
-                real-world constraint — the same translation an analyst would do for any product before launch.
+                real-world constraint: the same translation an analyst would do for any product before launch.
               </p>
               {[
-                { label: "No sharing / screenshots disabled", text: "effective_social_weight collapses to 0.05–0.10 for non-Influencers — the peer-cascade mechanism has no channel to run through." },
-                { label: "90-day trial, hard paywall, no free tier", text: "perceived_loss ≈ 0.50, risk_exposure ≈ 0.65 — paying for an unproven habit feels like a loss users can dodge by not converting." },
+                { label: "No sharing / screenshots disabled", text: "effective_social_weight collapses to 0.05–0.10 for non-Influencers: the peer-cascade mechanism has no channel to run through." },
+                { label: "90-day trial, hard paywall, no free tier", text: "perceived_loss ≈ 0.50, risk_exposure ≈ 0.65: paying for an unproven habit feels like a loss users can dodge by not converting." },
                 { label: "Mobile-only during household lockdown", text: "risk_exposure compounds: the product is built for a context (commuting) that temporarily doesn't exist." },
-                { label: "No creator seeding, mass-ad launch", text: "no seed personas — all 200 agents start near-zero stance. The cascade needs a spark; Quibi provided none." },
-                { label: "New platform vs. free incumbents", text: "institutional_trust floor lowered to 0.25 — even trusting agents credit only ~73% of the stated value." },
+                { label: "No creator seeding, mass-ad launch", text: "no seed personas: all 200 agents start near-zero stance. The cascade needs a spark; Quibi provided none." },
+                { label: "New platform vs. free incumbents", text: "institutional_trust floor lowered to 0.25: even trusting agents credit only ~73% of the stated value." },
               ].map((r) => (
                 <div key={r.label} className="qb-trans-item">
                   <span className="qb-trans-arrow">&rarr;</span>
@@ -1362,9 +1362,9 @@ export default function QuibiCaseStudyClient() {
         <div className="qb-reveal-inner">
           <div className="reveal" style={{ maxWidth: 760 }}>
             <Kicker n="04" label="What The Model Structurally Predicted" />
-            <h2 className="qb-h2">Opposition wins — <Hi solid>structurally, not by chance.</Hi></h2>
+            <h2 className="qb-h2">Opposition wins, <Hi solid>structurally, not by chance.</Hi></h2>
             <p className="qb-lead">
-              These are directional ranges from applying Quibi&apos;s real constraints to the engine&apos;s formulas —
+              These are directional ranges from applying Quibi&apos;s real constraints to the engine&apos;s formulas,
               not a single logged run we&apos;re citing as fact. We show the range honestly, then line it up against
               what actually happened.
             </p>
@@ -1476,7 +1476,7 @@ export default function QuibiCaseStudyClient() {
             </table>
           </div>
           <p style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", marginTop: 18, lineHeight: 1.7 }}>
-            Directional ranges, not point estimates from a single logged run — derived from applying Quibi&apos;s documented
+            Directional ranges, not point estimates from a single logged run, derived from applying Quibi&apos;s documented
             launch constraints to the engine&apos;s formulas. <Source>Variety</Source> <Source>CNBC</Source>
           </p>
         </div>
@@ -1544,7 +1544,7 @@ export default function QuibiCaseStudyClient() {
         </blockquote>
         <p style={{ maxWidth: 620, margin: "0 auto 26px", color: "var(--muted)", fontSize: 15, lineHeight: 1.7 }}>
           &ldquo;I think we thought there would be easier adoption by people to it.&rdquo; The engine priced that
-          gap in before launch — as a loss term, not a marketing problem.
+          gap in before launch, as a loss term, not a marketing problem.
         </p>
         <span className="qb-quote-by">JEFFREY KATZENBERG · CO-FOUNDER · OCT 2020</span>
         <div style={{ marginTop: 10 }}><Source>CNBC</Source></div>
@@ -1559,7 +1559,7 @@ export default function QuibiCaseStudyClient() {
           <span className="accent">you don&apos;t.</span>
         </h2>
         <p className="qb-cta-sub">
-          Feed in your real launch parameters — pricing, platform, discovery, seeding — and see where the utility
+          Feed in your real launch parameters: pricing, platform, discovery, seeding, and see where the utility
           mechanics land before you spend the budget.
         </p>
         <div className="qb-cta-row">

@@ -13,6 +13,23 @@ import { ManifestoTextReveal } from "@/components/marketing/ManifestoTextReveal"
 export default function LandingPage() {
   const [hoveredStep, setHoveredStep] = useState<number | null>(null);
   const mockupRef = useRef<HTMLDivElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  // Reserve space for the floating navbar so it doesn't overlap the promo banner
+  useEffect(() => {
+    const el = bannerRef.current;
+    if (!el) return;
+    const setBannerHeightVar = () => {
+      document.documentElement.style.setProperty("--promo-banner-h", `${el.offsetHeight}px`);
+    };
+    setBannerHeightVar();
+    const resizeObserver = new ResizeObserver(setBannerHeightVar);
+    resizeObserver.observe(el);
+    return () => {
+      resizeObserver.disconnect();
+      document.documentElement.style.setProperty("--promo-banner-h", "0px");
+    };
+  }, []);
 
   // Mouse move effect for interactive glow coordinates
   useEffect(() => {
@@ -71,6 +88,58 @@ export default function LandingPage() {
 
   return (
     <div style={{ background: "transparent", color: "var(--text)", overflowX: "hidden", position: "relative" }}>
+      {/* Case Study Announcement Banner */}
+      <div ref={bannerRef} style={{
+        position: "relative",
+        zIndex: 100,
+        background: "#0b0c10",
+        borderBottom: "1px solid rgba(0, 82, 255, 0.25)",
+        boxShadow: "0 12px 30px rgba(11, 12, 16, 0.18)",
+        padding: "13px 6vw",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "18px",
+        flexWrap: "wrap"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#e8e9ee" }}>
+          <span className="pulse-dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#0052ff", boxShadow: "0 0 10px rgba(0, 82, 255, 0.9)", display: "inline-block" }} />
+          <span style={{ fontFamily: "var(--mono)", fontSize: "11px", letterSpacing: "0.08em", color: "rgba(232, 233, 238, 0.5)" }}>NEW CASE STUDY</span>
+          <span style={{ fontWeight: 500 }}>See how we simulated Quibi&rsquo;s collapse before it happened</span>
+        </div>
+        <Link
+          href="/case-study/quibi"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "6px 16px",
+            background: "#0052ff",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderRadius: "999px",
+            fontSize: "12px",
+            fontWeight: 600,
+            color: "#ffffff",
+            textDecoration: "none",
+            transition: "all 0.2s ease",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            boxShadow: "0 2px 12px rgba(0, 82, 255, 0.45)"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#1a66ff";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#0052ff";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+        >
+          Read Case Study
+          <span style={{ fontSize: "11px" }}>→</span>
+        </Link>
+      </div>
+
       {/* Dynamic reveal stylesheet */}
       <style dangerouslySetInnerHTML={{
         __html: `

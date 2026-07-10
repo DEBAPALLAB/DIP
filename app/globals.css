@@ -2171,7 +2171,7 @@ body::before {
 /* ─── Marketing Navbar (Floating Capsule Design) ─── */
 .nav-wrapper-floating {
   position: fixed;
-  top: 24px;
+  top: calc(24px + var(--promo-banner-h, 0px));
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -4897,7 +4897,7 @@ html.lenis body {
   .nav-wrapper-floating {
     left: 8px !important;
     right: 8px !important;
-    top: 8px !important;
+    top: calc(8px + var(--promo-banner-h, 0px)) !important;
     width: auto !important;
   }
 

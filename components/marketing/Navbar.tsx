@@ -12,7 +12,13 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const getBannerHeight = () => {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue("--promo-banner-h");
+      const parsed = parseFloat(raw);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const onScroll = () => setScrolled(window.scrollY > getBannerHeight() + 20);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -29,18 +35,20 @@ export function Navbar() {
     <>
       <style dangerouslySetInnerHTML={{ __html: `
         .marketing-theme .floating-navbar {
-          background: transparent !important;
-          border-color: transparent !important;
-          box-shadow: none !important;
+          background: rgba(255, 255, 255, 0.88) !important;
+          border: 1px solid rgba(11, 12, 16, 0.07) !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 18px 40px -8px rgba(11, 12, 16, 0.22), 0 4px 12px rgba(11, 12, 16, 0.06) !important;
+          backdrop-filter: blur(20px) !important;
+          -webkit-backdrop-filter: blur(20px) !important;
         }
         .marketing-theme .nav-wrapper-floating.scrolled .floating-navbar {
-          background: rgba(255, 255, 255, 0.45) !important;
-          border-color: rgba(0, 82, 255, 0.08) !important;
-          box-shadow: 0 20px 40px rgba(0, 82, 255, 0.03) !important;
-          backdrop-filter: blur(16px) !important;
-          -webkit-backdrop-filter: blur(16px) !important;
+          background: rgba(255, 255, 255, 0.96) !important;
+          border-color: rgba(0, 82, 255, 0.12) !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 22px 48px -8px rgba(11, 12, 16, 0.26), 0 4px 14px rgba(11, 12, 16, 0.08) !important;
+          backdrop-filter: blur(20px) !important;
+          -webkit-backdrop-filter: blur(20px) !important;
         }
-        
+
         /* Ensure navigation links look premium under marketing theme */
         .marketing-theme .floating-logo {
           color: var(--bright) !important;
@@ -49,11 +57,12 @@ export function Navbar() {
           color: var(--bright) !important;
         }
         .marketing-theme .floating-nav-links-pill {
-          background: rgba(0, 0, 0, 0.03) !important;
-          border: 1px solid rgba(0, 0, 0, 0.04) !important;
+          background: rgba(11, 12, 16, 0.035) !important;
+          border: 1px solid rgba(11, 12, 16, 0.07) !important;
         }
         .marketing-theme .floating-nav-link {
           color: var(--muted) !important;
+          font-weight: 600 !important;
         }
         .marketing-theme .floating-nav-link:hover {
           color: var(--bright) !important;

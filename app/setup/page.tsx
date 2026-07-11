@@ -158,6 +158,8 @@ export default function SetupPage() {
                             "Benefits:",
                             ...(parsedProduct.benefits || []).map((b: string) => `- ${b}`),
                         ].join("\n"),
+                        riskLevel: parsedProduct.riskLevel,
+                        valueProp: parsedProduct.valueProp,
                     }),
                 });
 
@@ -203,7 +205,9 @@ export default function SetupPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    brief: `${product.name} - ${product.category}\nBenefits:\n${product.benefits.join("\n")}`
+                    brief: `${product.name} - ${product.category}\nBenefits:\n${product.benefits.join("\n")}`,
+                    riskLevel: product.riskLevel,
+                    valueProp: product.valueProp,
                 }),
             });
             if (res.ok) {

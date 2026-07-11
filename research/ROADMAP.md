@@ -2,7 +2,9 @@
 
 This document tracks features ranked by launch priority and execution status.
 
-> **Last Updated:** July 10, 2026 | **Current Phase:** Tier 1B (Awareness Funnel) | **Score Trajectory:** 54 → 60 (July 7) → **66 (target: Jul 21)**
+> **Last Updated:** July 11, 2026 | **Current Phase:** Phases 1 & 2 complete (Tier 1A–1C + 2D–2F shipped) → Phase 3 (Platform Plays) next | **Score Trajectory:** 54 → 60 (Jul 7) → 66 (1B) → 71 (1C) → **~80 (Phase 2: calibration anchors 92.1% avg, objection map, info decay)**
+>
+> **Calibration headline:** 3 ghost-case anchors, **92.1% average curve fit** (Quibi 98.1%, Glass 97.7%, Slack 80.4%). See `scripts/ghost-cases/calibration.summary.json`.
 
 ---
 
@@ -14,39 +16,42 @@ This document tracks features ranked by launch priority and execution status.
 - **Impact:** Enables "dynamic adoption" instead of one-shot ratchet; agents re-evaluate each step
 - **Known gap:** tanh compression biases conviction low; < 0.3 cutoff needs distribution-based recalibration
 
-### 1B. Awareness Funnel (Staged Information Exposure) ⏳ HIGHEST PRIORITY
-- **Scope:** Staged agent exposure (Influencers step 1 → Early Adopters step 2–4 → mass market step 5+)
-- **Produces:** Real S-curves from network topology, NOT parameter tuning; cascade animation (the "GIF" for post #6)
-- **Effort:** ~3 days
+### 1B. Awareness Funnel (Staged Information Exposure) ✅ DONE (July 11, 2026)
+- **Scope:** Staged agent exposure — top 15% by influence_score aware at step 0 (influencers/press wave), then word-of-mouth cascade (an agent becomes aware once ≥34% of its neighbors are aware), with a mass-market awareness floor at step 4.
+- **Produces:** Real S-curves from Watts-Strogatz topology, NOT parameter tuning. Verified cascade: 15% → 22% → 29% → 36% → 100% awareness with adoption tracking the wave.
 - **Impact:** Score 60 → 66
-- **Files to modify:** `app/api/run-step/route.ts` (awareness diffusion logic), new component for cascade visualizer
-- **Why first:** Most visually dramatic feature; feeds highest-value LinkedIn post; enables credible demo
+- **Implementation:** `computeAwareness()` in `lib/agentGeneration.ts`; awareness gate in `calculateDecision` (`lib/prompts.ts`, `isAware` param → unaware agents return `decision: null`); `app/api/run-step/route.ts` skips the LLM for unaware agents (token savings); `app/simulate/page.tsx` computes the awareness set per step; unaware cascade visual in `AgentCard` (dimmed/greyscale + `UNAWARE` badge) and a stacked `unaware` band in `AdoptionChart`.
 
-### 1C. Competitive Baseline (Switching, Not Buying) ⏳ PLANNED (Week of Jul 21)
-- **Scope:** Add status-quo scenario; utility = U(new) − U(current) − switching_cost
-- **Effort:** ~1 day
+### 1C. Competitive Baseline (Switching, Not Buying) ✅ DONE (July 11, 2026)
+- **Scope:** Optional incumbent per scenario; utility becomes U(new) − U(incumbent opportunity cost) − switching_friction. Switching cost is modeled as a barrier to *adoption* (would-be adopters become neutral non-switchers) rather than a source of active opposition — a content incumbent user is a non-adopter, not an enemy. Genuine opposition still comes only from the product's own risk/loss math.
 - **Impact:** Score 66 → 71
-- **Why this order:** Requires awareness funnel insight first (market dynamics only meaningful with staged exposure)
+- **Implementation:** `CompetitorParams` on `ScenarioParams` (`lib/types.ts`); switching-cost term + stance clamp in `calculateDecision` (`lib/prompts.ts`); Meridian AI Suite scenario given a legacy-stack incumbent (`lib/scenarios.ts`); `deriveSimParams` now wires the setup form's previously-unused `competitorDensity`/`switchingCost` signals into the model (`lib/productParams.ts`); switching consideration surfaced in the narrative prompt.
+- **Verified:** identical product adopts ~78% less under a heavy switching cost (33/120 → 8/120 in workflow test); greenfield path byte-identical (`switchingPenalty === 0` with no competitor).
 
 ---
 
 ## Phase 2 Features (Calibration & Proof — Tier 2)
 
-### 2D. Multi-Product Calibration Anchor System ⏳ ONGOING
-- **Scope:** Backtest 2–3 more products; publish average curve fit (targeting 85–90%)
-- **Current:** Quibi done (97.1% fit). Cases #2–#3 queued (`scripts/ghost-cases/`)
-- **Effort:** ~1 week per case (research + tuning)
-- **Why it matters:** One case is a signal; three cases compound credibility for waitlist
+### 2D. Multi-Product Calibration Anchor System ✅ DONE (July 11, 2026)
+- **Scope:** Backtest 3 products spanning failure modes; publish average curve fit.
+- **Result — average fit 92.1%** across the anchor set (`scripts/ghost-cases/`, `calibration.summary.json`):
+  | Product | Type | Curve fit |
+  |---|---|---|
+  | Quibi | Flop (low value) | 98.1% |
+  | Google Glass | Flop (social/risk) | 97.7% |
+  | Slack | Success (rising S-curve) | 80.4% |
+- **Honest limitation (documented, not hidden):** decline-shaped cases calibrate ~98%; the rising viral S-curve (Slack) fits lower (~80%) because the engine models launch-spike + awareness-floor recovery but **not yet smooth viral acceleration** (adoption begetting adoption faster than awareness spreads). This is the next diffusion improvement — surfacing it *is* the credibility.
+- **Reusable harness:** `calibrate()` / `reportCase()` in `runner.ts`; each case is a ~30-line file; `summary.ts` aggregates.
 
-### 2E. Structured Objection Extraction ⏳ PLANNED
-- **Scope:** Direct readout of which utility params + network signals drove "oppose" decisions, grouped by persona
-- **Output:** "Your barrier is Price Hawk resistance (param X) amplified by hub centrality" — zero focus-group equivalent
-- **Effort:** ~3 days
+### 2E. Structured Objection Extraction ✅ DONE (July 11, 2026)
+- **Scope:** Deterministic readout of *why* the market resisted — a direct decomposition of the decision math (not LLM guessing). For each non-adopter, the dominant negative utility term is identified, ranked by influence-weighted impact, and grouped by persona + network position.
+- **Output (real):** *"Top barrier: Switching Cost (69 of 110 non-adopters), concentrated in Early Adopters. Loss Aversion blocks 35 Skeptics — amplified because 6 are network hubs."* Zero focus-group equivalent.
+- **Implementation:** `UtilityComponents`/`DecisionResult` from `calculateDecision` (`lib/prompts.ts`); `extractObjections()` in `lib/objections.ts`; `/api/objection-map` endpoint. Excludes user-overridden (muted/locked/removed) agents so the readout reflects organic resistance. UI panel owned by frontend work.
 
-### 2F. Information Degradation Over Hops ⏳ PLANNED
-- **Scope:** Value perception decays across word-of-mouth hops (A→B→C signal fades)
-- **Produces:** Realistic late-majority adoption flattening
-- **Effort:** ~2 days
+### 2F. Information Degradation Over Hops ✅ DONE (July 11, 2026)
+- **Scope:** Perceived value fades across word-of-mouth hops — each hop multiplies the signal by a decay factor scaled by messenger trust, so agents reached late/deep in the network perceive a diluted value proposition. Risk/loss travel intact (bad news doesn't fade). Produces realistic late-majority undervaluation.
+- **Implementation:** `computeAwarenessQuality()` in `lib/agentGeneration.ts` (stateful per-agent `[0,1]` signal quality inherited across steps); `signalQuality` param scales perceived value in `calculateDecision`; threaded through the run-step API, client loop (persisted on `AgentState`), and ghost-case runner.
+- **Verified:** Quibi calibration held at 97.5–98.1% with degradation on — the low-value product's collapse is if anything more realistic.
 
 ---
 

@@ -209,9 +209,8 @@ export default function GlobalNetworkGraph({
                 position: "relative",
                 overflow: "hidden",
                 background: "var(--graph-bg)",
-                border: "1px solid var(--border-bright)",
-                borderRadius: "6px",
-                boxShadow: "inset 0 0 20px rgba(0, 0, 0, 0.05), 0 4px 20px rgba(0, 0, 0, 0.08)"
+                border: "1px solid var(--border)",
+                borderRadius: "14px"
             }}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -221,20 +220,20 @@ export default function GlobalNetworkGraph({
             <style>
                 {`
                     @keyframes pulse-support {
-                        0% { filter: drop-shadow(0 0 2px var(--support)); opacity: 0.85; }
-                        50% { filter: drop-shadow(0 0 14px var(--support)); opacity: 1; }
-                        100% { filter: drop-shadow(0 0 2px var(--support)); opacity: 0.85; }
+                        0% { filter: drop-shadow(0 0 0px var(--support)); }
+                        50% { filter: drop-shadow(0 0 5px var(--support)); }
+                        100% { filter: drop-shadow(0 0 0px var(--support)); }
                     }
                     @keyframes pulse-oppose {
-                        0% { filter: drop-shadow(0 0 2px var(--oppose)); opacity: 0.85; }
-                        50% { filter: drop-shadow(0 0 14px var(--oppose)); opacity: 1; }
-                        100% { filter: drop-shadow(0 0 2px var(--oppose)); opacity: 0.85; }
+                        0% { filter: drop-shadow(0 0 0px var(--oppose)); }
+                        50% { filter: drop-shadow(0 0 5px var(--oppose)); }
+                        100% { filter: drop-shadow(0 0 0px var(--oppose)); }
                     }
                     .node-support circle.main-circle {
-                        animation: pulse-support 2.5s infinite ease-in-out;
+                        animation: pulse-support 3.2s infinite ease-in-out;
                     }
                     .node-oppose circle.main-circle {
-                        animation: pulse-oppose 2.5s infinite ease-in-out;
+                        animation: pulse-oppose 3.2s infinite ease-in-out;
                     }
                     @keyframes spin-clockwise {
                         from { transform: rotate(0deg); }
@@ -401,25 +400,23 @@ export default function GlobalNetworkGraph({
                                             </g>
                                         )}
 
-                                        {/* Segmented HUD Ring for high-influence agents */}
+                                        {/* Quiet ring marking high-influence agents */}
                                         {node.agent.influence_score > 0.5 && (
                                             <circle
-                                                r={radius + 5.5}
+                                                r={radius + 4.5}
                                                 fill="none"
                                                 stroke={color}
-                                                strokeWidth="0.8"
-                                                strokeDasharray="4 6"
-                                                className="spin-ring-rev"
-                                                opacity={0.4}
+                                                strokeWidth="1"
+                                                opacity={0.28}
                                             />
                                         )}
 
-                                        {/* Core Emissive Ambient Glow */}
+                                        {/* Soft ambient halo */}
                                         {state?.decision && (
                                             <circle
-                                                r={radius + 4}
+                                                r={radius + 3}
                                                 fill={color}
-                                                opacity={0.2}
+                                                opacity={0.1}
                                                 filter="url(#hudBloom)"
                                             />
                                         )}
@@ -462,115 +459,58 @@ export default function GlobalNetworkGraph({
                 </svg>
             )}
 
-            {/* Absolute Centered Targeting Crosshairs overlay */}
+            {/* Viewport info (bottom-left) — quiet, factual */}
             <div style={{
                 position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: 140,
-                height: 140,
-                border: "1px dashed var(--border)",
-                opacity: 0.4,
-                borderRadius: "50%",
-                pointerEvents: "none",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 10
-            }}>
-                <div style={{ width: 12, height: 1, background: "var(--border-bright)" }} />
-                <div style={{ height: 12, width: 1, background: "var(--border-bright)", position: "absolute" }} />
-            </div>
-
-            {/* TACTICAL OVERLAY 1: Telemetry Panel (Bottom-Left) */}
-            <div style={{
-                position: "absolute",
-                bottom: 16,
-                left: 16,
-                background: "var(--panel)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid var(--border-bright)",
-                borderRadius: "4px",
-                padding: "10px 14px",
-                fontFamily: "var(--mono)",
-                fontSize: 10,
+                bottom: 14,
+                left: 14,
+                background: "rgba(255,255,255,0.92)",
+                border: "1px solid var(--border)",
+                borderRadius: "10px",
+                padding: "9px 13px",
+                fontFamily: "var(--sans)",
+                fontSize: 11.5,
                 color: "var(--muted)",
                 display: "flex",
-                flexDirection: "column",
-                gap: 5,
+                gap: 18,
                 zIndex: 15,
-                boxShadow: "0 10px 25px rgba(0,0,0,0.12)"
             }}>
-                <div style={{ color: "var(--orange)", fontWeight: 700, borderBottom: "1px solid var(--border-bright)", paddingBottom: 4, marginBottom: 4, letterSpacing: "0.12em" }}>// TELEMETRY_SYSTEM</div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
-                    <span>VIEW_SCALE:</span>
-                    <span style={{ color: "var(--bright)" }}>{(zoom * 100).toFixed(0)}%</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
-                    <span>DENSITY:</span>
-                    <span style={{ color: "var(--bright)" }}>{stats.activeLinks} LINKS</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
-                    <span>ADOPTION_R:</span>
-                    <span style={{ color: "var(--support)", fontWeight: 700 }}>{stats.adoptionPct}%</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
-                    <span>AVG_INFLUENCE:</span>
-                    <span style={{ color: "var(--bright)" }}>{stats.avgInfluence}</span>
-                </div>
+                <span><span style={{ color: "var(--bright)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{stats.activeLinks}</span> connections</span>
+                <span>avg influence <span style={{ color: "var(--bright)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{stats.avgInfluence}</span></span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>{(zoom * 100).toFixed(0)}%</span>
             </div>
 
-            {/* TACTICAL OVERLAY 2: Navigation & Radar Map Widget (Top-Right) */}
+            {/* Recenter (top-right) */}
             <div style={{
                 position: "absolute",
-                top: 16,
-                right: 16,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-end",
-                gap: 10,
+                top: 14,
+                right: 14,
                 zIndex: 15
             }}>
                 <button
                     onClick={resetZoomPan}
                     style={{
-                        background: "var(--panel)",
-                        backdropFilter: "blur(12px)",
-                        border: "1px solid var(--border-bright)",
-                        borderRadius: "4px",
-                        color: "var(--bright)",
-                        fontFamily: "var(--mono)",
-                        fontSize: 9,
-                        padding: "5px 10px",
+                        background: "rgba(255,255,255,0.92)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "9px",
+                        color: "var(--text)",
+                        fontFamily: "var(--sans)",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        padding: "7px 12px",
                         cursor: "pointer",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        boxShadow: "0 5px 15px rgba(0,0,0,0.08)"
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
                     }}
+                    title="Recenter view (R)"
                 >
-                    Recenter Camera [R]
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                    </svg>
+                    Recenter
                 </button>
-
-                {/* Holographic Circular Radar */}
-                <div style={{
-                    width: 72,
-                    height: 72,
-                    border: "1.5px solid var(--border-bright)",
-                    borderRadius: "50%",
-                    position: "relative",
-                    background: "var(--panel)",
-                    backdropFilter: "blur(4px)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 5px 15px rgba(0,0,0,0.05)"
-                }}>
-                    <div className="spin-ring" style={{ width: "90%", height: "90%", border: "0.5px dashed var(--border-bright)", borderRadius: "50%" }} />
-                    <div style={{ position: "absolute", width: "100%", height: 1, background: "var(--border-bright)", opacity: 0.5 }} />
-                    <div style={{ position: "absolute", height: "100%", width: 1, background: "var(--border-bright)", opacity: 0.5 }} />
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--support)", opacity: 0.8, filter: "drop-shadow(0 0 5px var(--support))", position: "absolute" }} />
-                </div>
             </div>
 
             {/* Standard Legends overlay (Bottom-Right) */}

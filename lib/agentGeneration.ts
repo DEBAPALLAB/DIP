@@ -378,6 +378,132 @@ export function computeInfluenceScores(
     return degree.map((d) => d / maxDeg);
 }
 
+// ─── Awareness Funnel (Tier 1B) ────────────────────────────────────────────────
+// Real adoption starts with zero awareness and builds through the network —
+// influencers hear first, mass market hears last. This replaces the old
+// simultaneous full-information reveal (every agent deciding on step 1) with a
+// staged exposure driven by the Watts-Strogatz topology, so the resulting
+// S-curve is a genuine emergent property of the network, not a parameter knob.
+//
+// Rule per step:
+//   step 0: top `awarenessSeedPct` agents by influence_score are aware (the
+//           influencer/press wave — they hear about it first, period).
+//   step N>0: an agent becomes aware if either (a) at least `awarenessNeighborThreshold`
+//           fraction of its neighbors are already aware (word-of-mouth cascade), or
+//           (b) `step >= massMarketStep`, a floor so mass-market/laggard segments
+//           eventually hear about it even with zero informed neighbors (ads, press,
+//           category-level awareness — not everyone needs a friend to tell them).
+export function computeAwareness(
+    agents: Agent[],
+    edges: [number, number][],
+    step: number,
+    priorAwareness: Set<number>,
+    opts: { awarenessSeedPct?: number; awarenessNeighborThreshold?: number; massMarketStep?: number } = {}
+): Set<number> {
+    const {
+        awarenessSeedPct = 0.15,
+        awarenessNeighborThreshold = 0.34,
+        massMarketStep = 4,
+    } = opts;
+
+    if (step === 0) {
+        const seedCount = Math.max(1, Math.round(agents.length * awarenessSeedPct));
+        const byInfluence = [...agents].sort((a, b) => (b.influence_score ?? 0) - (a.influence_score ?? 0));
+        return new Set(byInfluence.slice(0, seedCount).map((a) => a.id));
+    }
+
+    const neighborsOf = new Map<number, number[]>();
+    for (const [a, b] of edges) {
+        if (!neighborsOf.has(a)) neighborsOf.set(a, []);
+        if (!neighborsOf.has(b)) neighborsOf.set(b, []);
+        neighborsOf.get(a)!.push(b);
+        neighborsOf.get(b)!.push(a);
+    }
+
+    const next = new Set(priorAwareness);
+    if (step >= massMarketStep) {
+        // Mass-market floor: everyone left is now reachable via ads/press/category
+        // awareness, independent of their specific neighbors.
+        for (const agent of agents) next.add(agent.id);
+        return next;
+    }
+
+    for (const agent of agents) {
+        if (next.has(agent.id)) continue;
+        const neighbors = neighborsOf.get(agent.id) ?? [];
+        if (neighbors.length === 0) continue;
+        const awareNeighbors = neighbors.filter((nid) => priorAwareness.has(nid)).length;
+        if (awareNeighbors / neighbors.length >= awarenessNeighborThreshold) {
+            next.add(agent.id);
+        }
+    }
+
+    return next;
+}
+
+// ─── Information Degradation Over Hops (Tier 2F) ────────────────────────────────
+// Awareness tells you WHO has heard of the product; signal quality tells you HOW
+// FAITHFULLY the value proposition reached them. Direct exposure (seed/press) is
+// pristine (1.0). Word-of-mouth distorts and fades: each hop multiplies the signal
+// by a decay factor, and a low-trust messenger conveys a weaker signal than a
+// trusted one. Agents reached late and deep in the network therefore perceive a
+// diluted value — which is exactly why real late-majority adoption undervalues and
+// mass-market curves flatten. `calculateDecision` scales scenario.value by this.
+//
+// Stateful: pass the running quality map back in each step. Seed agents are pinned
+// to 1.0. Newly-aware agents inherit the BEST incoming signal from an already-aware,
+// higher-quality neighbor (people relay the most compelling pitch they heard),
+// decayed by hop + trust. Returns a NEW map (does not mutate the input).
+export function computeAwarenessQuality(
+    agents: Agent[],
+    edges: [number, number][],
+    priorAware: Set<number>,       // who was aware BEFORE this step
+    nextAware: Set<number>,        // who is aware AFTER this step's diffusion
+    priorQuality: Record<number, number>,
+    seedIds: Set<number>,
+    opts: { hopDecay?: number; massMarketFloorQuality?: number; trustFloor?: number } = {}
+): Record<number, number> {
+    const { hopDecay = 0.72, massMarketFloorQuality = 0.35, trustFloor = 0.5 } = opts;
+
+    const neighborsOf = new Map<number, number[]>();
+    for (const [a, b] of edges) {
+        if (!neighborsOf.has(a)) neighborsOf.set(a, []);
+        if (!neighborsOf.has(b)) neighborsOf.set(b, []);
+        neighborsOf.get(a)!.push(b);
+        neighborsOf.get(b)!.push(a);
+    }
+    const agentById = new Map(agents.map((a) => [a.id, a]));
+
+    const quality: Record<number, number> = { ...priorQuality };
+
+    for (const agent of agents) {
+        // Seed cohort saw it directly — always pristine.
+        if (seedIds.has(agent.id)) { quality[agent.id] = 1; continue; }
+        // Already had a signal from a previous step — keep the strongest they've heard.
+        if (priorAware.has(agent.id) && typeof quality[agent.id] === "number") continue;
+        // Not aware yet — no signal.
+        if (!nextAware.has(agent.id)) continue;
+
+        // Newly aware this step. Find the best signal among neighbors who were already
+        // aware (i.e. the people who could have told them), decayed by that messenger's
+        // trustworthiness. tanh/floor keeps a low-trust messenger from zeroing it out.
+        const neighbors = neighborsOf.get(agent.id) ?? [];
+        let best = 0;
+        for (const nid of neighbors) {
+            if (!priorAware.has(nid)) continue;
+            const nbrQuality = quality[nid] ?? (seedIds.has(nid) ? 1 : 0);
+            const nbr = agentById.get(nid);
+            const messengerTrust = trustFloor + (1 - trustFloor) * (nbr?.trust ?? 0.5);
+            best = Math.max(best, nbrQuality * hopDecay * messengerTrust);
+        }
+        // If nobody informed them (reached via the mass-market floor / ads, not a peer),
+        // they get a generic low-fidelity signal rather than nothing.
+        quality[agent.id] = best > 0 ? best : massMarketFloorQuality;
+    }
+
+    return quality;
+}
+
 // ─── Main generateAgents function ─────────────────────────────────────────────
 
 export async function generateAgents(count: number, providedPool?: GSSRespondent[]): Promise<Agent[]> {

@@ -5,13 +5,16 @@ import { useRouter, usePathname } from "next/navigation";
 import { SCENARIOS, getScenario } from "@/lib/scenarios";
 import { apiFetch } from "@/lib/apiClient";
 import { buildSnapshot } from "@/lib/simulation";
-import { generateAgents, buildWattsStrogatz } from "@/lib/agentGeneration";
+import { generateAgents, buildWattsStrogatz, computeAwareness, computeAwarenessQuality } from "@/lib/agentGeneration";
 import { useSimulation } from "@/lib/SimulationContext";
 import { useAuth, useEntitlements, TIER_LIMITS } from "@/lib/AuthContext";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import InterventionPanel from "@/components/dashboard/InterventionPanel";
 import LiveSignalTicker from "@/components/dashboard/LiveSignalTicker";
+import VerdictBar from "@/components/dashboard/VerdictBar";
+import LeversPanel from "@/components/dashboard/LeversPanel";
+import OverallStats from "@/components/dashboard/OverallStats";
 
 import type {
     Agent,
@@ -27,6 +30,7 @@ import type {
     DecisionType,
     PersonaType,
     Scenario,
+    Intervention,
 } from "@/lib/types";
 
 import TopBar from "@/components/dashboard/TopBar";
@@ -38,7 +42,6 @@ import PersonaBreakdown from "@/components/dashboard/PersonaBreakdown";
 import ScenarioPicker from "@/components/dashboard/ScenarioPicker";
 import StepLog from "@/components/dashboard/StepLog";
 import ProductBrief from "@/components/dashboard/ProductBrief";
-import ConfigScreen from "@/components/dashboard/ConfigScreen";
 import CustomScenarioForm, { loadSavedCustomScenario } from "@/components/dashboard/CustomScenarioForm";
 import AgentListFilter from "@/components/dashboard/AgentListFilter";
 import { deriveSimParams } from "@/lib/productParams";
@@ -300,11 +303,51 @@ export default function SimulatePage() {
         };
     }, [isResizingWorkbench]);
 
-    // Derived scenario from context
-    const scenario = useMemo(
-        () => customScenario ?? simCtx.scenario ?? getScenario(scenarioId),
-        [customScenario, simCtx.scenario, scenarioId]
-    );
+    // Live price lever: a perceived-value delta the user applies via the price slider.
+    // Folded into the scenario's `value` param so the deterministic engine (and the
+    // API path, via customScenario) react to it on the next step.
+    const [priceValueDelta, setPriceValueDelta] = useState(0);
+
+    // Marketing push: 0 = targeted (influencer-first, slow WoM), 1 = broad (wide launch
+    // reach, ads saturate sooner). Maps to the awareness-funnel options.
+    const [marketingPush, setMarketingPush] = useState<"targeted" | "broad">("targeted");
+    const [controlsOpen, setControlsOpen] = useState(false);
+
+    // Close the controls popover on outside click / Escape.
+    useEffect(() => {
+        if (!controlsOpen) return;
+        const onPointer = (e: MouseEvent) => {
+            const t = e.target as HTMLElement;
+            if (!t.closest(".controls-popover") && !t.closest(".v-controls")) setControlsOpen(false);
+        };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setControlsOpen(false);
+        };
+        document.addEventListener("mousedown", onPointer);
+        document.addEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("mousedown", onPointer);
+            document.removeEventListener("keydown", onKey);
+        };
+    }, [controlsOpen]);
+    const awarenessOpts = useMemo(() => {
+        return marketingPush === "broad"
+            ? { awarenessSeedPct: 0.3, awarenessNeighborThreshold: 0.25, massMarketStep: 3 }
+            : { awarenessSeedPct: 0.1, awarenessNeighborThreshold: 0.4, massMarketStep: 5 };
+    }, [marketingPush]);
+
+    // Derived scenario from context, with any live price adjustment folded in.
+    const scenario = useMemo(() => {
+        const base = customScenario ?? simCtx.scenario ?? getScenario(scenarioId);
+        if (priceValueDelta === 0) return base;
+        const adjustedValue = Math.min(0.99, Math.max(0.01, base.params.value + priceValueDelta));
+        // Mark as custom so run-step carries these params instead of a stock lookup.
+        return {
+            ...base,
+            id: "custom",
+            params: { ...base.params, value: adjustedValue },
+        };
+    }, [customScenario, simCtx.scenario, scenarioId, priceValueDelta]);
 
     // Keep the local selector state aligned with the hydrated/global scenario.
     useEffect(() => {
@@ -504,6 +547,97 @@ export default function SimulatePage() {
         });
     }, [step, states, simCtx]);
 
+    // ─── Live interventions: reach into the running network and act on a node ────
+    // These mutate the current agent state; the next step reads the flags
+    // (muted / influenceMult / locked / removed) and honors them.
+    const handleIntervention = useCallback((id: number, action: Intervention) => {
+        const agent = agents.find((a) => a.id === id);
+        const prev = states[id] ?? { decision: null, reasoning: null, step: null, pending: false };
+        let next: AgentState;
+        let tickerMsg = "";
+
+        switch (action) {
+            case "convert": {
+                // Enforce the scarce advocate budget (unless this agent is already a champion).
+                const budget = Math.max(3, Math.round(agents.length * 0.1));
+                const used = agents.filter((a) => states[a.id]?.locked && states[a.id]?.decision === "support").length;
+                const alreadyChampion = prev.locked && prev.decision === "support";
+                if (!alreadyChampion && used >= budget) {
+                    simCtx.addTickerMsg(`ADVOCATE_BUDGET_EXHAUSTED_${used}/${budget}`, "alert");
+                    return;
+                }
+                next = { ...prev, decision: "support", reasoning: "Converted to champion (advocate budget)", locked: true, muted: false, removed: false, isSeeded: true };
+                tickerMsg = `OVERRIDE: ${agent?.name ?? `#${id}`}_FORCED_TO_SUPPORT`;
+                break;
+            }
+            case "silence":
+                next = { ...prev, decision: "neutral", reasoning: "Silenced — influence suppressed (manual override)", muted: true, locked: true, influenceMult: 0, removed: false };
+                tickerMsg = `OVERRIDE: ${agent?.name ?? `#${id}`}_SILENCED`;
+                break;
+            case "amplify":
+                next = { ...prev, influenceMult: 2.5, muted: false, removed: false };
+                tickerMsg = `OVERRIDE: ${agent?.name ?? `#${id}`}_INFLUENCE_AMPLIFIED_2.5x`;
+                break;
+            case "remove":
+                next = { ...prev, decision: null, reasoning: null, removed: true, muted: true, locked: true, influenceMult: 0 };
+                tickerMsg = `OVERRIDE: ${agent?.name ?? `#${id}`}_REMOVED_FROM_NETWORK`;
+                break;
+            case "reset":
+            default:
+                next = { ...prev, muted: false, locked: false, removed: false, influenceMult: undefined, isSeeded: false };
+                tickerMsg = `OVERRIDE_CLEARED: ${agent?.name ?? `#${id}`}_RESTORED`;
+                break;
+        }
+
+        simCtx.setAgentStates({ ...states, [id]: next });
+        simCtx.addTickerMsg(tickerMsg, action === "reset" ? "info" : "alert");
+    }, [agents, states, simCtx]);
+
+    // ─── Advocate (champion) budget ───
+    // A scarce pool of conversions. "Used" = agents the user has locked to support.
+    const seedBudget = useMemo(() => Math.max(3, Math.round(agents.length * 0.1)), [agents.length]);
+    const seedsUsed = useMemo(
+        () => agents.filter((a) => states[a.id]?.locked && states[a.id]?.decision === "support").length,
+        [agents, states]
+    );
+
+    // Auto-place remaining advocates on the highest-influence agents not already champions.
+    const handleAutoSeed = useCallback(() => {
+        const remaining = seedBudget - seedsUsed;
+        if (remaining <= 0) return;
+        const candidates = [...agents]
+            .filter((a) => !(states[a.id]?.locked && states[a.id]?.decision === "support") && !states[a.id]?.removed)
+            .sort((a, b) => (b.influence_score ?? 0) - (a.influence_score ?? 0))
+            .slice(0, remaining);
+        if (candidates.length === 0) return;
+
+        const next = { ...states };
+        for (const a of candidates) {
+            next[a.id] = {
+                ...next[a.id],
+                decision: "support",
+                reasoning: "Converted to champion (advocate budget)",
+                locked: true,
+                muted: false,
+                removed: false,
+                isSeeded: true,
+            };
+        }
+        simCtx.setAgentStates(next);
+        simCtx.addTickerMsg(`AUTO_SEEDED_${candidates.length}_TOP_INFLUENCERS`, "success");
+    }, [agents, states, seedBudget, seedsUsed, simCtx]);
+
+    // ─── Apply a price change from the price lever ───
+    // Persists the new price string on the product (for the brief/prompt) and stores
+    // the perceived-value delta that the scenario memo folds into the run.
+    const handleApplyPrice = useCallback((newPriceText: string, valueDelta: number) => {
+        setPriceValueDelta(valueDelta);
+        if (simCtx.product && newPriceText !== simCtx.product.price) {
+            simCtx.updateProduct({ ...simCtx.product, price: newPriceText });
+        }
+        simCtx.addTickerMsg(`PRICE_SET_${newPriceText.replace(/\s+/g, "_").toUpperCase()}`, "info");
+    }, [simCtx]);
+
     // ─── Run one simulation step ───────────────────────────────────────────────
 
     const runStep = useCallback(
@@ -514,14 +648,39 @@ export default function SimulatePage() {
             const newStates = { ...currentStates };
             const batchSize = getBatchSize(agents.length);
 
-            // Mark everyone as pending initially
+            // ─── Live interventions ───
+            // Agents the user has locked (converted / silenced / removed) keep their
+            // forced state — the engine must not recompute or overwrite them. Muted
+            // and removed agents also exert no outward influence on their neighbors.
+            const isLocked = (id: number) => currentStates[id]?.locked === true || currentStates[id]?.removed === true;
+            const isMuted = (id: number) => currentStates[id]?.muted === true || currentStates[id]?.removed === true;
+            // Decision a neighbor *broadcasts*: muted/removed nodes read as neutral (no pull).
+            const broadcastDecision = (id: number): DecisionType =>
+                isMuted(id) ? "neutral" : (currentStates[id]?.decision ?? "neutral");
+            // An effective copy of a neighbor agent with intervention-adjusted influence.
+            const effectiveAgent = (ag: Agent): Agent => {
+                const st = currentStates[ag.id];
+                if (!st) return ag;
+                if (st.removed || st.muted) return { ...ag, influence_score: 0 };
+                if (typeof st.influenceMult === "number") return { ...ag, influence_score: ag.influence_score * st.influenceMult };
+                return ag;
+            };
+
+            // Only non-locked agents are (re)evaluated this step.
+            const activeAgents = agents.filter(a => !isLocked(a.id));
+
+            // Mark active agents as pending; locked agents stay exactly as the user set them.
             for (const agent of agents) {
-                newStates[agent.id] = { ...newStates[agent.id], pending: true };
+                if (isLocked(agent.id)) {
+                    newStates[agent.id] = { ...newStates[agent.id], pending: false };
+                } else {
+                    newStates[agent.id] = { ...newStates[agent.id], pending: true };
+                }
             }
             simCtx.setAgentStates({ ...newStates });
 
             const neighborSnapshot = { ...currentStates };
-            const batches = chunk(agents, batchSize);
+            const batches = chunk(activeAgents, batchSize);
 
             // Create a fresh AbortController for this step
             if (controllerRef.current) controllerRef.current.abort();
@@ -531,10 +690,30 @@ export default function SimulatePage() {
             // Calculate previous params for Delta-Aware logic
             const previousParams = simCtx.previousProduct ? deriveSimParams(simCtx.previousProduct) : undefined;
 
+            // ─── Awareness Funnel (Tier 1B) ───
+            // An agent already holding a decision from a prior step is, by definition,
+            // aware. New awareness this step is computed from network diffusion off
+            // that prior set (influencers first, word-of-mouth cascade, mass-market floor).
+            const priorAwareness = new Set(
+                agents.filter(a => currentStates[a.id]?.decision !== null && currentStates[a.id]?.decision !== undefined).map(a => a.id)
+            );
+            const awarenessSet = computeAwareness(agents, edges, currentStep, priorAwareness, awarenessOpts);
+
+            // ─── Information Degradation (Tier 2F) ───
+            // Signal quality is inherited from the state carried between steps. Seed
+            // agents (and the launch cohort) are pristine; agents reached by word-of-mouth
+            // perceive a value signal faded by hop distance + messenger trust.
+            const seedIdSet = new Set(agents.filter(a => currentStates[a.id]?.isSeeded).map(a => a.id));
+            const priorQuality: Record<number, number> = {};
+            for (const a of agents) {
+                if (typeof currentStates[a.id]?.signalQuality === "number") priorQuality[a.id] = currentStates[a.id]!.signalQuality!;
+            }
+            const qualityMap = computeAwarenessQuality(agents, edges, priorAwareness, awarenessSet, priorQuality, seedIdSet);
+
             // ─── Resilient Batch Queue & Fallback Engine ───
             let activeQueue = batches.map((b, idx) => ({ batch: b, originalIndex: idx + 1, attempts: 0 }));
             let doneCount = 0;
-            setProgress({ done: 0, total: agents.length });
+            setProgress({ done: 0, total: activeAgents.length });
             abortRef.current = false; // Reset on start
 
             simCtx.clearTicker();
@@ -556,7 +735,9 @@ export default function SimulatePage() {
 
                         const neighborIds = edges
                             .filter(([a, b]) => a === agent.id || b === agent.id)
-                            .map(([a, b]) => (a === agent.id ? b : a));
+                            .map(([a, b]) => (a === agent.id ? b : a))
+                            // Removed nodes are pulled out of the network — not neighbors anymore.
+                            .filter(nid => !currentStates[nid]?.removed);
 
                         return {
                             agentId: agent.id,
@@ -565,14 +746,19 @@ export default function SimulatePage() {
                                 neighborIds.map(nid => [
                                     nid,
                                     {
-                                        decision: neighborSnapshot[nid]?.decision ?? "neutral",
-                                        reasoning: neighborSnapshot[nid]?.reasoning ?? ""
+                                        // Muted neighbors broadcast as neutral (no influence pull).
+                                        decision: broadcastDecision(nid),
+                                        reasoning: isMuted(nid) ? "" : (neighborSnapshot[nid]?.reasoning ?? "")
                                     }
                                 ])
                             ),
                             neighborAgents: neighborIds
                                 .map(id => agents.find(ag => ag.id === id))
-                                .filter(Boolean) as Agent[]
+                                .filter(Boolean)
+                                // Intervention-adjusted influence (amplified / silenced).
+                                .map(ag => effectiveAgent(ag as Agent)) as Agent[],
+                            isAware: isSeeded || awarenessSet.has(agent.id),
+                            signalQuality: isSeeded ? 1 : (qualityMap[agent.id] ?? 1)
                         };
                     }),
                     scenarioId: scenario.id,
@@ -626,14 +812,15 @@ export default function SimulatePage() {
                             const isSeeded = currentStep === 0 && currentStates[agent.id]?.isSeeded;
                             const neighborIds = edges
                                 .filter(([a, b]) => a === agent.id || b === agent.id)
-                                .map(([a, b]) => (a === agent.id ? b : a));
+                                .map(([a, b]) => (a === agent.id ? b : a))
+                                .filter(nid => !currentStates[nid]?.removed);
 
                             const neighborStateMap: Record<number, AgentState> = Object.fromEntries(
                                 neighborIds.map(nid => [
                                     nid,
                                     {
-                                        decision: neighborSnapshot[nid]?.decision ?? "neutral",
-                                        reasoning: neighborSnapshot[nid]?.reasoning ?? "",
+                                        decision: broadcastDecision(nid),
+                                        reasoning: isMuted(nid) ? "" : (neighborSnapshot[nid]?.reasoning ?? ""),
                                         step: null,
                                         pending: false
                                     }
@@ -642,27 +829,35 @@ export default function SimulatePage() {
 
                             const neighborAgentsList = neighborIds
                                 .map(id => agents.find(ag => ag.id === id))
-                                .filter(Boolean) as Agent[];
+                                .filter(Boolean)
+                                .map(ag => effectiveAgent(ag as Agent)) as Agent[];
+
+                            const isAware = isSeeded || awarenessSet.has(agent.id);
+                            const signalQuality = isSeeded ? 1 : (qualityMap[agent.id] ?? 1);
 
                             const { decision, conviction } = calculateDecision(
                                 agent,
                                 scenario,
                                 neighborStateMap,
                                 neighborAgentsList,
-                                previousParams
+                                previousParams,
+                                isAware,
+                                signalQuality
                             );
 
                             const finalDecision = isSeeded ? "support" as DecisionType : decision;
-                            const finalReasoning = isSeeded
-                                ? "I am supporting this product as an early partner."
-                                : `Cognitive alignment with archetype ${agent.persona} completed successfully.`;
+                            const finalReasoning = !isAware
+                                ? null
+                                : isSeeded
+                                    ? "I am supporting this product as an early partner."
+                                    : `Cognitive alignment with archetype ${agent.persona} completed successfully.`;
 
                             return {
                                 agentId: agent.id,
                                 decision: finalDecision,
                                 conviction: isSeeded ? 1 : conviction,
                                 reasoning: finalReasoning,
-                                model: "local-resilience-fallback"
+                                model: isAware ? "local-resilience-fallback" : undefined
                             };
                         });
 
@@ -683,25 +878,32 @@ export default function SimulatePage() {
                         reasoning: finalReasoning,
                         model: resItem.model,
                         conviction: resItem.conviction,
+                        // Persist the signal quality that reached this agent (Tier 2F) so it
+                        // carries into the next step's degradation computation and survives DB reload.
+                        signalQuality: currentStates[resItem.agentId]?.isSeeded ? 1 : (qualityMap[resItem.agentId] ?? newStates[resItem.agentId]?.signalQuality),
                         step: currentStep,
                         pending: false,
                     };
 
-                    simCtx.addAgentHistoryPoint(resItem.agentId, {
-                        step: currentStep,
-                        decision: finalDecision,
-                        reasoning: finalReasoning
-                    });
+                    // Unaware agents (Tier 1B) have no reasoning to log — they haven't
+                    // been reached by the awareness cascade yet, so skip history/log noise.
+                    if (finalReasoning !== null) {
+                        simCtx.addAgentHistoryPoint(resItem.agentId, {
+                            step: currentStep,
+                            decision: finalDecision,
+                            reasoning: finalReasoning
+                        });
 
-                    simCtx.addLogEntry({
-                        step: currentStep,
-                        agentId: resItem.agentId,
-                        agentName: agent.name,
-                        persona: agent.persona,
-                        decision: finalDecision,
-                        reasoning: finalReasoning,
-                        timestamp: Date.now(),
-                    });
+                        simCtx.addLogEntry({
+                            step: currentStep,
+                            agentId: resItem.agentId,
+                            agentName: agent.name,
+                            persona: agent.persona,
+                            decision: finalDecision,
+                            reasoning: finalReasoning,
+                            timestamp: Date.now(),
+                        });
+                    }
 
                     doneCount++;
                 });
@@ -759,7 +961,7 @@ export default function SimulatePage() {
 
             return newStates;
         },
-        [agents, edges, scenario, simCtx]
+        [agents, edges, scenario, simCtx, awarenessOpts]
     );
 
     const handleRunStep = useCallback(async () => {
@@ -952,6 +1154,17 @@ export default function SimulatePage() {
         selectedAgentId !== null ? agentHistories[selectedAgentId] ?? [] : [];
 
     const isConfigured = phase !== "UNCONFIGURED";
+
+    // `/setup` is the single entry point for configuring a product/scenario now.
+    // If someone lands on `/simulate` directly with no product and no in-flight DB
+    // load, send them there instead of showing a bare population-only config screen.
+    useEffect(() => {
+        if (!simHydrated || isLoadingDb) return;
+        if (dbSimulationId) return; // loading/attached to an existing run
+        if (agents.length > 0) return; // already has a population
+        if (simCtx.product) return; // mid-configuration, product already chosen
+        router.push("/setup");
+    }, [simHydrated, isLoadingDb, dbSimulationId, agents.length, simCtx.product, router]);
 
     // Tab stays active when selectedAgentId changes
 
@@ -1335,14 +1548,48 @@ export default function SimulatePage() {
                         ))}
 
                         {consoleMessages.length === 0 && !isGenerating && !running && (
-                            <div className="chat-wrapper system">
-                                <div className="chat-avatar system">N</div>
-                                <div className="chat-body-group">
-                                    <span className="chat-timestamp">System</span>
-                                    <div className="chat-bubble">
-                                        <strong className="chat-bubble-title">Setup Guidance</strong>
-                                        <p>Population ready. Select a product scenario parameters and execute steps to simulate market adoption behavior.</p>
-                                    </div>
+                            <div className="console-primer">
+                                <div className="primer-lead">
+                                    <span className="primer-eyebrow">Analyst</span>
+                                    <h2 className="primer-title">
+                                        {isConfigured
+                                            ? "Population is ready. Run a step to watch the market decide."
+                                            : "Build a synthetic market, then run it step by step."}
+                                    </h2>
+                                    <p className="primer-body">
+                                        Each step, every agent weighs the product against its neighbours and picks a side.
+                                        Watch the network shift, then tune price or value proposition to change the outcome.
+                                    </p>
+                                </div>
+
+                                <ol className="primer-steps">
+                                    <li>
+                                        <span className="primer-num">1</span>
+                                        <div>
+                                            <strong>Run a step</strong>
+                                            <span>Agents decide; the graph updates live.</span>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span className="primer-num">2</span>
+                                        <div>
+                                            <strong>Read the verdict</strong>
+                                            <span>Adoption %, trend, and who's for or against.</span>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span className="primer-num">3</span>
+                                        <div>
+                                            <strong>Act on the market</strong>
+                                            <span>Click any agent to convert, amplify, or silence them.</span>
+                                        </div>
+                                    </li>
+                                </ol>
+
+                                <div className="primer-hint">
+                                    <kbd>Space</kbd> run step
+                                    <span className="primer-hint-sep" />
+                                    <kbd>⇧ Enter</kbd> auto-run
                                 </div>
                             </div>
                         )}
@@ -1352,17 +1599,17 @@ export default function SimulatePage() {
                                 <div className="chat-avatar system">N</div>
                                 <div className="chat-body-group">
                                     <span className="chat-timestamp">System</span>
-                                    <div className="chat-bubble shimmer-response" style={{ width: "100%", maxWidth: "340px", padding: "16px", borderRadius: "4px", border: "1px solid var(--border-bright)" }}>
-                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                                            <strong className="chat-bubble-title" style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", color: "var(--orange)" }}>
-                                                {isGenerating ? "// GENERATING_POPULATION" : `// SIMULATING_STEP_0${step + 1}`}
+                                    <div className="chat-bubble shimmer-response" style={{ width: "100%", maxWidth: "340px", padding: "16px", borderRadius: "12px", border: "1px solid var(--border)" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                                            <span className="live-dot" style={{ width: 7, height: 7, background: "var(--accent)" }} />
+                                            <strong style={{ fontFamily: "var(--sans)", fontSize: 13, fontWeight: 600, color: "var(--bright)" }}>
+                                                {isGenerating ? "Building population" : `Running step ${step + 1}`}
                                             </strong>
-                                            <span className="live-dot" style={{ width: 6, height: 6, background: "var(--accent)" }} />
                                         </div>
-                                        <div style={{ fontFamily: "var(--sans)", fontSize: 12, color: "var(--text)", lineHeight: 1.4, marginBottom: 12 }}>
+                                        <div style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 12 }}>
                                             {isGenerating
-                                                ? `Building ${Number(quickLaunchCount || simCtx.agentCount || 50).toLocaleString()} synthetic respondents and compiling social network graph...`
-                                                : `Running multi-agent step decisions across Watts-Strogatz network...`}
+                                                ? `Generating ${Number(quickLaunchCount || simCtx.agentCount || 50).toLocaleString()} agents and mapping their social connections…`
+                                                : `Each agent is weighing the product against its neighbours…`}
                                         </div>
                                         {progress ? (
                                             <div style={{ width: "100%" }}>
@@ -1385,7 +1632,7 @@ export default function SimulatePage() {
                         )}
                     </div>
 
-                    <div className="chat-input-container" style={{ padding: "0 12px 12px 12px", borderTop: "1px solid rgba(0, 82, 255, 0.05)", background: "rgba(255, 255, 255, 0.45)" }}>
+                    <div className="chat-input-container" style={{ padding: "12px 12px 10px 12px" }}>
                         <div className="chat-input-bar">
                             <input
                                 type="text"
@@ -1410,47 +1657,31 @@ export default function SimulatePage() {
                     </div>
 
                     <div className="control-dock">
-                        <div 
-                            className="sidebar-stats-pill clickable-stats-trigger" 
+                        <button
+                            type="button"
+                            className="dock-summary-strip clickable-stats-trigger"
                             onClick={() => {
                                 setRightSidebarTab("stats");
                                 setIsRightSidebarOpen(true);
                             }}
-                            title="Click to view overall stats"
+                            title="Open full statistics & step log"
                         >
-                            <div className="stat-item">
-                                <span>Epoch</span>
-                                <strong>{step}</strong>
+                            <div className="dock-summary-lead">
+                                <span className="dock-summary-pct">
+                                    {agents.length ? `${Math.round((Object.values(states).filter((s) => s.decision === "support").length / agents.length) * 100)}%` : "0%"}
+                                </span>
+                                <span className="dock-summary-cap">adoption · step {step}</span>
                             </div>
-                            <div className="stat-item">
-                                <span>Adoption</span>
-                                <strong>{agents.length ? `${Math.round((Object.values(states).filter((s) => s.decision === "support").length / agents.length) * 100)}%` : "0%"}</strong>
+                            <div className="dock-summary-mini">
+                                <span className="dm support">{Object.values(states).filter((s) => s.decision === "support").length}</span>
+                                <span className="dm neutral">{Object.values(states).filter((s) => s.decision === "neutral").length}</span>
+                                <span className="dm oppose">{Object.values(states).filter((s) => s.decision === "oppose").length}</span>
                             </div>
-                            <div className="stat-item">
-                                <span>Friction</span>
-                                <strong>{agents.length ? `${Math.round((Object.values(states).filter((s) => s.decision === "neutral").length / agents.length) * 100)}%` : "0%"}</strong>
-                            </div>
-                            <div className="stat-item">
-                                <span>Resistance</span>
-                                <strong>{agents.length ? `${Math.round((Object.values(states).filter((s) => s.decision === "oppose").length / agents.length) * 100)}%` : "0%"}</strong>
-                            </div>
-                            <div className="stat-item">
-                                <span>Inf-Adoption</span>
-                                <strong>{influenceWeightedAdoption}</strong>
-                            </div>
-                            <div className="stat-item">
-                                <span>Consensus</span>
-                                <strong>{consensusIndex}</strong>
-                            </div>
-                            <div className="stat-item">
-                                <span>Active Leaders</span>
-                                <strong>{activeLeaders}</strong>
-                            </div>
-                            <div className="stat-item">
-                                <span>Pop Size</span>
-                                <strong>{agents.length}</strong>
-                            </div>
-                        </div>
+                            <span className="dock-summary-more">
+                                charts &amp; log
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                            </span>
+                        </button>
 
                         <div className="quick-controls">
                             <button type="button" className="action-btn auto" onClick={handleAutoPreset} disabled={!isConfigured || running || isGenerating}>
@@ -1572,24 +1803,54 @@ export default function SimulatePage() {
                     </header>
 
                     <div className="preview-content" style={{ padding: 0, overflow: "hidden" }}>
-                        {!isConfigured ? (
-                            <ConfigScreen
-                                onGenerate={handleGenerate}
-                                isGenerating={isGenerating}
-                                initialCount={quickLaunchCount}
-                                maxCount={Math.max(quickLaunchCount ?? 0, 1499)}
-                            />
-                        ) : (
+                        {isConfigured && (
                             <div className="preview-layout-container">
                                 <div className="preview-view-main">
                                     {previewTab === "network" ? (
-                                        <GlobalNetworkGraph
-                                            agents={filteredAgents}
-                                            edges={edges}
-                                            states={states}
-                                            selectedId={selectedAgentId}
-                                            onSelect={selectAgentForInspection}
-                                        />
+                                        <div className="network-stage">
+                                            <div className="stage-command-row">
+                                                <VerdictBar
+                                                    agents={agents}
+                                                    states={states}
+                                                    step={step}
+                                                    history={history}
+                                                    running={running}
+                                                    influenceWeightedAdoption={influenceWeightedAdoption}
+                                                    consensusIndex={consensusIndex}
+                                                    activeLeaders={activeLeaders}
+                                                    controlsOpen={controlsOpen}
+                                                    onToggleControls={() => setControlsOpen((v) => !v)}
+                                                />
+                                                {controlsOpen && (
+                                                    <div className="controls-popover">
+                                                        <LeversPanel
+                                                            scenarioLabel={scenario.label}
+                                                            step={step}
+                                                            agents={agents}
+                                                            states={states}
+                                                            edges={edges}
+                                                            scenario={scenario}
+                                                            committedValueDelta={priceValueDelta}
+                                                            onApplyPrice={handleApplyPrice}
+                                                            seedBudget={seedBudget}
+                                                            seedsUsed={seedsUsed}
+                                                            onAutoSeed={handleAutoSeed}
+                                                            marketingPush={marketingPush}
+                                                            onMarketingPush={setMarketingPush}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="stage-graph">
+                                                <GlobalNetworkGraph
+                                                    agents={filteredAgents}
+                                                    edges={edges}
+                                                    states={states}
+                                                    selectedId={selectedAgentId}
+                                                    onSelect={selectAgentForInspection}
+                                                />
+                                            </div>
+                                        </div>
                                     ) : (
                                         <div className="agent-list-view">
                                             <AgentListFilter
@@ -1611,9 +1872,9 @@ export default function SimulatePage() {
                                 <div className={`agent-detail-sidebar-container ${isRightSidebarOpen ? "open" : ""}`}>
                                     {isRightSidebarOpen && (
                                         <div className="agent-detail-sidebar-inner">
-                                            <div className="agent-detail-sidebar-header-tabs" style={{ justifyContent: "space-between", alignItems: "center", padding: "12px 18px" }}>
-                                                <span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 800, color: "var(--orange)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                                                    // {rightSidebarTab === "agent" ? "AGENT_INSPECTOR" : "GLOBAL_STATISTICS"}
+                                            <div className="agent-detail-sidebar-header-tabs" style={{ justifyContent: "space-between", alignItems: "center", padding: "14px 18px" }}>
+                                                <span style={{ fontFamily: "var(--sans)", fontSize: 14, fontWeight: 700, color: "var(--bright)", letterSpacing: "-0.01em" }}>
+                                                    {rightSidebarTab === "agent" ? "Agent detail" : "Run overview"}
                                                 </span>
                                                 
                                                 <button
@@ -1641,23 +1902,19 @@ export default function SimulatePage() {
                                                         edges={edges}
                                                         onSelectAgent={selectAgentForInspection}
                                                         onToggleSeed={handleToggleSeed}
+                                                        onIntervene={handleIntervention}
+                                                        convertBudgetLeft={seedBudget - seedsUsed}
                                                         isConfigPhase={step === 0}
                                                     />
                                                 ) : rightSidebarTab === "stats" ? (
-                                                    <div className="overall-stats-tab-content">
-                                                        <div className="stats-section-block">
-                                                            <h4>Adoption Trajectory</h4>
-                                                            <div className="chart-wrapper-box" style={{ height: "220px", width: "100%", position: "relative" }}>
-                                                                <AdoptionChart history={history} total={agents.length} />
-                                                            </div>
-                                                        </div>
-                                                        <div className="stats-section-block log-block">
-                                                            <h4>Recent Step Logs</h4>
-                                                            <div className="steplog-wrapper-box" style={{ flex: 1, minHeight: "260px" }}>
-                                                                <StepLog entries={log} />
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    <OverallStats
+                                                        agents={agents}
+                                                        states={states}
+                                                        history={history}
+                                                        log={log}
+                                                        step={step}
+                                                        onSelectAgent={selectAgentForInspection}
+                                                    />
                                                 ) : (
                                                     <div className="empty-tab-state">
                                                         No agent selected. Use the grid view to select a node for detailed analysis.
@@ -2439,11 +2696,10 @@ export default function SimulatePage() {
                 .conversation-panel,
                 .preview-panel {
                     min-height: 0;
-                    border: 1px solid rgba(0, 82, 255, 0.13);
-                    border-radius: 12px;
-                    background: rgba(255, 255, 255, 0.78);
-                    box-shadow: 0 18px 54px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.72);
-                    backdrop-filter: blur(24px);
+                    border: 1px solid var(--border);
+                    border-radius: 16px;
+                    background: #ffffff;
+                    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03), 0 12px 32px -12px rgba(16, 24, 40, 0.14);
                     overflow: hidden;
                 }
 
@@ -2670,6 +2926,122 @@ export default function SimulatePage() {
                     flex-direction: column;
                     gap: 20px;
                 }
+
+                /* Empty-state primer — fills the console with intent, not a lonely bubble */
+                .console-primer {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 22px;
+                    padding: 4px 6px;
+                }
+                .primer-lead {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                .primer-eyebrow {
+                    font-family: var(--sans);
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--accent);
+                }
+                .primer-title {
+                    margin: 0;
+                    font-family: var(--sans);
+                    font-size: 19px;
+                    font-weight: 700;
+                    letter-spacing: -0.02em;
+                    line-height: 1.28;
+                    color: var(--bright);
+                    text-wrap: balance;
+                }
+                .primer-body {
+                    margin: 0;
+                    font-family: var(--sans);
+                    font-size: 13px;
+                    line-height: 1.6;
+                    color: var(--muted);
+                    max-width: 42ch;
+                }
+                .primer-steps {
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+                .primer-steps li {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                    padding: 12px 12px;
+                    border-radius: 12px;
+                    transition: background 0.15s ease;
+                }
+                .primer-steps li:hover {
+                    background: rgba(0, 82, 255, 0.03);
+                }
+                .primer-num {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    flex-shrink: 0;
+                    border-radius: 8px;
+                    background: rgba(0, 82, 255, 0.08);
+                    color: var(--accent);
+                    font-family: var(--sans);
+                    font-size: 12px;
+                    font-weight: 700;
+                }
+                .primer-steps li > div {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+                .primer-steps strong {
+                    font-family: var(--sans);
+                    font-size: 13.5px;
+                    font-weight: 600;
+                    color: var(--bright);
+                }
+                .primer-steps span {
+                    font-family: var(--sans);
+                    font-size: 12px;
+                    color: var(--muted);
+                    line-height: 1.45;
+                }
+                .primer-hint {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px 14px;
+                    border-radius: 12px;
+                    background: var(--bg-darker);
+                    border: 1px solid var(--border);
+                    font-family: var(--sans);
+                    font-size: 12px;
+                    color: var(--muted);
+                }
+                .primer-hint kbd {
+                    font-family: var(--sans);
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--text);
+                    background: #fff;
+                    border: 1px solid var(--border-bright);
+                    border-bottom-width: 2px;
+                    border-radius: 6px;
+                    padding: 2px 7px;
+                    margin-right: 6px;
+                }
+                .primer-hint-sep {
+                    width: 1px;
+                    height: 14px;
+                    background: var(--border);
+                }
                 .chat-input-bar {
                     display: flex;
                     align-items: center;
@@ -2859,12 +3231,15 @@ export default function SimulatePage() {
 
                 .control-dock {
                     flex-shrink: 0;
-                    margin: 0 12px 12px;
-                    border: 1px solid rgba(0, 82, 255, 0.12);
+                    margin: 0 12px 14px;
+                    border: 1px solid var(--border);
                     border-radius: 16px;
-                    background: rgba(255, 255, 255, 0.86);
-                    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
-                    padding: 12px;
+                    background: #ffffff;
+                    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03), 0 10px 26px -14px rgba(16, 24, 40, 0.14);
+                    padding: 14px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
                 }
 
                 .prompt-display {
@@ -2896,63 +3271,86 @@ export default function SimulatePage() {
                     font-size: 20px;
                 }
 
-                .sidebar-stats-pill {
-                    display: grid;
-                    grid-template-columns: repeat(4, 1fr);
-                    grid-template-rows: auto auto;
-                    row-gap: 8px;
-                    column-gap: 4px;
-                    padding: 10px 10px;
+                /* Slim dock summary — full metrics live in the VerdictBar over the graph */
+                .dock-summary-strip {
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                    width: 100%;
+                    padding: 11px 16px;
                     border: 1px solid var(--border);
                     border-radius: 12px;
-                    background: rgba(255, 255, 255, 0.6);
-                    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-                    margin-bottom: 12px;
+                    background: var(--bg-darker);
                     font-family: var(--sans);
-                    font-size: 8px;
-                    font-weight: 500;
-                    text-align: center;
+                    text-align: left;
                 }
 
-                .sidebar-stats-pill .stat-item {
+                .dock-summary-lead {
                     display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    color: var(--muted);
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
+                    align-items: baseline;
+                    gap: 7px;
+                    flex-shrink: 0;
                 }
 
-                .sidebar-stats-pill .stat-item strong {
-                    color: var(--bright);
+                .dock-summary-pct {
+                    font-size: 18px;
+                    font-weight: 800;
+                    letter-spacing: -0.02em;
+                    color: var(--support);
+                    font-variant-numeric: tabular-nums;
+                    line-height: 1;
+                }
+
+                .dock-summary-cap {
+                    font-family: var(--sans);
                     font-size: 11px;
+                    color: var(--muted);
+                    font-variant-numeric: tabular-nums;
+                }
+
+                .dock-summary-mini {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    font-family: var(--sans);
+                    font-size: 13px;
                     font-weight: 700;
-                    margin-top: 1px;
+                    font-variant-numeric: tabular-nums;
+                    padding-left: 16px;
+                    border-left: 1px solid var(--border);
                 }
 
-                .marketing-theme .sidebar-stats-pill {
-                    background: rgba(255, 255, 255, 0.85);
-                    border-color: rgba(0, 82, 255, 0.1);
+                .dock-summary-mini .dm {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 5px;
                 }
+                .dock-summary-mini .dm::before {
+                    content: "";
+                    width: 7px;
+                    height: 7px;
+                    border-radius: 50%;
+                }
+                .dock-summary-mini .dm.support { color: var(--support); }
+                .dock-summary-mini .dm.support::before { background: var(--support); }
+                .dock-summary-mini .dm.neutral { color: #b0790c; }
+                .dock-summary-mini .dm.neutral::before { background: var(--orange); }
+                .dock-summary-mini .dm.oppose { color: var(--oppose); }
+                .dock-summary-mini .dm.oppose::before { background: var(--oppose); }
 
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(2) strong {
-                    color: var(--support);
+                .dock-summary-more {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    margin-left: auto;
+                    flex-shrink: 0;
+                    font-family: var(--sans);
+                    font-size: 11.5px;
+                    font-weight: 600;
+                    color: var(--muted);
                 }
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(3) strong {
-                    color: var(--neutral);
-                }
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(4) strong {
-                    color: var(--oppose);
-                }
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(5) strong {
-                    color: var(--support);
-                }
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(6) strong {
-                    color: #3b82f6;
-                }
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(7) strong {
-                    color: var(--bright);
-                }
+                .dock-summary-more svg { opacity: 0.7; }
+                .clickable-stats-trigger:hover .dock-summary-more { color: var(--accent); }
 
                 .clickable-stats-trigger {
                     cursor: pointer;
@@ -2965,45 +3363,14 @@ export default function SimulatePage() {
                     box-shadow: 0 6px 16px rgba(0, 82, 255, 0.06) !important;
                 }
 
-                .sidebar-stats-pill .stat-item {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    color: var(--muted);
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                }
-
-                .sidebar-stats-pill .stat-item strong {
-                    color: var(--bright);
-                    font-size: 11px;
-                    font-weight: 700;
-                    margin-top: 1px;
-                }
-
-                .marketing-theme .sidebar-stats-pill {
-                    background: rgba(255, 255, 255, 0.85);
-                    border-color: rgba(0, 82, 255, 0.1);
-                }
-
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(2) strong {
-                    color: var(--support);
-                }
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(3) strong {
-                    color: var(--neutral);
-                }
-                .marketing-theme .sidebar-stats-pill .stat-item:nth-child(4) strong {
-                    color: var(--oppose);
-                }
-
                 .quick-controls {
                     display: grid;
-                    grid-template-columns: 1fr 1fr 1.3fr;
+                    grid-template-columns: 1fr 1fr 1.4fr;
                     gap: 8px;
                 }
 
                 .quick-controls .action-btn {
-                    height: 38px;
+                    height: 42px;
                     font-family: var(--sans);
                     font-size: 11px;
                     font-weight: 600;
@@ -3318,13 +3685,13 @@ export default function SimulatePage() {
                 }
 
                 .agent-detail-sidebar-container.open {
-                    width: 320px;
+                    width: 384px;
                     opacity: 1;
                     border-left: 1px solid var(--border, rgba(0, 82, 255, 0.12));
                 }
 
                 .agent-detail-sidebar-inner {
-                    width: 320px;
+                    width: 384px;
                     height: 100%;
                     display: flex;
                     flex-direction: column;
@@ -3460,6 +3827,49 @@ export default function SimulatePage() {
                     flex-direction: column;
                     overflow: hidden;
                     position: relative;
+                }
+
+                /* Network view = command row (verdict + levers) stacked over the graph */
+                .network-stage {
+                    flex: 1;
+                    min-height: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    padding: 10px;
+                }
+
+                /* Slim command row: the verdict is a full-width strip; controls live in
+                   a popover so the graph keeps the whole stage. */
+                .stage-command-row {
+                    position: relative;
+                    flex-shrink: 0;
+                    z-index: 20;
+                }
+
+                .controls-popover {
+                    position: absolute;
+                    top: calc(100% + 8px);
+                    right: 0;
+                    width: 380px;
+                    max-width: calc(100% - 4px);
+                    max-height: min(560px, calc(100vh - 200px));
+                    overflow-y: auto;
+                    overscroll-behavior: contain;
+                    z-index: 30;
+                    border-radius: 16px;
+                    box-shadow: 0 16px 40px -8px rgba(16, 24, 40, 0.24), 0 1px 3px rgba(16, 24, 40, 0.08);
+                    animation: controlsIn 0.16s ease-out;
+                }
+                @keyframes controlsIn {
+                    from { opacity: 0; transform: translateY(-6px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+
+                .stage-graph {
+                    flex: 1;
+                    min-height: 0;
+                    display: flex;
                 }
 
                 @media (max-width: 980px) {

@@ -81,14 +81,24 @@ function ModelBadge({ model }: { model?: string }) {
     );
 }
 
-function DecisionBadge({ decision, model }: { decision: DecisionType, model?: string }) {
+function DecisionBadge({ decision, model, everRun }: { decision: DecisionType, model?: string, everRun: boolean }) {
     const color = decision === "support" ? "var(--support)" : decision === "oppose" ? "var(--oppose)" : decision === "neutral" ? "var(--neutral)" : "var(--muted)";
 
-    if (!decision) return (
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 6, fontFamily: "var(--mono)", color: "var(--orange)", background: "rgba(255,107,53,0.1)", padding: "2px 8px", borderRadius: "100px", border: "1px solid rgba(255,107,53,0.3)", fontWeight: 800, boxSizing: "border-box" }}>STBY::PENDING</span>
-        </div>
-    );
+    if (!decision) {
+        // Tier 1B: an agent that has been through at least one step but still has
+        // no decision is unaware — it hasn't been reached by the awareness cascade
+        // yet. That's distinct from "never run" (pre-simulation standby).
+        if (everRun) return (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 6, fontFamily: "var(--mono)", color: "var(--muted)", background: "rgba(120,120,120,0.1)", padding: "2px 8px", borderRadius: "100px", border: "1px solid rgba(120,120,120,0.25)", fontWeight: 800, boxSizing: "border-box", letterSpacing: "0.05em" }}>UNAWARE</span>
+            </div>
+        );
+        return (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 6, fontFamily: "var(--mono)", color: "var(--orange)", background: "rgba(255,107,53,0.1)", padding: "2px 8px", borderRadius: "100px", border: "1px solid rgba(255,107,53,0.3)", fontWeight: 800, boxSizing: "border-box" }}>STBY::PENDING</span>
+            </div>
+        );
+    }
     return (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <ModelBadge model={model} />
@@ -110,6 +120,10 @@ function DecisionBadge({ decision, model }: { decision: DecisionType, model?: st
 }
 
 export default function AgentCard({ agent, state, selected, onClick }: AgentCardProps) {
+    // Tier 1B cascade visual: agents not yet reached by the awareness wave read as
+    // dimmed/asleep; the moment they're reached, the card lights up. This is the
+    // network-driven cascade becoming visible rather than a stat readout.
+    const isUnaware = state.decision === null && state.step !== null;
     return (
         <div
             className={`results-card${selected ? " selected" : ""}`}
@@ -133,7 +147,9 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
                 boxShadow: selected ? "var(--card-shadow-selected)" : "var(--card-shadow-default)",
                 display: "flex",
                 flexDirection: "column",
-                overflow: "hidden"
+                overflow: "hidden",
+                opacity: isUnaware ? 0.45 : 1,
+                filter: isUnaware ? "grayscale(0.6)" : "none"
             }}
         >
 
@@ -189,7 +205,7 @@ export default function AgentCard({ agent, state, selected, onClick }: AgentCard
                         </div>
                     </div>
                 </div>
-                <DecisionBadge decision={state.decision} model={state.model} />
+                <DecisionBadge decision={state.decision} model={state.model} everRun={state.step !== null} />
             </div>
 
             {/* Trait Tags */}

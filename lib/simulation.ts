@@ -42,12 +42,16 @@ export function classifyPersona(agent: Agent): PersonaType {
 /** Computes an adoption snapshot from the current agent states */
 export function buildSnapshot(step: number, states: SimulationStates): StepSnapshot {
     const values = Object.values(states);
+    // Agents with no decision yet are unaware (Tier 1B awareness funnel) — they
+    // haven't been exposed to the scenario, not merely "processing."
+    const unaware = values.filter((s) => s.decision === null).length;
     return {
         step,
         support: values.filter((s) => s.decision === "support").length,
         neutral: values.filter((s) => s.decision === "neutral").length,
         oppose: values.filter((s) => s.decision === "oppose").length,
-        pending: values.filter((s) => s.decision === null).length,
+        pending: unaware,
+        unaware,
         timestamp: Date.now(),
     };
 }

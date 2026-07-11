@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-07-11T17:16:53.580Z",
+  "cases": [
+    {
+      "product": "Quibi",
+      "type": "Flop (low value)",
+      "curveFitPct": 97.4,
+      "maePts": 2.6
+    },
+    {
+      "product": "Google Glass",
+      "type": "Flop (social/risk)",
+      "curveFitPct": 97.8,
+      "maePts": 2.2
+    },
+    {
+      "product": "Slack",
+      "type": "Success (S-curve)",
+      "curveFitPct": 77.7,
+      "maePts": 22.3
+    }
+  ],
+  "averageFitPct": 91,
+  "knownLimitation": "Rising viral S-curves (e.g. Slack) fit worse than decline-shaped cases; the engine does not yet model adoption-driven awareness acceleration."
+}

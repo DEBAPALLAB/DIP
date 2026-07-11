@@ -91,6 +91,10 @@ export default function AdoptionChart({ history, total }: AdoptionChartProps) {
                         <stop offset="5%" stopColor="var(--oppose)" stopOpacity={0.4} />
                         <stop offset="95%" stopColor="var(--oppose)" stopOpacity={0.05} />
                     </linearGradient>
+                    <linearGradient id="colorUnaware" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--muted)" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="var(--muted)" stopOpacity={0.02} />
+                    </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.5} vertical={false} />
                 <XAxis
@@ -141,6 +145,17 @@ export default function AdoptionChart({ history, total }: AdoptionChartProps) {
                     fillOpacity={1}
                     fill="url(#colorOppose)"
                     name="oppose"
+                />
+                <Area
+                    type="monotone"
+                    dataKey="unaware"
+                    stackId="1"
+                    stroke="var(--muted)"
+                    strokeWidth={1}
+                    strokeDasharray="3 3"
+                    fillOpacity={1}
+                    fill="url(#colorUnaware)"
+                    name="unaware"
                 />
             </AreaChart>
         </ResponsiveContainer>

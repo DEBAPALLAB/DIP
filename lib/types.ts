@@ -44,9 +44,19 @@ export interface AgentState {
   isSeeded?: boolean;
   model?: string;
   conviction?: number; // [0,1] decisiveness of this decision; low = flip/churn candidate
+  signalQuality?: number; // Tier 2F: [0,1] fidelity of the value signal that reached this agent (1 = direct/pristine)
+  // ─── Live user interventions ───
+  // Set by direct manipulation of the running network. Read by the step loop.
+  muted?: boolean;          // silenced: forced neutral, exerts no outward influence
+  influenceMult?: number;   // per-agent influence multiplier (1 = default, >1 amplified)
+  locked?: boolean;         // user-forced decision that the engine should not overwrite
+  removed?: boolean;        // pulled out of the network entirely
 }
 
 export type SimulationStates = Record<number, AgentState>;
+
+// ─── Live interventions the user can apply to an agent in the running network ───
+export type Intervention = "convert" | "silence" | "amplify" | "remove" | "reset";
 
 // ─── Per-agent decision history ───────────────────────────────────────────────
 
@@ -65,6 +75,17 @@ export interface ScenarioParams {
   risk: number;    // product risk level
   loss: number;    // loss aversion trigger
   justification?: string; // AI-driven strategic reasoning
+  competitor?: CompetitorParams; // Tier 1C: incumbent the agent must switch away from (optional)
+}
+
+// ─── Competitive Baseline (Tier 1C) ─────────────────────────────────────────────
+// When present, adoption is modeled as *switching* from an incumbent rather than
+// buying in a vacuum: utility becomes U(new) − U(incumbent) − switching_cost.
+// Absent → pure greenfield adoption (identical to pre-1C behavior).
+export interface CompetitorParams {
+  value: number;         // incumbent's perceived value [0,1] — what the agent gives up by switching
+  switchingCost: number; // migration friction [0,1]: 0 = frictionless, 1 = heavy lock-in
+  label?: string;        // human-readable name of the incumbent (for the brief/prompt)
 }
 
 export interface Scenario {
@@ -83,6 +104,7 @@ export interface StepSnapshot {
   neutral: number;
   oppose: number;
   pending: number;
+  unaware: number;
   timestamp: number;
 }
 
@@ -121,7 +143,7 @@ export interface RunStepRequest {
 export interface RunStepResponse {
   agentId: number;
   decision: DecisionType;
-  reasoning: string;
+  reasoning: string | null;
   model?: string;
   conviction?: number; // [0,1] decisiveness of this decision; low = flip/churn candidate
 }
@@ -131,6 +153,8 @@ export interface RunBatchItem {
   agent: Agent;
   neighborStates: Record<number, { decision: DecisionType; reasoning: string | null }>;
   neighborAgents: Agent[];
+  isAware: boolean; // Tier 1B: awareness funnel gate — false means not yet exposed to the scenario
+  signalQuality?: number; // Tier 2F: [0,1] fidelity of the value signal that reached this agent (1 = pristine/direct)
 }
 
 export interface RunStepBatchRequest {

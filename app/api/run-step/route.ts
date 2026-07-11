@@ -36,20 +36,26 @@ export async function POST(req: NextRequest) {
                 ])
             );
 
-            const { decision, conviction } = calculateDecision(item.agent, scenario, neighborStateMap, item.neighborAgents || [], previousParams);
+            const isAware = item.isAware ?? true;
+            const signalQuality = item.signalQuality ?? 1;
+            const { decision, conviction } = calculateDecision(item.agent, scenario, neighborStateMap, item.neighborAgents || [], previousParams, isAware, signalQuality);
 
             return {
                 agentId: item.agentId,
                 agent: item.agent,
                 decision,
                 conviction,
+                isAware,
                 neighborAgents: item.neighborAgents,
                 neighborStateMap
             };
         });
 
         // ─── Phase 2: Narrative Generation (Optimized for ultra-low token footprint) ───
-        const cohortListString = cohortData.map(d => {
+        // Unaware agents skip the LLM entirely — there's nothing to reason about yet.
+        const awareCohort = cohortData.filter(d => d.isAware);
+
+        const cohortListString = awareCohort.map(d => {
             const neighborLines = (d.neighborAgents ?? [])
                 .map(nb => `${nb.persona}:${d.neighborStateMap[nb.id]?.decision?.toUpperCase() || "NEUTRAL"}`)
                 .join(",");
@@ -79,77 +85,90 @@ Output format: [{"id": agentId, "reasoning": "ONE concise sentence matching Arch
         // Prepare rotated free models list
         const rotatedModels = FREE_MODELS.map((_, idx) => FREE_MODELS[(keyRotationIndex + idx) % FREE_MODELS.length]);
 
-        let completionResult;
-        try {
-            completionResult = await generateChatCompletion({
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userPrompt }
-                ],
-                temperature: 0.3,
-                max_tokens: 1500,
-                timeoutMs: 12000,
-                openRouterModels: rotatedModels
-            });
-            
-            // Advance the rotation index if we ended up using OpenRouter
-            if (completionResult.source === "openrouter") {
-                const usedIndex = FREE_MODELS.indexOf(completionResult.model);
-                if (usedIndex !== -1) {
-                    keyRotationIndex = (usedIndex + 1) % FREE_MODELS.length;
-                }
-            }
-        } catch (e: any) {
-            console.error(`[API_ROUTE] API execution failed: ${e.message}`);
-            return NextResponse.json({
-                error: "Simulation service is busy. Please retry shortly."
-            }, { status: 504 });
-        }
-
-        const text = completionResult.text;
-        const finalModel = completionResult.model;
-        
-        // ─── Phase 3: Rescue Parser (Hyper-Resiliency) ───
         let reasonings: { id: number, reasoning: string }[] = [];
-        
-        const tryParse = (raw: string) => {
-            try {
-                // 1. Clean markdown headers
-                let clean = raw.replace(/```json|```/g, "").trim();
-                
-                // 2. Extract valid array boundaries
-                const start = clean.indexOf('[');
-                const end = clean.lastIndexOf(']');
-                
-                if (start !== -1) {
-                    let fragment = clean.substring(start);
-                    if (end !== -1 && end > start) {
-                        fragment = clean.substring(start, end + 1);
-                    } else {
-                        // 3. TRUNCATION REPAIR: If it ends abruptly, try to close it
-                        // Find the last complete object "}"
-                        const lastBrace = fragment.lastIndexOf('}');
-                        if (lastBrace !== -1) {
-                            fragment = fragment.substring(0, lastBrace + 1) + ']';
-                        }
-                    }
-                    return JSON.parse(fragment);
-                }
-                return null;
-            } catch (e) {
-                return null;
-            }
-        };
+        let finalModel = "local-no-aware-agents";
 
-        const parsed = tryParse(text);
-        if (Array.isArray(parsed)) {
-            reasonings = parsed;
-        } else if (parsed && (parsed as any).results) {
-            reasonings = (parsed as any).results;
+        // Skip the LLM entirely if nobody in this batch is aware yet — nothing to reason about.
+        if (awareCohort.length > 0) {
+            let completionResult;
+            try {
+                completionResult = await generateChatCompletion({
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 1500,
+                    timeoutMs: 12000,
+                    openRouterModels: rotatedModels
+                });
+
+                // Advance the rotation index if we ended up using OpenRouter
+                if (completionResult.source === "openrouter") {
+                    const usedIndex = FREE_MODELS.indexOf(completionResult.model);
+                    if (usedIndex !== -1) {
+                        keyRotationIndex = (usedIndex + 1) % FREE_MODELS.length;
+                    }
+                }
+            } catch (e: any) {
+                console.error(`[API_ROUTE] API execution failed: ${e.message}`);
+                return NextResponse.json({
+                    error: "Simulation service is busy. Please retry shortly."
+                }, { status: 504 });
+            }
+
+            const text = completionResult.text;
+            finalModel = completionResult.model;
+
+            // ─── Phase 3: Rescue Parser (Hyper-Resiliency) ───
+            const tryParse = (raw: string) => {
+                try {
+                    // 1. Clean markdown headers
+                    let clean = raw.replace(/```json|```/g, "").trim();
+
+                    // 2. Extract valid array boundaries
+                    const start = clean.indexOf('[');
+                    const end = clean.lastIndexOf(']');
+
+                    if (start !== -1) {
+                        let fragment = clean.substring(start);
+                        if (end !== -1 && end > start) {
+                            fragment = clean.substring(start, end + 1);
+                        } else {
+                            // 3. TRUNCATION REPAIR: If it ends abruptly, try to close it
+                            // Find the last complete object "}"
+                            const lastBrace = fragment.lastIndexOf('}');
+                            if (lastBrace !== -1) {
+                                fragment = fragment.substring(0, lastBrace + 1) + ']';
+                            }
+                        }
+                        return JSON.parse(fragment);
+                    }
+                    return null;
+                } catch (e) {
+                    return null;
+                }
+            };
+
+            const parsed = tryParse(text);
+            if (Array.isArray(parsed)) {
+                reasonings = parsed;
+            } else if (parsed && (parsed as any).results) {
+                reasonings = (parsed as any).results;
+            }
         }
 
         // ─── Phase 4: Final Mapping ───
         const results: RunStepResponse[] = cohortData.map(d => {
+            if (!d.isAware) {
+                return {
+                    agentId: d.agentId,
+                    decision: d.decision,
+                    conviction: d.conviction,
+                    reasoning: null,
+                    model: undefined
+                };
+            }
             const aiEntry = reasonings.find(r => r.id === d.agentId);
             return {
                 agentId: d.agentId,

@@ -5,17 +5,65 @@ interface PromptResult {
 }
 
 /**
+ * Signed contribution of each utility term to an agent's decision, in raw utility
+ * units. Positive pushes toward SUPPORT, negative toward OPPOSE/non-adoption.
+ * Consumed by objection extraction (Tier 2E) to attribute *why* an agent resisted.
+ */
+export interface UtilityComponents {
+    value: number;        // + trust-adjusted, signal-faded perceived value
+    risk: number;         // − product risk × effective risk aversion
+    loss: number;         // − loss aversion × loss trigger
+    social: number;       // ± net social pressure from neighbors
+    shock: number;        // ± reaction to a parameter change vs last step
+    switching: number;    // − competitive switching cost (Tier 1C)
+}
+
+export interface DecisionResult {
+    decision: DecisionType;
+    utility: number;
+    socialPressure: number;
+    threshold: number;
+    effRisk: number;
+    effBudget: number;
+    shockBonus: number;
+    switchingPenalty: number;
+    conviction: number;
+    components: UtilityComponents;
+}
+
+/**
  * DETERMINISTIC DECISION ENGINE (Source of Truth)
  * Decoupled from LLM to ensure simulation integrity.
  */
 export function calculateDecision(
-    agent: Agent, 
-    scenario: Scenario, 
-    neighborStates: Record<number, AgentState>, 
+    agent: Agent,
+    scenario: Scenario,
+    neighborStates: Record<number, AgentState>,
     neighborAgents: Agent[],
-    previousParams?: ScenarioParams
-): { decision: DecisionType, utility: number, socialPressure: number, threshold: number, effRisk: number, effBudget: number, shockBonus: number, conviction: number } {
-    
+    previousParams?: ScenarioParams,
+    isAware: boolean = true,
+    signalQuality: number = 1
+): DecisionResult {
+
+    // 0. Awareness Gate (Tier 1B) — an agent with no exposure to the scenario yet
+    // cannot form an opinion. They stay unexposed rather than defaulting to a
+    // decision, which is what produces a real S-curve from network diffusion
+    // instead of everyone deciding simultaneously on step 1.
+    if (!isAware) {
+        return {
+            decision: null,
+            utility: 0,
+            socialPressure: 0,
+            threshold: 0,
+            effRisk: agent.risk,
+            effBudget: agent.budget,
+            shockBonus: 0,
+            switchingPenalty: 0,
+            conviction: 0,
+            components: { value: 0, risk: 0, loss: 0, social: 0, shock: 0, switching: 0 },
+        };
+    }
+
     // 1. Derive Effective Traits (simulation_v3.py logic)
     const ageFactor = Math.max(0, (agent.age - 40) * 0.003);
     const anxietyFactor = agent.emotional * 0.4;
@@ -28,7 +76,12 @@ export function calculateDecision(
     const effThreshold = Math.max(0.05, (agent.statusQuoBias || 0.5) * adoptionDiscount);
 
     // 2. Compute Utility (Prospect Theory)
-    const pValue = scenario.params.value;
+    // Tier 2F: perceived value is scaled by signal quality — an agent reached by a
+    // faded, distorted word-of-mouth signal perceives LESS value than one who saw the
+    // pristine launch pitch. Risk/loss are NOT discounted: bad news and fear of loss
+    // travel intact (arguably amplified) through word-of-mouth, unlike upside.
+    const clampedSignal = Math.max(0, Math.min(1, signalQuality));
+    const pValue = scenario.params.value * clampedSignal;
     const pRisk = scenario.params.risk;
     const pLoss = scenario.params.loss;
 
@@ -69,12 +122,33 @@ export function calculateDecision(
         shockBonus *= (1.5 - (agent.statusQuoBias || 0.5));
     }
 
-    // Final Utility (Core Math)
-    const rawUtility = (effBudget * trustAdjustedValue) 
-                  - (effRisk * pRisk) 
-                  - lossTerm 
-                  + (socialWeight * socialSignal)
-                  + shockBonus;
+    // 3.6 Competitive Baseline (Tier 1C — switching, not buying)
+    // If the scenario names an incumbent, adopting means *switching* away from it.
+    // Two costs apply:
+    //   (a) Opportunity cost — the value the agent gives up by abandoning what they
+    //       already have, trust-adjusted the same way the new product's value is.
+    //   (b) Switching friction — migration effort (data export, relearning, contracts),
+    //       felt more acutely by high-status-quo-bias agents who resist any change.
+    // With no competitor this term is exactly 0, so greenfield behavior is unchanged.
+    let switchingPenalty = 0;
+    const competitor = scenario.params.competitor;
+    if (competitor) {
+        const incumbentValue = competitor.value * (0.4 + 0.6 * agent.trust);
+        const opportunityCost = effBudget * incumbentValue;
+        const switchingFriction = competitor.switchingCost * (0.5 + (agent.statusQuoBias || 0.5));
+        switchingPenalty = opportunityCost + switchingFriction;
+    }
+
+    // Component decomposition (Tier 2E) — signed contribution of each term, so we can
+    // later attribute *why* an agent resisted. These sum (with switching) to rawUtility.
+    const valueTerm = effBudget * trustAdjustedValue;   // +
+    const riskTerm = -(effRisk * pRisk);                // −
+    const lossTermSigned = -lossTerm;                   // −
+    const socialTerm = socialWeight * socialSignal;     // ±
+    // (shockBonus and switchingPenalty are already signed; switching enters below as −)
+
+    // Final Utility (Core Math) — the product's intrinsic appeal, competitor-blind.
+    const rawUtility = valueTerm + riskTerm + lossTermSigned + socialTerm + shockBonus;
 
     // 4. Stochastic "Vibrancy" Jitter (simulation_v3.py concept)
     // We add a small random offset (-0.05 to +0.05) to simulate life randomness
@@ -84,8 +158,31 @@ export function calculateDecision(
 
     // Stance Projection (Inspired by np.tanh in simulation_v3.py)
     // We map utility directly to -1...1 and compare vs threshold
-    const stance = Math.tanh(utility); 
+    let stance = Math.tanh(utility);
     const decisionThreshold = effThreshold * 0.40; // Slightly wider neutral zone
+
+    // Tier 1C stance adjustment: switching cost is fundamentally a barrier to
+    // ADOPTION, not a source of hostility. Someone content with their incumbent
+    // doesn't actively oppose your product — they just don't switch. So the penalty
+    // drags stance downward (suppressing support → neutral holdout) but must not
+    // manufacture the strong active opposition that genuine risk/loss aversion produces.
+    //
+    // The guard checks the agent's stance BEFORE the switching drag (preSwitchStance),
+    // not raw utility >= 0. An agent can be intrinsically neutral-to-mildly-negative
+    // (utility < 0 but stance still inside the neutral band — the common case for an
+    // ordinary product) and that is NOT the same as the product's own math having
+    // already earned genuine opposition. Only agents who were already past the oppose
+    // boundary on the product's own merits (preSwitchStance <= -decisionThreshold) are
+    // allowed to land in oppose here — switching cost never manufactures that verdict.
+    if (switchingPenalty > 0) {
+        const preSwitchStance = stance;
+        const drag = Math.tanh(switchingPenalty); // [0,1)
+        stance -= drag;
+        const wasGenuinelyOpposed = preSwitchStance <= -decisionThreshold;
+        if (!wasGenuinelyOpposed && stance < -decisionThreshold) {
+            stance = -decisionThreshold * 0.5; // parked in neutral, leaning cool
+        }
+    }
 
     let decision: DecisionType = "neutral";
     if (stance > decisionThreshold) decision = "support";
@@ -109,7 +206,16 @@ export function calculateDecision(
         effRisk,
         effBudget,
         shockBonus: Math.round(shockBonus * 100),
-        conviction: Math.round(conviction * 100) / 100
+        switchingPenalty: Math.round(switchingPenalty * 100),
+        conviction: Math.round(conviction * 100) / 100,
+        components: {
+            value: valueTerm,
+            risk: riskTerm,
+            loss: lossTermSigned,
+            social: socialTerm,
+            shock: shockBonus,
+            switching: -switchingPenalty,
+        },
     };
 }
 
@@ -141,6 +247,7 @@ INTERNAL SIMULATION RESULT:
 - Calculated Utility: ${stats.utility} (Threshold: ${stats.threshold})
 - Social Signal: ${stats.socialPressure}
 ${stats.shockBonus !== 0 ? `- Reaction to Change: ${stats.shockBonus > 0 ? "Positive" : "Negative"} Shock Detected` : ""}
+${scenario.params.competitor ? `- Switching Consideration: you already use ${scenario.params.competitor.label || "an existing alternative"}, and moving carries a ${stats.switchingPenalty > 40 ? "heavy" : stats.switchingPenalty > 15 ? "moderate" : "minor"} switching cost.` : ""}
 
 YOUR MISSION:
 Explain WHY you made this decision in character as ${agent.name}. 

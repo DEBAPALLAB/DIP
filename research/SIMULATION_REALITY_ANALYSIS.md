@@ -17,15 +17,17 @@ The core architecture is not a toy. Before tearing it apart, this is worth ackno
 - **Degree centrality → influence score.** Hub agents carry more weight in the social signal. This is how real information diffusion works.
 - **Multi-step cascade dynamics.** Decisions propagate across neighbors across ticks, enabling emergent diffusion curves. The S-curve shape that sometimes appears is not forced — it emerges from the network structure.
 
-### Reality Score: 54 / 100
+### Reality Score: 71 / 100
 
-| Dimension | Score | Status (July 10, 2026) |
+*Updated July 11, 2026 — Phase 1 complete. Tier 1A (conviction), 1B (awareness funnel), and 1C (competitive baseline) are all shipped and verified.*
+
+| Dimension | Score | Status (July 11, 2026) |
 |---|---|---|
 | Behavioral math | **82/100** | ✅ **FIXED** — dead `computeUtility` (simulation.ts) deleted July 7; `calculateDecision` (lib/prompts.ts:11–114) is now the single, tested source of truth. Prospect Theory: trust-adjusted value, loss aversion (lambda × loss × effRisk), social signal weighting, shock bonus. |
-| Agent heterogeneity | 72/100 | 13 core agent fields (persona, risk, trust, social, budget, emotional, etc.) + 3 psychological traits (lossAversion, statusQuoBias, priorAdoptions); 8 personas (Influencer, Early Adopter, Price Hawk, Pragmatist, Social Follower, Herd Member, Skeptic, Laggard). **Gap remains:** all agents still receive full brief simultaneously at step 1; no staged awareness (Tier 1B). |
+| Agent heterogeneity | **80/100** | ✅ **Staged awareness LIVE (Tier 1B)** — agents no longer all see the brief at step 1. Top 15% by influence hear first, then a word-of-mouth cascade through the Watts-Strogatz network, then a mass-market floor. Unaware agents genuinely hold no opinion (`decision: null`). 13 core fields + 3 psychological traits; 8 personas. **Gap remains:** awareness diffusion constants (seed %, neighbor threshold, mass-market step) are sensible defaults, not yet calibrated against a real diffusion curve. |
 | Social network | 60/100 | Watts-Strogatz topology correct; degree centrality influence scoring working. **Gaps:** no directional trust, no weak-tie bridging model, network static. Improvement: `computeInfluenceScores()` live in agentGeneration.ts. |
 | Decision realism | 48/100 | ✅ **Conviction scoring LIVE** — agents now have measurable conviction margin (distance from threshold); low conviction enables re-decisions (reversible adoption). **Gaps:** no habit/inertia, no brand trust separate from institutional, no reference price anchoring, no temporal discounting. |
-| Market dynamics | 30/100 | One product per run. No competition, no substitutes, no platform effects, no churn modeling, no exogenous shocks. **Planned (Tier 1C):** competitive baseline (switching utility). |
+| Market dynamics | **45/100** | ✅ **Competitive baseline LIVE (Tier 1C)** — a scenario can name an incumbent; adoption is then modeled as *switching* (U(new) − incumbent opportunity cost − switching friction), so an identical product adopts materially less in an entrenched market. Setup-form `competitorDensity`/`switchingCost` now feed the math. **Gaps remain:** still one focal product per run (no multi-product platform effects), no explicit churn state machine, no exogenous shocks. |
 | Scenario encoding | 40/100 | 3-scalar space (value, risk, loss) remains. Collapses B2B/B2C complexity. **Known gap:** SaaS adoption vs. consumer health adoption have different network dynamics, can't be expressed in same params. |
 | Output interpretability | **68/100** | ✅ **Retention Risk % now live** (adopters with conviction < 0.3) on results page. Persona breakdown + adoption curve good. **Gaps:** LLM reasoning still post-hoc rationalization; can't isolate which network event caused plateau (would need causal tracing). |
 
@@ -129,15 +131,15 @@ If this product is going to be worth using over just talking to people, it needs
 Add a `conviction: number` per agent = normalized distance of utility from threshold. Low conviction = flip candidate. High conviction = sticky. Show "retention risk" in results (% of supporters with conviction < 0.3).
 > *As-built (July 10 verified):* Live client loop (`app/api/run-step/route.ts`) already re-evaluates every agent each step — decisions were always reversible. `conviction` shipped as normalized [0,1] margin = (|stance| − threshold) / headroom; `stance = tanh(utility)`. **Retention Risk** stat live on app/results/page.tsx:174–181, displays both % and headcount of adopters at risk. **Open item:** tanh compression biases conviction low; the fixed < 0.3 cutoff needs recalibration against real run distributions to set meaningful churn threshold.
 
-**B. Awareness funnel (staged information exposure)** — ⏳ **NOT SHIPPED (Tier 1B, HIGHEST PRIORITY)**
-Don't expose all agents to the full brief on step 1. Model a diffusion of awareness:
-- Step 1: seeded agents + Influencers + Early Adopters only
-- Steps 2–4: their neighbors receive a "heard about this from [peer]" signal, not the full brief
-- Steps 5+: mass market exposure via a controllable "reach" parameter
-This produces S-curves from first principles (not parameter tuning). **Most visually dramatic feature** — cascade animation spreads outward across network over ticks (the GIF for LinkedIn post #6). **Current status:** all agents still receive full scenario brief simultaneously at step 1 in runStep; no awareness layering yet. **Effort estimate:** ~3 days. **Score impact:** 60 → 66.
+**B. Awareness funnel (staged information exposure)** — ✅ **DONE (July 11, 2026) — LIVE**
+Agents no longer all see the full brief on step 1. Awareness diffuses:
+- Step 0: top 15% by `influence_score` are aware (influencer/press wave)
+- Steps 1–3: word-of-mouth cascade — an agent becomes aware once ≥34% of its neighbors are aware
+- Step 4+: mass-market awareness floor (ads/press/category reach even isolated nodes)
+This produces S-curves from network topology, not parameter tuning. Unaware agents genuinely hold no opinion (`decision: null`) and skip the LLM entirely (token savings). **As-built:** `computeAwareness()` in `lib/agentGeneration.ts`; `isAware` gate in `calculateDecision`; per-step awareness set in `app/simulate/page.tsx`; cascade visual = dimmed/greyscale `UNAWARE` cards + a stacked `unaware` band in the adoption chart. **Verified:** 15%→22%→29%→36%→100% monotonic awareness. **Score impact:** 60 → 66. **Open item:** diffusion constants not yet calibrated against a real curve.
 
-**C. Competitive baseline**
-The utility function currently asks "is this product worth anything?" It should ask "is this product worth switching from what I have?" Add a `baseline` scenario representing the status quo. `utility = U(new) - U(current) - switching_cost`. This is how every real purchase decision works.
+**C. Competitive baseline** — ✅ **DONE (July 11, 2026) — LIVE**
+The utility function now asks "is this worth switching from what I have?" A scenario can carry a `competitor: { value, switchingCost, label }`. Adoption becomes `U(new) − incumbent opportunity cost − switching_friction`. Crucially, switching cost is modeled as a barrier to *adoption* (would-be adopters become neutral non-switchers), NOT a source of active opposition — a content incumbent user is a non-adopter, not an enemy; genuine opposition still comes only from the product's own risk/loss math. **As-built:** `CompetitorParams` in `lib/types.ts`; switching term + stance clamp in `calculateDecision`; setup form's `competitorDensity`/`switchingCost` now wired through `deriveSimParams`. **Verified:** identical product adopts ~78% less under heavy switching cost; greenfield path byte-identical. **Score impact:** 66 → 71.
 
 #### Tier 2 — These separate it from everything else
 

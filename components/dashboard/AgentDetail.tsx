@@ -1,6 +1,6 @@
 "use client";
 
-import type { Agent, AgentState, AgentHistoryEntry } from "@/lib/types";
+import type { Agent, AgentState, AgentHistoryEntry, Intervention } from "@/lib/types";
 import EgoNetworkGraph from "./EgoNetworkGraph";
 import AgentHistoryChart from "./AgentHistoryChart";
 
@@ -14,6 +14,8 @@ interface AgentDetailProps {
     onSelectAgent: (id: number) => void;
     isConfigPhase?: boolean;
     onToggleSeed?: (id: number) => void;
+    onIntervene?: (id: number, action: Intervention) => void;
+    convertBudgetLeft?: number; // remaining advocate slots; Convert disables at 0
 }
 
 function TraitRow({
@@ -74,7 +76,19 @@ export default function AgentDetail({
     onSelectAgent,
     isConfigPhase,
     onToggleSeed,
+    onIntervene,
+    convertBudgetLeft,
 }: AgentDetailProps) {
+    // Which intervention is currently active on this agent (for the action bar state).
+    const activeIntervention: Intervention | null = state.removed
+        ? "remove"
+        : state.muted
+            ? "silence"
+            : state.locked && state.decision === "support"
+                ? "convert"
+                : typeof state.influenceMult === "number" && state.influenceMult > 1
+                    ? "amplify"
+                    : null;
     const isSupport = state.decision === "support";
     const isNeutral = state.decision === "neutral";
     const isOppose = state.decision === "oppose";
@@ -214,6 +228,75 @@ export default function AgentDetail({
                         </div>
                     </div>
                 </div>
+
+                {/* ─── Live actions: reach into the running network and act on this agent ─── */}
+                {onIntervene && (
+                    <div className="node-actions">
+                        <div className="node-actions-head">
+                            <span className="node-actions-title">Act on this agent</span>
+                            {activeIntervention && (
+                                <span className={`node-actions-status ${activeIntervention}`}>
+                                    {activeIntervention === "convert" && "Champion"}
+                                    {activeIntervention === "silence" && "Silenced"}
+                                    {activeIntervention === "amplify" && `Amplified ${state.influenceMult}×`}
+                                    {activeIntervention === "remove" && "Removed"}
+                                </span>
+                            )}
+                        </div>
+                        <div className="node-actions-grid">
+                            <button
+                                type="button"
+                                className={`node-act convert ${activeIntervention === "convert" ? "on" : ""}`}
+                                onClick={() => onIntervene(agent.id, activeIntervention === "convert" ? "reset" : "convert")}
+                                disabled={activeIntervention !== "convert" && typeof convertBudgetLeft === "number" && convertBudgetLeft <= 0}
+                                title={
+                                    activeIntervention !== "convert" && typeof convertBudgetLeft === "number" && convertBudgetLeft <= 0
+                                        ? "No advocate budget left"
+                                        : "Convert this agent into a champion"
+                                }
+                            >
+                                <span className="node-act-icon">★</span>
+                                Convert
+                            </button>
+                            <button
+                                type="button"
+                                className={`node-act amplify ${activeIntervention === "amplify" ? "on" : ""}`}
+                                onClick={() => onIntervene(agent.id, activeIntervention === "amplify" ? "reset" : "amplify")}
+                                title="Boost this agent's influence on its neighbours"
+                            >
+                                <span className="node-act-icon">↑</span>
+                                Amplify
+                            </button>
+                            <button
+                                type="button"
+                                className={`node-act silence ${activeIntervention === "silence" ? "on" : ""}`}
+                                onClick={() => onIntervene(agent.id, activeIntervention === "silence" ? "reset" : "silence")}
+                                title="Mute this agent — no outward influence"
+                            >
+                                <span className="node-act-icon">◑</span>
+                                Silence
+                            </button>
+                            <button
+                                type="button"
+                                className={`node-act remove ${activeIntervention === "remove" ? "on" : ""}`}
+                                onClick={() => onIntervene(agent.id, activeIntervention === "remove" ? "reset" : "remove")}
+                                title="Pull this agent out of the network"
+                            >
+                                <span className="node-act-icon">✕</span>
+                                Remove
+                            </button>
+                        </div>
+                        {activeIntervention && (
+                            <button
+                                type="button"
+                                className="node-act-reset"
+                                onClick={() => onIntervene(agent.id, "reset")}
+                            >
+                                Clear override · restore to simulation
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {/* Current decision Glass Card */}
                 <div
@@ -641,6 +724,102 @@ export default function AgentDetail({
                     border-color: rgba(0, 82, 255, 0.12) !important;
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
                     transform: translateY(-0.5px);
+                }
+
+                /* ─── Node action bar ─── */
+                .node-actions {
+                    margin-bottom: 20px;
+                    padding: 14px;
+                    background: var(--bg-darker, #f3f2ee);
+                    border: 1px solid var(--border, rgba(0,0,0,0.06));
+                    border-radius: 14px;
+                }
+                .node-actions-head {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 12px;
+                }
+                .node-actions-title {
+                    font-family: var(--sans);
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: var(--bright);
+                    letter-spacing: -0.01em;
+                }
+                .node-actions-status {
+                    font-family: var(--sans);
+                    font-size: 10.5px;
+                    font-weight: 700;
+                    padding: 3px 9px;
+                    border-radius: 999px;
+                }
+                .node-actions-status.convert { color: #0a7d3c; background: rgba(16, 185, 129, 0.12); }
+                .node-actions-status.amplify { color: #0052ff; background: rgba(0, 82, 255, 0.1); }
+                .node-actions-status.silence { color: #92650a; background: rgba(245, 158, 11, 0.14); }
+                .node-actions-status.remove  { color: #c02b3f; background: rgba(244, 63, 94, 0.12); }
+
+                .node-actions-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                }
+                .node-act {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 7px;
+                    height: 38px;
+                    border: 1px solid var(--border, rgba(0,0,0,0.08));
+                    background: #ffffff;
+                    border-radius: 10px;
+                    font-family: var(--sans);
+                    font-size: 12.5px;
+                    font-weight: 600;
+                    color: var(--text, #1b1c21);
+                    cursor: pointer;
+                    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+                }
+                .node-act:hover { transform: translateY(-1px); }
+                .node-act:active { transform: translateY(0); }
+                .node-act:disabled {
+                    opacity: 0.4;
+                    cursor: default;
+                    transform: none;
+                }
+                .node-act:disabled:hover { transform: none; }
+                .node-act-icon {
+                    font-size: 13px;
+                    line-height: 1;
+                    display: inline-flex;
+                }
+                .node-act.convert:hover { border-color: rgba(16,185,129,0.5); color: #0a7d3c; }
+                .node-act.amplify:hover { border-color: rgba(0,82,255,0.5); color: #0052ff; }
+                .node-act.silence:hover { border-color: rgba(245,158,11,0.5); color: #92650a; }
+                .node-act.remove:hover  { border-color: rgba(244,63,94,0.5); color: #c02b3f; }
+
+                .node-act.convert.on { background: #10b981; border-color: #10b981; color: #fff; }
+                .node-act.amplify.on { background: #0052ff; border-color: #0052ff; color: #fff; }
+                .node-act.silence.on { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+                .node-act.remove.on  { background: #f43f5e; border-color: #f43f5e; color: #fff; }
+
+                .node-act-reset {
+                    width: 100%;
+                    margin-top: 8px;
+                    height: 32px;
+                    border: none;
+                    background: transparent;
+                    color: var(--muted, #626575);
+                    font-family: var(--sans);
+                    font-size: 11.5px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    border-radius: 8px;
+                    transition: background 0.15s ease, color 0.15s ease;
+                }
+                .node-act-reset:hover {
+                    background: rgba(0,0,0,0.04);
+                    color: var(--bright, #0b0c10);
                 }
             `}</style>
         </div>

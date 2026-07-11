@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateChatCompletion } from "@/lib/ai";
 import { guard, safeText } from "@/lib/apiGuard";
 
+// Anchors for the user's own low/medium/high selections on the setup form. The LLM
+// audit runs blind to these unless we tell it, and — separately — is not trustworthy
+// enough to let its output silently override an explicit user choice by an arbitrary
+// amount. A user who picks "low risk" can get nudged by evidence in the brief, but not
+// have a "low" flipped into effectively "high" with zero justification for the jump.
+const RISK_LEVEL_ANCHOR: Record<string, number> = { low: 0.25, medium: 0.42, high: 0.62 };
+const VALUE_PROP_ANCHOR: Record<string, number> = { weak: 0.30, moderate: 0.55, strong: 0.80 };
+const MAX_DEVIATION = 0.25; // how far the LLM may move a param from the user's own anchor
+
+function clampToAnchor(llmValue: number, anchor: number | undefined, fallback: number): number {
+    const v = Number.isFinite(llmValue) ? llmValue : fallback;
+    if (anchor === undefined) return Math.min(0.99, Math.max(0.01, v));
+    const lo = Math.max(0.01, anchor - MAX_DEVIATION);
+    const hi = Math.min(0.99, anchor + MAX_DEVIATION);
+    return Math.min(hi, Math.max(lo, v));
+}
+
 export async function POST(req: NextRequest) {
     const gate = await guard(req);
     if (!gate.ok) return gate.response;
@@ -9,6 +26,10 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const brief = safeText(body?.brief, 4000);
+        // User's own selections from the setup form, if provided — used to anchor
+        // the audit so it can't silently contradict what the user already told us.
+        const riskLevel = typeof body?.riskLevel === "string" ? body.riskLevel : undefined;
+        const valueProp = typeof body?.valueProp === "string" ? body.valueProp : undefined;
 
         if (!brief) {
             return NextResponse.json({ error: "Missing or invalid brief." }, { status: 400 });
@@ -18,8 +39,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
         }
 
-        const systemPrompt = `You are a Global Strategic Audit Engine. Evaluate the product brief against 2024-2025 real-world market contexts. 
-Do NOT use fixed benchmarks. Use your internal knowledge of category pricing (e.g., "$399/mo for an EV is extremely efficient," while "$399/mo for an email app is an extreme luxury risk").
+const anchorNote = (riskLevel || valueProp)
+            ? `\n\nThe user has already classified this product themselves: ${riskLevel ? `risk profile = "${riskLevel}"` : ""}${riskLevel && valueProp ? ", " : ""}${valueProp ? `value proposition = "${valueProp}"` : ""}. Your numeric audit should be CONSISTENT with that classification — refine it with evidence from the brief, don't contradict it outright. A "low" risk selection should not become a punishing risk score, and a "strong" value selection should not become a weak one, absent a compelling reason stated in your justification.`
+            : "";
+
+        const systemPrompt = `You are a Global Strategic Audit Engine. Evaluate the product brief against 2024-2025 real-world market contexts.
+Do NOT use fixed benchmarks. Use your internal knowledge of category pricing (e.g., "$399/mo for an EV is extremely efficient," while "$399/mo for an email app is an extreme luxury risk").${anchorNote}
 
 Perform a 3-step Audit:
 1. **Competitive Context**: Identify 2-3 similar products in this category and compare pricing.
@@ -81,10 +106,20 @@ Respond ONLY with a valid JSON object:
 
         const parsed = JSON.parse(text);
 
+        // Coherence clamp: the LLM audit may refine the user's own risk/value
+        // classification with evidence, but cannot silently flip it into a
+        // mathematically-doomed scenario. Bounded to +/- MAX_DEVIATION from the
+        // user's stated anchor when one was provided, otherwise a plain [0.01,0.99]
+        // clamp. This is what stopped a "low risk" habit app from auditing to
+        // risk=0.7/loss=0.55 and producing zero adoption regardless of population.
+        const valueOut = clampToAnchor(Number(parsed.value), valueProp ? VALUE_PROP_ANCHOR[valueProp] : undefined, 0.5);
+        const riskOut = clampToAnchor(Number(parsed.risk), riskLevel ? RISK_LEVEL_ANCHOR[riskLevel] : undefined, 0.4);
+        const lossOut = clampToAnchor(Number(parsed.loss), riskLevel ? RISK_LEVEL_ANCHOR[riskLevel] * 0.8 : undefined, 0.2);
+
         return NextResponse.json({
-            value: Number(parsed.value || 0.5),
-            risk: Number(parsed.risk || 0.5),
-            loss: Number(parsed.loss || 0.2),
+            value: valueOut,
+            risk: riskOut,
+            loss: lossOut,
             justification: parsed.justification || "Calculated using high-fidelity market audit.",
             market: parsed.market || null,
         });

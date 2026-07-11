@@ -22,8 +22,17 @@ export const SCENARIOS: Scenario[] = [
 • SOC2-certified, enterprise SSO
 • 99.9% uptime SLA
 • 60-day free trial, no credit card
-• Replaces 3–5 legacy tools on average`,
-        params: { value: 0.70, risk: 0.25, loss: 0.10 },
+• Replaces 3–5 legacy tools on average
+
+Switching from: an entrenched legacy tool stack teams already pay for and know.`,
+        params: {
+            value: 0.70,
+            risk: 0.25,
+            loss: 0.10,
+            // Tier 1C: enterprises don't buy in a vacuum — they must rip out an
+            // incumbent stack they already trust, with real migration friction.
+            competitor: { value: 0.55, switchingCost: 0.45, label: "your current legacy tool stack" },
+        },
     },
     {
         id: "health",
